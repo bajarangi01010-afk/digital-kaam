@@ -1,0 +1,1013 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Worker Dhundo — Digital Kaam 3D</title>
+<meta name="theme-color" content="#0d9488">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg">
+<link rel="stylesheet" href="/css/style.css">
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+
+<header class="appbar">
+  <div class="appbar-inner">
+    <div class="appbar-brand">
+      <img src="/icon.svg" class="appbar-logo-3d" alt="Logo">
+      <div>
+        <h1>Digital Kaam</h1>
+        <div class="appbar-subtitle">Verified Local Workers 3D</div>
+      </div>
+    </div>
+    <div class="appbar-actions" style="display:flex; align-items:center; gap:6px;">
+      <button type="button" class="btn-3d small secondary" onclick="openMobileConnectModal()" style="font-size:11px; padding:3px 7px;">
+        📲 Mobile Connect
+      </button>
+      <a href="/customer.html" class="badge-3d trust" style="cursor:pointer;">🧑 Customer Hub</a>
+      <a href="/booking-status.html" class="badge-3d gold" style="cursor:pointer;">📦 Track</a>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <!-- 3D Category Chips Carousel with Left/Right Buttons -->
+  <div class="category-carousel-container">
+    <button type="button" class="carousel-nav-btn" id="scrollLeftBtn" aria-label="Scroll Left" title="Pichhe Dekhein">‹</button>
+    <div class="category-carousel" id="categoryChips">
+      <div class="chip-3d active" onclick="selectCategory('')">✨ Sabhi Workers</div>
+      <!-- Dynamically loaded skills -->
+    </div>
+    <button type="button" class="carousel-nav-btn" id="scrollRightBtn" aria-label="Scroll Right" title="Aage Dekhein">›</button>
+  </div>
+
+  <!-- Search & Filter 3D Card -->
+  <div class="card-3d">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <span style="font-weight:800; font-size:15px; color:#fff;">🔍 Worker Search</span>
+      <div style="display:flex; gap:6px;">
+        <button type="button" class="btn-3d small secondary" onclick="openRateCardModal()">📋 Rate Card</button>
+        <button type="button" id="locBtn" class="btn-3d small secondary">📍 Location</button>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:8px;">
+      <input type="text" id="citySearch" placeholder="Shehar / Area (Jaise: Patna, Delhi, Mumbai)" style="flex:1;">
+      <button type="button" class="voice-search-btn" id="voiceSearchBtn" title="Bol Kar Search Karein (Voice Search)">🎙️</button>
+    </div>
+    <div id="voiceStatusText" style="display:none; font-size:12px; color:#34d399; margin-top:4px;"></div>
+    <p id="locStatus" class="msg-3d" style="display:none;"></p>
+
+    <div style="display:flex; gap:10px; margin-top:10px;">
+      <select id="skillSearch" style="flex:1;">
+        <option value="">Sabhi Skills</option>
+      </select>
+      <select id="sortBy" style="flex:1;">
+        <option value="default">⭐ Best Match (Pro First)</option>
+        <option value="rating">Top Rated</option>
+        <option value="price_low">Kam Price (₹)</option>
+        <option value="price_high">Zyada Price (₹)</option>
+      </select>
+    </div>
+
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="btn-3d" onclick="loadWorkers()">🔎 Search Karein</button>
+      <button class="btn-3d secondary" onclick="clearSearch()">Sabhi Dikhayein</button>
+    </div>
+  </div>
+
+  <!-- 🎓 7. CERTIFIED & PRO MASTERS DEDICATED SECTION -->
+  <div id="certifiedSectionWrapper" style="display:none; margin-bottom:16px;">
+    <div class="certified-shelf-3d">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span style="font-size:22px;">🎓</span>
+          <span style="font-weight:900; font-size:15px; color:#fbbf24;">Govt &amp; Pro Certified Masters</span>
+        </div>
+        <span class="pro-badge-glow">🛡️ Verified Diplomas</span>
+      </div>
+      <p style="font-size:12px; color:#fef3c7; margin-bottom:10px;">
+        ITI, Govt Certified ya Technical Degree wale certified mistri jinse perfect quality kaam milta hai:
+      </p>
+      <div id="certifiedWorkersList" style="display:flex; gap:10px; overflow-x:auto; padding-bottom:8px;"></div>
+    </div>
+  </div>
+
+  <!-- 📍 3. AUTO NEAREST WORKERS (< 5KM) SHELF -->
+  <div id="nearestSectionWrapper" style="display:none; margin-bottom:16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <div style="font-weight:800; font-size:14.5px; color:#34d399; display:flex; align-items:center; gap:6px;">
+        <span>📍</span> <span>Aapke Sabse Paas Wale Mistri (&lt; 5 KM)</span>
+      </div>
+      <span class="badge-3d trust" style="font-size:11px;">Fast 15-Min Arrival</span>
+    </div>
+    <div id="nearestWorkersList" style="display:flex; gap:10px; overflow-x:auto; padding-bottom:8px;"></div>
+  </div>
+
+  <div class="section-title">🛠️ Sabhi Verified Local Workers</div>
+
+  <!-- Workers List Container -->
+  <div id="workersList">
+    <div class="skeleton-3d"></div>
+    <div class="skeleton-3d"></div>
+  </div>
+
+  <!-- 📞 Official Admin Support Bar -->
+  <div class="card-3d" style="margin-top:18px; padding:14px; background:radial-gradient(circle at top left, rgba(20,184,166,0.15), rgba(4,47,46,0.85));">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+      <div>
+        <div style="font-weight:800; color:#fff; font-size:14px;">📞 Official Admin & Safety Helpline (24/7)</div>
+        <div style="font-size:12.5px; color:var(--text-sub); margin-top:2px;">
+          Direct Call: 
+          <a href="tel:6205399450" style="color:var(--primary-light); font-weight:700;">6205399450</a> • 
+          <a href="tel:9065064475" style="color:var(--primary-light); font-weight:700;">9065064475</a> • 
+          <a href="tel:8603766262" style="color:var(--primary-light); font-weight:700;">8603766262</a>
+        </div>
+      </div>
+      <a href="https://wa.me/916205399450" target="_blank" class="btn-3d small wa" style="width:auto; padding:6px 14px; text-decoration:none;">
+        💬 WhatsApp Helpline
+      </a>
+    </div>
+  </div>
+
+  <p class="footer-note">Kya aap khud ek Worker hain? <a href="/index.html">Yahan Register Karein</a></p>
+</main>
+
+<nav class="bottomnav-3d">
+  <a href="/workers.html" class="active"><span class="icon">🔍</span>Worker Dhundo</a>
+  <a href="/customer.html"><span class="icon">🧑</span>Customer Hub</a>
+  <a href="/index.html"><span class="icon">📝</span>Register</a>
+  <a href="/my-bookings.html"><span class="icon">🧰</span>Worker Panel</a>
+  <a href="/booking-status.html"><span class="icon">📦</span>Tracking</a>
+  <a href="/admin.html"><span class="icon">🔐</span>Admin</a>
+</nav>
+
+<script src="/js/common.js"></script>
+<script src="/js/otp-modal.js"></script>
+<script>
+let bookingLoc = null;
+let allWorkers = [];
+let selectedSkillGlobal = '';
+
+// Setup Drag & Mouse Wheel Horizontal Scrolling
+function initCarouselScroll(slider) {
+  if (!slider) return;
+  let isDown = false;
+  let startX, scrollLeft, moved = false;
+
+  slider.addEventListener('mousedown', (e) => {
+    isDown = true;
+    moved = false;
+    slider.classList.add('is-dragging');
+    startX = e.pageX - slider.offsetLeft;
+    scrollLeft = slider.scrollLeft;
+  });
+
+  slider.addEventListener('mouseleave', () => {
+    isDown = false;
+    slider.classList.remove('is-dragging');
+  });
+
+  slider.addEventListener('mouseup', () => {
+    isDown = false;
+    slider.classList.remove('is-dragging');
+  });
+
+  slider.addEventListener('mousemove', (e) => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - slider.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    if (Math.abs(walk) > 4) moved = true;
+    slider.scrollLeft = scrollLeft - walk;
+  });
+
+  // Smooth mouse wheel translation to horizontal scroll
+  slider.addEventListener('wheel', (e) => {
+    if (e.deltaY !== 0) {
+      e.preventDefault();
+      slider.scrollLeft += e.deltaY * 1.2;
+    }
+  }, { passive: false });
+
+  $('scrollLeftBtn')?.addEventListener('click', () => {
+    slider.scrollBy({ left: -240, behavior: 'smooth' });
+  });
+
+  $('scrollRightBtn')?.addEventListener('click', () => {
+    slider.scrollBy({ left: 240, behavior: 'smooth' });
+  });
+}
+
+function renderSkillChips(skillsList) {
+  const chipContainer = $('categoryChips');
+  if (!chipContainer) return;
+  chipContainer.innerHTML = '<div class="chip-3d active" onclick="selectCategory(\'\')">✨ Sabhi Workers</div>';
+  
+  skillsList.forEach(s => {
+    const chip = document.createElement('div');
+    chip.className = 'chip-3d';
+    if (s === selectedSkillGlobal) chip.classList.add('active');
+    chip.textContent = s;
+    chip.onclick = () => {
+      document.querySelectorAll('.chip-3d').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      chip.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      selectCategory(s);
+    };
+    chipContainer.appendChild(chip);
+  });
+  initCarouselScroll(chipContainer);
+}
+
+async function loadSkills() {
+  populateSkillDropdown($('skillSearch'));
+  renderSkillChips(DEFAULT_SKILLS);
+
+  try {
+    const d = await apiFetch('/config/skills');
+    if (d && d.skills && d.skills.length) {
+      const select = $('skillSearch');
+      select.innerHTML = '<option value="">Sabhi Skills</option>';
+      d.skills.forEach(s => {
+        const o = document.createElement('option');
+        o.value = o.textContent = s;
+        if (s === selectedSkillGlobal) o.selected = true;
+        select.appendChild(o);
+      });
+      renderSkillChips(d.skills);
+    }
+  } catch (e) {
+    console.error('Skills fetch error:', e);
+  }
+}
+loadSkills();
+
+async function loadCertifiedWorkers() {
+  try {
+    const res = await apiFetch('/api/workers/certified');
+    const wrap = $('certifiedSectionWrapper');
+    const list = $('certifiedWorkersList');
+    if (res && res.certified_workers && res.certified_workers.length > 0 && list && wrap) {
+      wrap.style.display = 'block';
+      list.innerHTML = res.certified_workers.map(w => `
+        <div class="card-3d" style="min-width:210px; max-width:220px; flex-shrink:0; padding:12px; margin-bottom:0; background:rgba(4,34,31,0.75); border:1.5px solid rgba(251,191,36,0.45);">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <img src="${esc(w.photo_path || '/icon.svg')}" style="width:42px; height:42px; border-radius:50%; object-fit:cover; border:2px solid #fbbf24;" onerror="this.src='/icon.svg'">
+            <div>
+              <div style="font-weight:800; font-size:13.5px; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px;">${esc(w.name)}</div>
+              <span class="pro-badge-glow" style="font-size:10px; padding:1px 6px;">🎓 Certified</span>
+            </div>
+          </div>
+          <div style="font-size:12px; color:var(--text-sub); font-weight:700; margin-bottom:4px;">${esc(w.skill)}</div>
+          <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">📍 ${esc(w.city)} • ⭐ ${w.averageRating}</div>
+          <button class="btn-3d small" style="width:100%; padding:6px; font-size:12px;" onclick="openBookingModal(${w.id})">
+            📅 Book Master
+          </button>
+        </div>
+      `).join('');
+    }
+  } catch (err) {}
+}
+loadCertifiedWorkers();
+
+async function loadNearestWorkers(lat, lng) {
+  if (!lat || !lng) return;
+  try {
+    const res = await apiFetch(`/api/customer/nearest-workers?lat=${lat}&lng=${lng}`);
+    const wrap = $('nearestSectionWrapper');
+    const list = $('nearestWorkersList');
+    if (res && res.workers && res.workers.length > 0 && list && wrap) {
+      wrap.style.display = 'block';
+      list.innerHTML = res.workers.map(w => `
+        <div class="card-3d" style="min-width:210px; max-width:220px; flex-shrink:0; padding:12px; margin-bottom:0; background:rgba(4,34,31,0.75); border:1.5px solid rgba(52,211,153,0.4);">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <img src="${esc(w.photo_path || '/icon.svg')}" style="width:42px; height:42px; border-radius:50%; object-fit:cover; border:2px solid #10b981;" onerror="this.src='/icon.svg'">
+            <div>
+              <div style="font-weight:800; font-size:13.5px; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px;">${esc(w.name)}</div>
+              <span class="badge-3d trust" style="font-size:10px; padding:1px 6px;">📍 ${w.distance_km} km</span>
+            </div>
+          </div>
+          <div style="font-size:12px; color:var(--text-sub); font-weight:700; margin-bottom:4px;">${esc(w.skill)}</div>
+          <div style="font-size:11.5px; color:#fbbf24; margin-bottom:8px;">⚡ Starting ₹${w.starting_price || 300}</div>
+          <button class="btn-3d small" style="width:100%; padding:6px; font-size:12px;" onclick="openBookingModal(${w.id})">
+            🚀 1-Tap Fast Book
+          </button>
+        </div>
+      `).join('');
+    }
+  } catch(e) {}
+}
+
+function selectCategory(skill) {
+  selectedSkillGlobal = skill;
+  $('skillSearch').value = skill;
+  if (skill) {
+    speakHindi(`${skill.replace(/[^\w\s\u0900-\u097F]/gi, '').trim()} category ke verified mistri`);
+  }
+  loadWorkers();
+}
+
+$('locBtn').onclick = async () => {
+  $('locBtn').disabled = true;
+  const statusEl = $('locStatus');
+  statusEl.style.display = 'flex';
+  const loc = await getAccurateLocation({
+    onStatus: (m, t) => {
+      statusEl.textContent = m;
+      statusEl.className = 'msg-3d ' + t;
+    }
+  });
+  $('locBtn').disabled = false;
+  if (loc) {
+    bookingLoc = loc;
+    $('citySearch').value = loc.city;
+    loadWorkers();
+    loadNearestWorkers(loc.lat, loc.lng);
+  }
+};
+
+function tierBadge(w) {
+  let badges = '';
+  if (w.is_busy) {
+    badges += '<span class="badge-3d danger" style="box-shadow:0 0 10px rgba(239,68,68,0.6); animation:pulseMic 1.5s infinite;">🔴 Busy on Live Job</span> ';
+  }
+  if (w.is_pro_member) {
+    badges += '<span class="badge-3d gold" style="box-shadow:0 0 10px rgba(245,158,11,0.5);">👑 Pro Verified</span> ';
+  }
+  if (w.tier === 'professional') {
+    badges += w.verification_status === 'approved' 
+      ? '<span class="badge-3d gold">🎓 Certified Pro</span>' 
+      : '<span class="badge-3d gold">🎓 Pro</span>';
+  } else if (w.tier === 'experienced') {
+    badges += '<span class="badge-3d trust">🧰 Experienced</span>';
+  } else {
+    badges += '<span class="badge-3d">🌱 New Worker</span>';
+  }
+  return badges;
+}
+
+function sortWorkers(list) {
+  const sorted = [...list];
+  const mode = $('sortBy').value;
+  if (mode === 'rating') sorted.sort((a, b) => b.averageRating - a.averageRating);
+  else if (mode === 'price_low') sorted.sort((a, b) => (a.starting_price || 1e9) - (b.starting_price || 1e9));
+  else if (mode === 'price_high') sorted.sort((a, b) => (b.starting_price || 0) - (a.starting_price || 0));
+  else {
+    // Free workers first, then Pro members, then rating
+    sorted.sort((a, b) => (a.is_busy ? 1 : 0) - (b.is_busy ? 1 : 0) || (b.is_pro_member || 0) - (a.is_pro_member || 0) || (b.averageRating || 0) - (a.averageRating || 0));
+  }
+  return sorted;
+}
+
+function speakHindi(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'hi-IN';
+  utter.rate = 1.0;
+  window.speechSynthesis.speak(utter);
+}
+
+function workerCard(w) {
+  const isOnline = w.is_available && !w.is_busy ? '<span class="pulse-dot" style="margin-left:4px;" title="Available Now"></span>' : '';
+  const photo = w.photo_path || '/icon.svg';
+
+  return `
+  <article class="card-3d" ${w.is_pro_member ? 'style="border:1.5px solid rgba(251,191,36,0.6); box-shadow: 0 12px 28px rgba(245,158,11,0.15);"' : ''}>
+    ${w.verification_status !== 'approved' ? `<div style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);border-radius:8px;padding:6px 10px;font-size:12px;color:#fbbf24;margin-bottom:8px;">⏳ Admin Verification Pending — Worker profile under review</div>` : ''}
+    <div class="worker-card-3d">
+      <div class="worker-photo-wrapper">
+        <img class="worker-photo-3d" src="${esc(photo)}" alt="${esc(w.name)}" loading="lazy" onerror="this.src='/icon.svg'">
+        ${w.verification_status === 'approved' ? '<div class="worker-verified-tick" title="Admin Verified">✓</div>' : '<div class="worker-verified-tick" title="Admin Verification Pending" style="background: linear-gradient(135deg, #f59e0b, #d97706); font-size: 11px;">⏳</div>'}
+      </div>
+      <div class="worker-info-3d">
+        <div class="worker-name-3d">
+          ${esc(w.name)} ${isOnline}
+        </div>
+        <div class="worker-meta-line">
+          ${tierBadge(w)}
+          <span class="price-tag-3d">₹${w.starting_price || '200'} se</span>
+        </div>
+        <div class="worker-meta-line" style="color:var(--text-main); font-weight:600;">
+          🛠️ ${esc(w.skill)}
+        </div>
+        <div class="worker-meta-line">
+          📍 ${esc(w.city)} &nbsp;|&nbsp; 📞 <a href="tel:+91${esc(w.phone)}" style="font-weight:700;">+91 ${esc(w.phone)}</a>
+        </div>
+        ${w.govt_id_type ? `
+          <div class="worker-meta-line" style="margin-top:2px;">
+            <span class="badge-3d trust" style="font-size:10.5px; padding:2px 8px;">
+              🪪 ${esc(w.govt_id_type)} Verified: ${esc(w.masked_id_number || 'UIDAI Protected')}
+            </span>
+          </div>
+        ` : ''}
+        <div class="worker-meta-line" style="margin-top:4px;">
+          <span>${starsHtml(w.averageRating)}</span>
+          <span style="font-weight:700; color:#fff;">${w.averageRating}</span>
+          <span style="color:var(--text-muted); font-size:12px;">(${w.reviewCount || 0} reviews)</span>
+          &nbsp;•&nbsp;<a href="javascript:void(0)" onclick="openReviews(${w.id}, '${esc(w.name).replace(/'/g, "\\'")}')" style="font-weight:700; text-decoration:underline;">Reviews</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top:14px;">
+      ${w.is_busy ? `
+        <button class="btn-3d small secondary" style="opacity:0.7; cursor:not-allowed;" onclick="toast('Yeh Worker abhi doosre customer ke order par busy hain. Thodi der baad try karein.', 'info')">
+          ⏳ Currently Busy
+        </button>
+      ` : `
+        <button class="btn-3d small" onclick="openBookingModal(${w.id})">📅 Direct Book</button>
+      `}
+      <a class="btn-3d small secondary" href="/verify-worker.html?id=${w.id}" target="_blank" style="flex:0.8;">🪪 ID Check</a>
+      <a class="btn-3d small wa" href="https://wa.me/91${encodeURIComponent(w.phone)}" target="_blank" rel="noopener" onclick="fetch('/track-contact/${w.id}',{method:'POST'})" style="flex:0.6;">💬 WA</a>
+      <a class="btn-3d small call" href="tel:+91${encodeURIComponent(w.phone)}" onclick="fetch('/track-contact/${w.id}',{method:'POST'})" style="flex:0.6;">📞 Call</a>
+    </div>
+  </article>
+  `;
+}
+
+async function loadWorkers() {
+  $('workersList').innerHTML = '<div class="skeleton-3d"></div><div class="skeleton-3d"></div>';
+  try {
+    const p = new URLSearchParams();
+    const city = $('citySearch').value.trim();
+    const skill = $('skillSearch').value.trim() || selectedSkillGlobal;
+    if (city) p.set('city', city);
+    if (skill) p.set('skill', skill);
+
+    const ws = await apiFetch('/workers?' + p);
+    allWorkers = ws;
+    renderList();
+  } catch (e) {
+    $('workersList').innerHTML = `<p class="msg-3d err">${esc(e.message)}</p>`;
+  }
+}
+
+function clearSearch() {
+  $('citySearch').value = '';
+  $('skillSearch').value = '';
+  selectedSkillGlobal = '';
+  document.querySelectorAll('.chip-3d').forEach(c => c.classList.remove('active'));
+  document.querySelector('.chip-3d')?.classList.add('active');
+  loadWorkers();
+}
+
+function renderList() {
+  const ws = sortWorkers(allWorkers);
+  $('workersList').innerHTML = ws.length
+    ? ws.map(workerCard).join('')
+    : `
+      <div class="empty-state-3d">
+        <span class="big-icon">🕵️</span>
+        <h3 style="color:#fff; font-size:17px;">Koi Worker Nahi Mila</h3>
+        <p style="font-size:13px; margin-top:4px;">Is category ya shehar ke liye naye workers jud rahe hain.</p>
+      </div>
+    `;
+}
+$('sortBy').onchange = renderList;
+$('skillSearch').onchange = () => {
+  selectedSkillGlobal = $('skillSearch').value;
+  document.querySelectorAll('.chip-3d').forEach(c => {
+    if (c.textContent.trim() === selectedSkillGlobal || (!selectedSkillGlobal && c.textContent.includes('Sabhi'))) {
+      c.classList.add('active');
+      c.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    } else {
+      c.classList.remove('active');
+    }
+  });
+  loadWorkers();
+};
+$('citySearch').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') loadWorkers();
+});
+
+let modalBookingLoc = null;
+
+function openBookingModal(id) {
+  const w = allWorkers.find(x => x.id === id);
+  if (!w) return;
+  if (w.is_busy) {
+    toast('Yeh Worker abhi doosre order par busy hain.', 'info');
+    return;
+  }
+
+  document.getElementById('bookingModalBackdrop')?.remove();
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'sheet-backdrop-3d';
+  backdrop.id = 'bookingModalBackdrop';
+  backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
+
+  backdrop.innerHTML = `
+    <div class="sheet-3d" style="max-width: 500px; max-height: 90vh; overflow-y: auto;">
+      <div class="sheet-handle"></div>
+      
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid var(--surface-glass-border);">
+        <img src="${esc(w.photo_path || '/icon.svg')}" style="width:52px; height:52px; border-radius:50%; object-fit:cover; border:2px solid var(--primary-light);">
+        <div>
+          <div style="font-weight:900; font-size:17px; color:#fff;">${esc(w.name)}</div>
+          <div style="font-size:13px; color:var(--primary-light); font-weight:700;">🛠️ ${esc(w.skill)}</div>
+          <div style="font-size:12px; color:var(--text-muted);">📞 +91 ${esc(w.phone)} • 📍 ${esc(w.city)}</div>
+        </div>
+      </div>
+
+      <div style="background:rgba(20,184,166,0.1); border:1px solid var(--primary-glow); border-radius:10px; padding:8px 12px; margin-bottom:14px; font-size:12px; color:#f0fdfa;">
+        📍 <b>Max 15 KM Hyperlocal Service Area:</b> Worker aapke doorstep par 15km radius ke andar service provide karte hain.
+      </div>
+
+      <label>Aapka Poora Naam <button type="button" class="speak-btn-inline" onclick="VoiceAssistant.explainField('name')">🔊 Suniye</button></label>
+      <input type="text" id="bm_name" placeholder="Jaise: Rajesh Kumar">
+
+      <label>Aapka Mobile Number <button type="button" class="speak-btn-inline" onclick="VoiceAssistant.explainField('phone')">🔊 Suniye</button></label>
+      <input type="tel" id="bm_phone" placeholder="10-digit mobile number" maxlength="10" inputmode="numeric">
+
+      <label>Service Date &amp; Arrival Time</label>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <input id="bm_date" type="date" min="${new Date().toISOString().split('T')[0]}">
+        <input id="bm_time" type="time" value="09:00">
+      </div>
+      <p class="hint">📅 Worker ko usi date aur time par aana hoga. Late hone par automatic alert milega.</p>
+
+      <label>Service Address <button type="button" class="speak-btn-inline" onclick="VoiceAssistant.explainField('city')">🔊 Suniye</button></label>
+      <textarea id="bm_address" placeholder="Ghar number, building, gali, landmark"></textarea>
+
+      <button type="button" class="btn-3d secondary small" style="margin-top:4px;" onclick="setModalLocation()">
+        📍 Current GPS Set Karein (15km Radius Verification)
+      </button>
+      <span id="bm_loc_status" class="hint" style="display:block; margin:4px 0;"></span>
+
+      <label>Kaam Ki Detail (Samasya)</label>
+      <textarea id="bm_msg" placeholder="Kaam kya karwana hai? (min 10 characters)"></textarea>
+
+      <label>Estimated Amount (₹)</label>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <input id="bm_amt" type="number" readonly style="opacity:0.85; cursor:not-allowed; border-color:rgba(251,191,36,0.5); flex:1;" min="10" placeholder="Jaise: 500" value="${w.starting_price || 500}">
+        <span style="font-size:20px;">🔒</span>
+      </div>
+      <p class="hint">⚡ Yeh amount worker ke profile se lock hai.</p>
+      <p class="hint">⚡ Booking confirm karne ke liye 10% advance token pay karein. Kaam hone par balance worker ko dena hai.</p>
+
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn-3d" onclick="submitModalBooking(${w.id})">
+          💳 10% Advance Pay Karke Book Karein
+        </button>
+        <button class="btn-3d secondary" onclick="document.getElementById('bookingModalBackdrop')?.remove()">
+          ✕ Cancel
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+  speakHindi('Aap ' + w.name + ' ko book kar rahe hain. Kripya details bharein.');
+
+  const phoneInp = $('bm_phone');
+  if (phoneInp) {
+    phoneInp.addEventListener('input', async () => {
+      const val = phoneInp.value.trim();
+      if (val.length === 10) {
+        try {
+          const res = await apiFetch('/api/customer/profile/' + val);
+          if (res.found) {
+            const nameInp = $('bm_name');
+            nameInp.value = res.name;
+            nameInp.readOnly = true;
+            nameInp.style.borderColor = 'rgba(45,212,191,0.5)';
+            if (!$('auto-fill-badge')) {
+              const b = document.createElement('span');
+              b.id = 'auto-fill-badge';
+              b.style.cssText = 'font-size:11px; color:#34d399; margin-left:8px; font-weight:700;';
+              b.textContent = 'Auto-Detected ✓';
+              nameInp.parentNode.insertBefore(b, nameInp.nextSibling);
+            }
+          }
+        } catch(e) {}
+      }
+    });
+  }
+
+  // Strict input character bindings for modal
+  setTimeout(() => {
+    AntiGarbageValidator.bindAlphaOnly($('bm_name'));
+    AntiGarbageValidator.bindDigitsOnly($('bm_phone'), 10);
+    AntiGarbageValidator.bindAddress($('bm_address'));
+    AntiGarbageValidator.realTimeCheck($('bm_name'), 'name');
+    AntiGarbageValidator.realTimeCheck($('bm_address'), 'address');
+    AntiGarbageValidator.realTimeCheck($('bm_msg'), 'message');
+  }, 100);
+}
+
+async function setModalLocation() {
+  const x = await getAccurateLocation({
+    onStatus: (m, t) => { 
+      const el = $('bm_loc_status');
+      if (el) el.textContent = m; 
+    }
+  });
+  if (!x) return;
+  modalBookingLoc = x;
+  const addrEl = $('bm_address');
+  if (addrEl) addrEl.value = x.address || x.city;
+  const statEl = $('bm_loc_status');
+  if (statEl) statEl.textContent = `✅ GPS Set ±${Math.round(x.accuracy)}m`;
+}
+
+async function submitModalBooking(id) {
+  const customer_name = $('bm_name').value.trim();
+  const customer_phone = $('bm_phone').value.trim();
+  const rawDate = $('bm_date').value;
+  const rawTime = $('bm_time')?.value || '09:00';
+  const service_date = rawDate ? `${rawDate} ${rawTime}` : '';
+  const address = $('bm_address').value.trim();
+  const message = $('bm_msg').value.trim();
+  const estimated_amount = $('bm_amt').value;
+
+  if (!AntiGarbageValidator.isValidName(customer_name)) {
+    toast('Kripya apna sahi naam daalein (sirf letters).', 'err');
+    $('bm_name').focus();
+    return;
+  }
+  if (!AntiGarbageValidator.isValidPhone(customer_phone)) {
+    toast('Kripya sahi 10-digit mobile number daalein.', 'err');
+    $('bm_phone').focus();
+    return;
+  }
+  if (!address || address.length < 5) {
+    toast('Service address daalna zaroori hai (min 5 characters).', 'err');
+    $('bm_address').focus();
+    return;
+  }
+
+  // Open Customer Terms & Conditions Modal
+  window.onCustomerTermsAgreed = () => proceedWithOtpBooking(id, customer_name, customer_phone, service_date, address, message, estimated_amount);
+  TermsModalManager.openCustomerTerms();
+}
+
+function proceedWithOtpBooking(id, customer_name, customer_phone, service_date, address, message, estimated_amount) {
+  // OTP Verification for Customer Booking Phone
+  OTPManager.requestAndOpen({
+    phone: customer_phone,
+    purpose: 'booking_order',
+    onVerified: async () => {
+      try {
+        toast('Booking order generate ho raha hai...', 'info');
+        const d = await apiFetch('/create-booking-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            worker_id: id,
+            customer_name,
+            customer_phone,
+            service_date,
+            address,
+            message,
+            estimated_amount,
+            customer_lat: modalBookingLoc ? modalBookingLoc.lat : null,
+            customer_lng: modalBookingLoc ? modalBookingLoc.lng : null,
+            customer_accuracy: modalBookingLoc ? modalBookingLoc.accuracy : null
+          })
+        });
+
+        // 🏡 Plus AMC Free Service Handling (Zero Token)
+        if (d.isAmcFree || d.amount === 0) {
+          toast('🏡 Digital Kaam Plus AMC Applied: ₹0 Token Booking Confirmed!', 'ok', 6000);
+          document.getElementById('bookingModalBackdrop')?.remove();
+          setTimeout(() => {
+            window.location.href = `/booking-status.html?phone=${encodeURIComponent(customer_phone)}`;
+          }, 1500);
+          return;
+        }
+
+        // 🛡️ 4. Dual-Mode Escrow & Instant UPI Payment Checkout
+        EscrowPaymentRunner.startBookingCheckout({
+          orderData: d,
+          customerName: customer_name,
+          customerPhone: customer_phone,
+          onSuccess: (vr) => {
+            document.getElementById('bookingModalBackdrop')?.remove();
+            toast(vr.message || 'Booking confirm ho gayi! ✅', 'ok', 6000);
+            setTimeout(() => {
+              window.location.href = `/booking-status.html?phone=${encodeURIComponent(customer_phone)}`;
+            }, 1500);
+          },
+          onError: (err) => {
+            toast(explainError(err), 'err', 6000);
+          }
+        });
+      } catch (err) {
+        toast(explainError(err), 'err', 5000);
+      }
+    }
+  });
+}
+
+function clearSearch() {
+  $('citySearch').value = '';
+  $('skillSearch').value = '';
+  selectedSkillGlobal = '';
+  document.querySelectorAll('.chip-3d').forEach(c => c.classList.remove('active'));
+  document.querySelector('.chip-3d')?.classList.add('active');
+  loadWorkers();
+}
+
+/* ---------------- 3D REVIEWS BOTTOM-SHEET ---------------- */
+function closeSheet() {
+  document.getElementById('reviewsSheetBackdrop')?.remove();
+}
+
+async function openReviews(workerId, workerName) {
+  closeSheet();
+  const backdrop = document.createElement('div');
+  backdrop.className = 'sheet-backdrop-3d';
+  backdrop.id = 'reviewsSheetBackdrop';
+  backdrop.onclick = (e) => { if (e.target === backdrop) closeSheet(); };
+
+  backdrop.innerHTML = `
+    <div class="sheet-3d">
+      <div class="sheet-handle"></div>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="font-size:18px; font-weight:800; color:#fff;">⭐ ${esc(workerName)} Ke Reviews</h3>
+        <button onclick="closeSheet()" style="background:none; border:none; color:rgba(255,255,255,0.6); font-size:22px; cursor:pointer;">✕</button>
+      </div>
+
+      <div id="reviewSummary" style="margin:12px 0;">Loading...</div>
+
+      <div class="card-3d" style="margin:16px 0; background:rgba(4,34,31,0.5);">
+        <div class="section-title" style="margin-top:0;">✍️ Naya Review Dein</div>
+        <label>Aapka Naam</label>
+        <input type="text" id="rev-name" placeholder="Aapka Naam" maxlength="50">
+        
+        <label>Rating (Stars Chunein)</label>
+        <div class="star-picker" id="starPicker" style="font-size:32px; gap:8px; margin:6px 0;">
+          <span data-v="1" style="cursor:pointer;">★</span>
+          <span data-v="2" style="cursor:pointer;">★</span>
+          <span data-v="3" style="cursor:pointer;">★</span>
+          <span data-v="4" style="cursor:pointer;">★</span>
+          <span data-v="5" style="cursor:pointer;">★</span>
+        </div>
+
+        <label>Aapka Anubhav / Comment</label>
+        <textarea id="rev-comment" maxlength="300" placeholder="Kaam kaisa raha? Samay par aaye ya nahi?"></textarea>
+
+        <button class="btn-3d" id="submitReviewBtn" style="margin-top:12px;">
+          ✅ Review Submit Karein
+        </button>
+      </div>
+
+      <div class="section-title">💬 Sabhi Customer Reviews</div>
+      <div id="reviewsList">Loading...</div>
+    </div>
+  `;
+
+  document.body.appendChild(backdrop);
+
+  let selectedRating = 5;
+  const stars = backdrop.querySelectorAll('#starPicker span');
+  function updateStars(val) {
+    stars.forEach(s => {
+      const v = Number(s.dataset.v);
+      s.style.color = v <= val ? '#fbbf24' : 'rgba(255,255,255,0.2)';
+    });
+  }
+  updateStars(5);
+
+  stars.forEach(s => s.onclick = () => {
+    selectedRating = Number(s.dataset.v);
+    updateStars(selectedRating);
+  });
+
+  async function refreshReviews() {
+    try {
+      const d = await apiFetch(`/worker-reviews/${workerId}`);
+      backdrop.querySelector('#reviewSummary').innerHTML = d.total
+        ? `<div style="display:flex; align-items:center; gap:8px;">
+             <span style="font-size:22px;">${starsHtml(d.average)}</span>
+             <b style="font-size:18px; color:#fff;">${d.average}</b> / 5 
+             <span style="color:var(--text-muted);">(${d.total} total reviews)</span>
+           </div>`
+        : `<p class="hint">Is worker ka abhi koi review nahi hai. Sabse pehle aap review dein!</p>`;
+
+      backdrop.querySelector('#reviewsList').innerHTML = d.reviews.length
+        ? d.reviews.map(r => `
+          <div class="review-item" style="border-top:1px solid var(--surface-glass-border); padding:10px 0;">
+            <div style="display:flex; justify-content:space-between;">
+              <span style="font-weight:700; color:#fff;">${esc(r.customer_name)}</span>
+              <span style="font-size:12px; color:var(--text-muted);">${timeAgo(r.created_at)}</span>
+            </div>
+            <div>${starsHtml(r.rating)}</div>
+            ${r.comment ? `<p style="font-size:13.5px; color:var(--text-main); margin-top:4px;">${esc(r.comment)}</p>` : ''}
+          </div>
+        `).join('')
+        : '<p class="hint">Abhi koi comment nahi hai.</p>';
+    } catch (e) {
+      backdrop.querySelector('#reviewSummary').innerHTML = `<p class="msg-3d err">${esc(e.message)}</p>`;
+    }
+  }
+  refreshReviews();
+
+  backdrop.querySelector('#submitReviewBtn').onclick = async () => {
+    const customer_name = backdrop.querySelector('#rev-name').value.trim();
+    const comment = backdrop.querySelector('#rev-comment').value.trim();
+
+    if (!AntiGarbageValidator.isValidName(customer_name)) {
+      toast('Kripya sahi naam daalein.', 'err');
+      return;
+    }
+
+    const btn = backdrop.querySelector('#submitReviewBtn');
+    btn.disabled = true;
+    try {
+      const d = await apiFetch('/add-review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ worker_id: workerId, customer_name, rating: selectedRating, comment })
+      });
+      toast(d.message, 'ok');
+      backdrop.querySelector('#rev-name').value = '';
+      backdrop.querySelector('#rev-comment').value = '';
+      refreshReviews();
+      loadWorkers();
+    } catch (e) {
+      toast(e.message, 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  };
+}
+
+/* ---------------- 📋 3D RATE CARDS MODAL ---------------- */
+async function openRateCardModal() {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'sheet-backdrop-3d';
+  backdrop.id = 'rateCardBackdrop';
+  backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
+
+  backdrop.innerHTML = `
+    <div class="sheet-3d" style="max-width: 520px;">
+      <div class="sheet-handle"></div>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="font-size:18px; font-weight:800; color:#fff;">📋 Standard Transparent Rate Card</h3>
+        <button onclick="document.getElementById('rateCardBackdrop')?.remove()" style="background:none; border:none; color:rgba(255,255,255,0.6); font-size:22px; cursor:pointer;">✕</button>
+      </div>
+      <p style="font-size:13px; color:var(--text-sub); margin:4px 0 14px;">
+        Digital Kaam par sabhi rates pre-fixed hain — koi chhipa charge ya extra bargaining nahi!
+      </p>
+
+      <div id="rateCardsBody">
+        <div class="pulse-dot" style="margin:20px auto; display:block;"></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+
+  try {
+    const d = await apiFetch('/api/rate-cards');
+    const cards = d.rateCards || d.rate_cards || [];
+    const container = backdrop.querySelector('#rateCardsBody');
+    container.innerHTML = cards.map(rc => `
+      <div class="card-3d" style="background:rgba(4,34,31,0.6); margin-bottom:12px; padding:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <b style="color:var(--primary-light); font-size:15px;">${esc(rc.category || rc.skill)}</b>
+          <span class="badge-3d trust" style="font-size:11px;">Visiting: ₹${rc.visiting_fee || rc.basic || 250}</span>
+        </div>
+        <table class="rate-card-table">
+          ${(rc.items || [
+            { service: 'Basic Visit & Diagnostic', price: '₹' + (rc.basic || 250) },
+            { service: 'Standard Repair / Service', price: '₹' + (rc.standard || 450) },
+            { service: 'Premium / Complex Task', price: '₹' + (rc.premium || 750) }
+          ]).map(item => `
+            <tr>
+              <td>${esc(item.service)}</td>
+              <td>${esc(item.price)}</td>
+            </tr>
+          `).join('')}
+        </table>
+      </div>
+    `).join('');
+  } catch (e) {
+    backdrop.querySelector('#rateCardsBody').innerHTML = `<p class="msg-3d err">Rate cards load nahi ho sake.</p>`;
+  }
+}
+
+/* ---------------- 🎙️ 3D VOICE SEARCH RECOGNITION ---------------- */
+function initVoiceSearch() {
+  const btn = $('voiceSearchBtn');
+  const status = $('voiceStatusText');
+  if (!btn) return;
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    btn.onclick = () => {
+      toast('Aapke browser mein Voice Search mic support nahi hai. Text type karein.', 'info');
+    };
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = 'hi-IN'; // Hindi (India)
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  let isListening = false;
+
+  btn.onclick = () => {
+    if (isListening) {
+      recognition.stop();
+      return;
+    }
+    try {
+      recognition.start();
+      isListening = true;
+      btn.classList.add('listening');
+      status.style.display = 'block';
+      status.textContent = '🎙️ Bolna shuru karein (Jaise: "Plumber chahiye", "Patna electrician")...';
+    } catch (e) {
+      toast('Microphone start nahi hua.', 'err');
+    }
+  };
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript.toLowerCase();
+    status.textContent = `🗣️ Sun liya: "${transcript}"`;
+
+    // Map keywords to skills
+    const select = $('skillSearch');
+    let matchedSkill = '';
+
+    for (let opt of select.options) {
+      const optText = opt.value.toLowerCase();
+      const cleanOpt = optText.replace(/[^\w\s\u0900-\u097F]/gi, '');
+      const words = transcript.split(/\s+/);
+      if (words.some(w => cleanOpt.includes(w) && w.length > 2)) {
+        matchedSkill = opt.value;
+        break;
+      }
+    }
+
+    if (matchedSkill) {
+      selectCategory(matchedSkill);
+      speakHindi(`Aapke liye ${matchedSkill.replace(/[^\w\s\u0900-\u097F]/gi, '').trim()} ke verified workers dhund liye gaye hain.`);
+      toast(`Category filter ho gayi: ${matchedSkill}`, 'ok');
+    } else {
+      $('citySearch').value = transcript;
+      speakHindi(`Aapke liye ${transcript} mein verified workers search kiye ja rahe hain.`);
+      loadWorkers();
+    }
+  };
+
+  recognition.onend = () => {
+    isListening = false;
+    btn.classList.remove('listening');
+    setTimeout(() => { status.style.display = 'none'; }, 3500);
+  };
+
+  recognition.onerror = () => {
+    isListening = false;
+    btn.classList.remove('listening');
+    status.textContent = 'Microphone error.';
+  };
+}
+
+initVoiceSearch();
+loadWorkers();
+</script>
+<!-- PWA Permission Prompt Banner -->
+<div id="permBanner" style="display:none; position:fixed; bottom:70px; left:12px; right:12px; z-index:9999; background:rgba(13,43,40,0.97); border:1px solid rgba(45,212,191,0.4); border-radius:16px; padding:14px 16px; box-shadow:0 8px 32px rgba(0,0,0,0.5); backdrop-filter:blur(16px);">
+  <div style="font-weight:800; color:#fff; font-size:15px; margin-bottom:6px;">📲 Digital Kaam Ko Install Karein</div>
+  <div style="font-size:12.5px; color:var(--text-sub); margin-bottom:12px;">Faster booking, live GPS location, aur OTP alerts ke liye permissions allow karein:</div>
+  <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:14px; font-size:13px; color:#f0fdfa;">
+    <div>📍 Location — Worker ko aapke paas dhundne ke liye <span style="color:#34d399; font-weight:700;">✓ Allow</span></div>
+    <div>🔔 Notifications — Arrival & Job updates ke liye <span style="color:#34d399; font-weight:700;">✓ Allow</span></div>
+    <div>📷 Camera — Verification document upload ke liye <span style="color:#34d399; font-weight:700;">✓ Recommended</span></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-3d small" onclick="requestPermissions()">✅ Allow & Install</button>
+    <button class="btn-3d small secondary" onclick="document.getElementById('permBanner').style.display='none'">✕ Baad Mein</button>
+  </div>
+</div>
+
+<script>
+async function requestPermissions() {
+  document.getElementById('permBanner').style.display = 'none';
+  try { await Notification.requestPermission(); } catch(e) {}
+  try {
+    if (navigator.geolocation) navigator.geolocation.getCurrentPosition(() => {}, () => {});
+  } catch(e) {}
+  toast('Permissions set! Aap ready hain. 🚀', 'ok');
+}
+
+window.addEventListener('load', () => {
+  const shown = sessionStorage.getItem('perm_banner_shown');
+  if (!shown && ('Notification' in window) && Notification.permission === 'default') {
+    setTimeout(() => {
+      const el = document.getElementById('permBanner');
+      if (el) el.style.display = 'block';
+      sessionStorage.setItem('perm_banner_shown', '1');
+    }, 2500);
+  }
+});
+</script>
+</body>
+</html>
+

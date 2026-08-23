@@ -1,0 +1,44 @@
+{
+  "name": "Digital Kaam - 100% Verified Local Mistri Platform",
+  "short_name": "Digital Kaam",
+  "description": "Apne shehar ke verified Workers (plumber, electrician, carpenter, cook) dhundein, live track karein aur book karein.",
+  "start_url": "/workers.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#031c1a",
+  "theme_color": "#0d9488",
+  "lang": "hi",
+  "categories": ["business", "utilities", "productivity"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Worker Dhundo",
+      "short_name": "Workers",
+      "description": "Top rated mistri search karein",
+      "url": "/workers.html",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Customer Portal",
+      "short_name": "Customer",
+      "description": "Meri bookings & Live tracking",
+      "url": "/customer.html",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Worker Register",
+      "short_name": "Register",
+      "description": "Naya mistri registration",
+      "url": "/index.html",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    }
+  ]
+}

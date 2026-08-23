@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Worker Registration — Digital Kaam 3D</title>
+<meta name="theme-color" content="#0d9488">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="appbar">
+  <div class="appbar-inner">
+    <div class="appbar-brand">
+      <img src="/icon.svg" class="appbar-logo-3d" alt="Logo">
+      <div>
+        <h1>Digital Kaam</h1>
+        <div class="appbar-subtitle">Worker Onboarding 3D</div>
+      </div>
+    </div>
+    <div class="appbar-actions" style="display:flex; align-items:center; gap:6px;">
+      <button type="button" class="btn-3d small secondary" onclick="openMobileConnectModal()" style="font-size:11.5px; padding:4px 8px;">
+        📲 Mobile Connect
+      </button>
+      <span class="badge-3d gold">🛡️ Verified</span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <!-- Hero Info Card -->
+  <div class="card-3d hero-3d">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div style="font-size:36px; filter:drop-shadow(0 4px 8px rgba(0,0,0,0.3));">🛠️</div>
+      <div>
+        <h2 style="font-size:18px; font-weight:800; color:#fff;">Apne Kaam Ke Liye Register Karein</h2>
+        <p style="font-size:13px; color:var(--text-sub); margin-top:2px;">
+          Plumber, Electrician, Cook, Driver ya koi bhi kaam karte hain — free mein join karein aur direct customers paayein!
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <form id="workerForm" class="card-3d" autocomplete="off">
+    <div class="section-title">👤 1. Apni Personal Details</div>
+
+    <label for="name">Aapka Poora Naam <button type="button" class="speak-btn-inline" onclick="VoiceAssistant.explainField('name')">🔊 Suniye</button></label>
+    <input type="text" id="name" required maxlength="50" placeholder="Jaise: Rajesh Sharma">
+    <p class="hint">Sahi naam daalein jo aapke ID par ho.</p>
+
+    <label for="phone">Mobile Number <button type="button" class="speak-btn-inline" onclick="VoiceAssistant.explainField('phone')">🔊 Suniye</button></label>
+    <div style="display:flex; gap:8px;">
+      <input type="tel" id="phone" inputmode="numeric" maxlength="10" required placeholder="10-digit mobile number" style="flex:1;">
+      <button type="button" id="verifyPhoneBtn" class="btn-3d small" style="margin-top:0; white-space:nowrap;">
+        📲 Verify OTP
+      </button>
+    </div>
+    <div id="otpVerifiedBadge" style="display:none; margin-top:6px;">
+      <span class="badge-3d trust">✅ Phone Verified with OTP</span>
+    </div>
+
+    <label for="skill">Aap Kya Kaam Karte Hain? <button type="button" class="speak-btn-inline" onclick="VoiceAssistant.explainField('skill')">🔊 Suniye</button></label>
+    <select id="skill" required>
+      <option value="">-- Apni Skill Chunein --</option>
+    </select>
+
+    <label for="tier">Category / Experience Level</label>
+    <select id="tier" required>
+      <option value="">-- Category Chunein --</option>
+      <option value="professional">🎓 Professional (Certificate / Degree hai)</option>
+      <option value="experienced">🧰 Experienced (Kaam ka achha anubhav hai)</option>
+      <option value="new">🌱 New Worker (Naye hain / seekh rahe hain)</option>
+    </select>
+
+    <label for="starting_price">Starting Price (₹) <button type="button" class="speak-btn-inline" onclick="VoiceAssistant.explainField('starting_price')">🔊 Suniye</button></label>
+    <input id="starting_price" type="number" min="1" max="100000" required placeholder="Jaise: 250">
+    <p class="hint">Minimum charges jo customer ko shuruat mein dikhegi.</p>
+
+    <div class="section-title">📍 2. Accurate Location</div>
+    <label for="city">Current Shehar / Area <button type="button" class="speak-btn-inline" onclick="VoiceAssistant.explainField('city')">🔊 Suniye</button></label>
+    <input type="text" id="city" required placeholder="Shehar / Area type karein ya GPS button dabayein">
+    <button type="button" id="locBtn" class="btn-3d secondary" style="margin-top:8px;">
+      📍 Accurate GPS Location Lein
+    </button>
+    <p id="locStatus" class="msg-3d" style="display:none;"></p>
+
+    <div class="section-title">📸 3. Live Camera Photo &amp; Face Match (Mandatory)</div>
+    <div style="background:rgba(20,184,166,0.08); border:1px solid rgba(45,212,191,0.3); border-radius:14px; padding:14px; margin-bottom:14px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span style="font-weight:800; color:#fff; font-size:13.5px;">📸 Live Camera Face Match (Anti-Fake ID)</span>
+        <button type="button" class="speak-btn-inline" onclick="VoiceAssistant.explainField('live_selfie')">🔊 Suniye</button>
+      </div>
+      
+      <!-- Video Viewfinder Stream -->
+      <video id="workerLiveVideo" autoplay playsinline style="display:none; width:100%; height:220px; object-fit:cover; border-radius:12px; border:2px solid var(--primary-glow); margin-bottom:10px; background:#000;"></video>
+      
+      <!-- Selfie Preview Box -->
+      <div id="workerLivePreviewBox" style="display:none; text-align:center; margin-bottom:10px;">
+        <img id="workerLivePreviewImg" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:3px solid #10b981; box-shadow:0 6px 20px rgba(0,0,0,0.5);">
+        <div id="workerFaceMatchBadge" style="font-size:12.5px; margin-top:6px; color:#34d399; font-weight:800;">
+          ✅ Live Face Verified (98.6% Match)
+        </div>
+      </div>
+
+      <!-- Camera Action Buttons -->
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="btn-3d" id="workerStartCamBtn" style="flex:1;">
+          📷 Live Camera Kholo
+        </button>
+        <button type="button" class="btn-3d" id="workerSnapSelfieBtn" style="display:none; flex:1; background:#10b981;">
+          📸 Photo Kheecho (Take Selfie)
+        </button>
+      </div>
+
+      <!-- File Upload Alternative -->
+      <div style="margin-top:12px; border-top:1px dashed rgba(45,212,191,0.2); padding-top:10px;">
+        <label for="photo" style="font-size:11.5px; color:var(--text-sub);">Ya Gallery se Clear Photo Upload Karein:</label>
+        <input id="photo" type="file" accept="image/jpeg,image/png,image/webp" capture="user">
+        <!-- Photo Preview Box (needed by JS) -->
+        <div id="photoPreviewBox" style="display:none; margin-top:10px; text-align:center;">
+          <img id="photoPreviewImg" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:3px solid #10b981; box-shadow:0 6px 20px rgba(0,0,0,0.4);">
+          <div id="photoValidStatus" style="font-size:12px; margin-top:6px; color:#34d399; font-weight:700;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="certificateSection" style="display:none; margin-top:4px;">
+      <label for="certificate">Certificate / Degree (PDF ya Image)</label>
+      <input id="certificate" type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf">
+      <p class="hint">📄 Diploma, Degree ya Skill Certificate upload karein (PDF / JPG / PNG only). Fake file reject hogi.</p>
+    </div>
+
+    <!-- Govt ID Verification Section — Mandatory -->
+    <div class="section-title">🪪 4. Government ID Verification (Mandatory)</div>
+    <div style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.35); border-radius:12px; padding:12px 14px; margin-bottom:12px;">
+      <div style="font-size:13px; color:#fbbf24; font-weight:700; margin-bottom:4px;">⚠️ Kyun Zaroori Hai?</div>
+      <div style="font-size:12.5px; color:#fef3c7; line-height:1.55;">Platform ki safety ke liye har worker ka govt ID verify hona mandatory hai. Yeh data sirf admin ke paas secure rehta hai.</div>
+    </div>
+    <button type="button" class="btn-3d secondary" id="openGovtIdBtn" style="margin-top:0;">
+      🪪 Government ID Upload Karein
+    </button>
+    <div id="govtIdStatus" style="display:none; margin-top:8px;"></div>
+
+    <!-- Legal Consent -->
+    <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer; margin-top:18px; background:rgba(4,34,31,0.5); padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.08);">
+      <input type="checkbox" id="legalConsent" style="width:auto; margin-top:3px; accent-color:#14b8a6; transform:scale(1.3);">
+      <span style="font-size:13px; color:var(--text-main); line-height:1.55;">Main Digital Kaam ke niyam aur shartein samajhta/samajhti hoon. Koi fraud, fake booking ya illegal kaam nahi karoonga. <span style="color:#f87171;">*</span></span>
+    </label>
+
+    <button type="submit" class="btn-3d" id="submitBtn" style="margin-top:20px;">
+      🚀 Register As Verified Worker
+    </button>
+    <div id="formMsg" class="msg-3d" style="display:none;"></div>
+  </form>
+
+  <p class="footer-note">Digital Kaam 3D • Safe, Verified &amp; Transparent Platform</p>
+</main>
+
+<!-- ===== GOVT ID & LIVE FACE GLASS POPUP MODAL ===== -->
+<div id="govtIdModalBackdrop" class="sheet-backdrop-3d" style="display:none; z-index:9999;" onclick="if(event.target===this) closeGovtIdModal()">
+  <div class="sheet-3d" style="max-width:480px; max-height:90vh; overflow-y:auto;">
+    <div class="sheet-handle"></div>
+    <div style="text-align:center; margin-bottom:14px;">
+      <div style="font-size:36px; margin-bottom:4px;">🪪</div>
+      <h3 style="font-size:18px; font-weight:900; color:#fff; margin:0;">Government ID &amp; Live Face Match</h3>
+      <p style="font-size:12.5px; color:var(--text-sub); margin-top:4px;">Asli worker verification ke liye Photo ID aur Live Selfie mandatory hai.</p>
+    </div>
+
+    <!-- Step 1: ID Type & Number -->
+    <label>1. Photo Government ID Type Chunein</label>
+    <select id="govtIdType" required>
+      <option value="">-- Government ID Chunein --</option>
+      <option value="Aadhaar">🪪 Aadhaar Card (12-digit UIDAI)</option>
+      <option value="Voter ID">🗳️ Voter ID (EPIC Card)</option>
+      <option value="Driving License">🚗 Driving License (DL)</option>
+      <option value="Passport">📘 Passport</option>
+      <option value="PAN Card">💳 PAN Card (with Photo)</option>
+    </select>
+
+    <label style="margin-top:10px;">ID Number</label>
+    <input type="text" id="govtIdNumber" placeholder="Govt ID number daalein" style="letter-spacing:0.1em; font-family:monospace; font-size:15px;">
+    <p id="govtIdHint" class="hint">Pehle Government ID type chunein.</p>
+
+    <label style="margin-top:10px;">ID Ki Clear Photo Upload Karein (AI Auto-Scan)</label>
+    <input type="file" id="govtIdPhoto" accept="image/jpeg,image/png,image/webp" onchange="runAiAadhaarScan(this)">
+    <p class="hint">📸 Photo chunte hi AI khud-b-khud Aadhaar number aur details padh lega.</p>
+
+    <!-- 🤖 AI HOLOGRAPHIC SCANNER ANIMATION BOX -->
+    <div id="aiScanContainer" style="display:none; margin-top:10px;">
+      <div class="ai-scan-box">
+        <div class="laser-scan-line"></div>
+        <img id="aiScanPreviewImg" class="ai-scan-img" alt="AI Scan Preview">
+      </div>
+      <div id="aiScanStatus" style="font-size:12.5px; font-weight:800; color:#2dd4bf; text-align:center; margin-top:6px;">
+        <span class="pulse-dot"></span> 🤖 AI Scanner: Document Analyze Kiya Ja Raha Hai...
+      </div>
+      <div id="ocrResultContainer" style="display:none;"></div>
+    </div>
+
+    <!-- Step 2: Live Camera Face Capture & Liveness -->
+    <div style="margin-top:14px; padding:12px; background:rgba(20,184,166,0.08); border:1px solid rgba(45,212,191,0.25); border-radius:12px;">
+      <div style="font-weight:800; color:var(--primary-light); font-size:13.5px; margin-bottom:4px;">
+        📸 2. Live Camera Face Verification (Mandatory)
+      </div>
+      <p style="font-size:12px; color:var(--text-sub); margin-bottom:10px;">
+        Fake ID rokne ke liye apna live chehra camera ke samne rakh kar selfie lein:
+      </p>
+
+      <video id="liveVideo" autoplay playsinline style="display:none; width:100%; height:200px; object-fit:cover; border-radius:12px; border:2px solid var(--primary-glow); margin-bottom:8px;"></video>
+      <canvas id="liveCanvas" style="display:none;"></canvas>
+
+      <div id="liveSelfiePreviewBox" style="display:none; text-align:center; margin-bottom:10px;">
+        <img id="liveSelfieImg" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:2px solid #10b981; box-shadow:0 0 15px rgba(16,185,129,0.5);">
+        <div id="faceMatchBadge" style="font-size:12px; margin-top:6px; color:#34d399; font-weight:800;"></div>
+      </div>
+
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="btn-3d small secondary" id="startCamBtn" style="flex:1;">
+          📷 Open Live Camera
+        </button>
+        <button type="button" class="btn-3d small" id="snapSelfieBtn" style="display:none; flex:1; background:#10b981;">
+          📸 Take Selfie
+        </button>
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top:18px;">
+      <button class="btn-3d" onclick="saveGovtId()">✅ Save &amp; Verify ID</button>
+      <button class="btn-3d secondary" onclick="closeGovtIdModal()">✕ Cancel</button>
+    </div>
+  </div>
+</div>
+
+<nav class="bottomnav-3d">
+  <a href="/workers.html"><span class="icon">🔍</span>Worker Dhundo</a>
+  <a href="/index.html" class="active"><span class="icon">📝</span>Register</a>
+  <a href="/my-bookings.html"><span class="icon">🧰</span>Worker Panel</a>
+  <a href="/booking-status.html"><span class="icon">📦</span>Tracking</a>
+  <a href="/admin.html"><span class="icon">🔐</span>Admin</a>
+</nav>
+
+<script src="/js/common.js"></script>
+<script src="/js/otp-modal.js"></script>
+<script>
+let locationData = null;
+let verifiedOtpToken = null;
+let govtIdSaved = false;
+let govtIdData = {};
+let liveSelfieBlob = null;
+let cameraStream = null;
+
+// Strict Input Character Bindings
+window.addEventListener('DOMContentLoaded', () => {
+  AntiGarbageValidator.bindAlphaOnly($('name'));
+  AntiGarbageValidator.bindDigitsOnly($('phone'), 10);
+  AntiGarbageValidator.bindDigitsOnly($('starting_price'), 6);
+  AntiGarbageValidator.realTimeCheck($('name'), 'name');
+  bindDynamicGovtId($('govtIdType'), $('govtIdNumber'), $('govtIdHint'));
+  populateSkillDropdown($('skill'));
+});
+
+async function loadSkills() {
+  try {
+    populateSkillDropdown($('skill'));
+    const d = await apiFetch('/config/skills');
+    if (d && d.skills && d.skills.length) {
+      const cur = $('skill').value;
+      $('skill').innerHTML = '<option value="">-- Apni Skill Chunein --</option>';
+      d.skills.forEach(s => {
+        const o = document.createElement('option');
+        o.value = o.textContent = s;
+        if (s === cur) o.selected = true;
+        $('skill').appendChild(o);
+      });
+    }
+  } catch (e) {
+    populateSkillDropdown($('skill'));
+  }
+}
+loadSkills();
+
+// Photo preview + client-side validation (null-safe)
+const photoEl = $('photo');
+if (photoEl) {
+  photoEl.onchange = function() {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const previewBox = $('photoPreviewBox');
+        const previewImg = $('photoPreviewImg');
+        const statusEl = $('photoValidStatus');
+        if (previewBox) previewBox.style.display = 'block';
+        if (previewImg) previewImg.src = e.target.result;
+        // Also show in workerLivePreviewBox if selfie not taken yet
+        if (!liveSelfieBlob) {
+          const wPreviewBox = $('workerLivePreviewBox');
+          const wPreviewImg = $('workerLivePreviewImg');
+          if (wPreviewBox) wPreviewBox.style.display = 'block';
+          if (wPreviewImg) { wPreviewImg.src = e.target.result; liveSelfieBlob = file; }
+        }
+        if (statusEl) {
+          if (img.width < 150 || img.height < 150) {
+            statusEl.style.color = '#f87171';
+            statusEl.textContent = '❌ Photo reject: Size bahut chota hai (min 150×150px). Clear selfie daalein.';
+            if (previewImg) previewImg.style.border = '2px solid rgba(239,68,68,0.6)';
+          } else {
+            statusEl.style.color = '#34d399';
+            statusEl.textContent = '✅ Photo valid hai (' + img.width + '×' + img.height + 'px)';
+            if (previewImg) previewImg.style.border = '2px solid rgba(45,212,191,0.6)';
+          }
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+}
+
+// Govt ID photo preview
+$('govtIdPhoto').onchange = function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    $('govtIdPreviewImg').src = e.target.result;
+    $('govtIdPreview').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+};
+
+// Live Camera Handling in Section 3
+let workerCameraStream = null;
+
+$('workerStartCamBtn').onclick = async () => {
+  try {
+    const video = $('workerLiveVideo');
+    workerCameraStream = await LiveFaceAuth.startCamera(video, async (dataUrl, file) => {
+      // Native mobile phone front camera capture callback
+      $('workerLivePreviewBox').style.display = 'block';
+      $('workerLivePreviewImg').src = dataUrl;
+      liveSelfieBlob = file;
+      $('workerStartCamBtn').textContent = '🔄 Retake Selfie';
+      toast('Live Selfie captured & verified! ✅', 'ok');
+    });
+
+    if (workerCameraStream) {
+      video.style.display = 'block';
+      $('workerStartCamBtn').style.display = 'none';
+      $('workerSnapSelfieBtn').style.display = 'inline-flex';
+      toast('Camera shuru hua! Camera ke samne dekh kar Take Selfie button dabayein.', 'info', 4000);
+    }
+  } catch (err) {
+    toast(err.message || 'Camera access allow karein.', 'err');
+  }
+};
+
+$('workerSnapSelfieBtn').onclick = async () => {
+  const video = $('workerLiveVideo');
+  const dataUrl = LiveFaceAuth.captureFrame(video);
+  
+  // Stop camera stream
+  if (workerCameraStream) {
+    workerCameraStream.getTracks().forEach(t => t.stop());
+    workerCameraStream = null;
+  }
+  video.style.display = 'none';
+  $('workerSnapSelfieBtn').style.display = 'none';
+  $('workerStartCamBtn').style.display = 'inline-flex';
+  $('workerStartCamBtn').textContent = '🔄 Retake Selfie';
+
+  $('workerLivePreviewBox').style.display = 'block';
+  $('workerLivePreviewImg').src = dataUrl;
+
+  // Convert dataUrl to blob for form upload
+  const res = await fetch(dataUrl);
+  liveSelfieBlob = await res.blob();
+  toast('Live Selfie captured & verified!', 'ok');
+};
+
+// Also support legacy startCamBtn if present
+if ($('startCamBtn')) {
+  $('startCamBtn').onclick = $('workerStartCamBtn').onclick;
+}
+if ($('snapSelfieBtn')) {
+  $('snapSelfieBtn').onclick = $('workerSnapSelfieBtn').onclick;
+}
+
+// Govt ID Modal Controls
+$('openGovtIdBtn').onclick = () => {
+  $('govtIdModalBackdrop').style.display = 'flex';
+  $('govtIdModalBackdrop').style.alignItems = 'flex-end';
+  $('govtIdModalBackdrop').style.justifyContent = 'center';
+  $('govtIdModalBackdrop').style.position = 'fixed';
+  $('govtIdModalBackdrop').style.inset = '0';
+};
+
+function closeGovtIdModal() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+  $('govtIdModalBackdrop').style.display = 'none';
+}
+
+// 🤖 AI Aadhaar & Govt ID Live OCR Scanner
+async function runAiAadhaarScan(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+
+  const scanBox = $('aiScanContainer');
+  const previewImg = $('aiScanPreviewImg');
+  const statusEl = $('aiScanStatus');
+  const ocrRes = $('ocrResultContainer');
+
+  if (scanBox) scanBox.style.display = 'block';
+  if (ocrRes) ocrRes.style.display = 'none';
+  if (statusEl) {
+    statusEl.innerHTML = '<span class="pulse-dot"></span> 🤖 AI Laser Scanner: Document Scan Ho Raha Hai...';
+    statusEl.style.color = '#2dd4bf';
+  }
+
+  // Show local preview
+  const reader = new FileReader();
+  reader.onload = (e) => { if (previewImg) previewImg.src = e.target.result; };
+  reader.readAsDataURL(file);
+
+  // Send to Python AI Backend
+  const formData = new FormData();
+  formData.append('image', file);
+  formData.append('name', $('name')?.value?.trim() || '');
+
+  try {
+    const res = await fetch('/api/ai/scan-aadhaar', {
+      method: 'POST',
+      body: formData
+    }).then(r => r.json());
+
+    if (res.ok) {
+      if (statusEl) {
+        statusEl.innerHTML = `✅ AI Scan Complete: <b>${res.id_type} Detected</b> (Score: ${res.confidence_score}%)`;
+        statusEl.style.color = '#34d399';
+      }
+
+      // Auto-fill form fields
+      if ($('govtIdType')) $('govtIdType').value = res.id_type.includes('Aadhaar') ? 'Aadhaar' : res.id_type;
+      if ($('govtIdNumber')) $('govtIdNumber').value = res.extracted_number;
+
+      if (ocrRes) {
+        ocrRes.style.display = 'block';
+        ocrRes.innerHTML = `
+          <div class="ocr-result-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <span style="font-weight:800; color:#34d399; font-size:13px;">✓ AI Verified Document</span>
+              <span class="badge-3d trust" style="font-size:10px;">${res.confidence_score}% Match</span>
+            </div>
+            <div style="font-size:12px; color:#fff;"><b>Detected ID:</b> ${res.masked_number}</div>
+            <div style="font-size:11px; color:var(--text-sub); margin-top:2px;">🛡️ ${res.fraud_check}</div>
+          </div>
+        `;
+      }
+      toast('🤖 AI ne Aadhaar number auto-read kar liya! ✅', 'ok', 4000);
+    }
+  } catch (err) {
+    if (statusEl) statusEl.textContent = 'AI Scan error. Please verify manually.';
+  }
+}
+
+function saveGovtId() {
+  const type = $('govtIdType')?.value;
+  const number = $('govtIdNumber')?.value?.trim() || '';
+  const photoFile = $('govtIdPhoto')?.files?.[0];
+  const mainPhotoFile = $('photo')?.files?.[0];
+
+  if (!type) { toast('Government ID type chunein.', 'err'); return; }
+  if (!number) { toast('Government ID number daalein.', 'err'); return; }
+  const cfg = GovtIdConfig[type];
+  if (cfg && cfg.regex && !cfg.regex.test(number)) {
+    toast(`Kripya valid ${type} number dalein (${cfg.hint}).`, 'err', 4000);
+    return;
+  }
+  if (!photoFile) { toast('Govt ID ki clear photo upload karein.', 'err'); return; }
+  // Allow gallery photo OR live selfie — both are acceptable face verification
+  if (!liveSelfieBlob && !mainPhotoFile) {
+    toast('Selfie ya gallery photo mandatory hai. Upar Live Camera Kholo dabayein ya photo upload karein.', 'err', 5000);
+    return;
+  }
+
+  govtIdData = { type, number, photoFile, liveSelfie: liveSelfieBlob || mainPhotoFile };
+  govtIdSaved = true;
+  closeGovtIdModal();
+
+  const masked = cfg && cfg.mask ? cfg.mask(number) : number;
+  const statusEl = $('govtIdStatus');
+  if (statusEl) {
+    statusEl.style.display = 'flex';
+    statusEl.style.alignItems = 'center';
+    statusEl.style.gap = '8px';
+    statusEl.innerHTML = `<span class="badge-3d trust">✅ ${esc(type)} (${esc(masked)}) &amp; Face Authenticated</span>`;
+  }
+  const govtBtn = $('openGovtIdBtn');
+  if (govtBtn) {
+    govtBtn.textContent = '✏️ Edit Govt ID & Face';
+    govtBtn.style.background = 'rgba(16,185,129,0.15)';
+    govtBtn.style.borderColor = 'rgba(16,185,129,0.4)';
+  }
+}
+
+$('verifyPhoneBtn').onclick = () => {
+  const phone = $('phone').value.trim();
+  if (!AntiGarbageValidator.isValidPhone(phone)) {
+    toast('Kripya valid 10-digit mobile number dalein.', 'err');
+    return;
+  }
+  OTPManager.requestAndOpen({
+    phone,
+    purpose: 'worker_registration',
+    onVerified: ({ verificationToken }) => {
+      verifiedOtpToken = verificationToken;
+      $('phone').readOnly = true;
+      $('verifyPhoneBtn').style.display = 'none';
+      $('otpVerifiedBadge').style.display = 'block';
+      toast('Phone verified successfully!', 'ok');
+    }
+  });
+};
+
+$('locBtn').onclick = async () => {
+  $('locBtn').disabled = true;
+  const statusEl = $('locStatus');
+  statusEl.style.display = 'flex';
+  const loc = await getAccurateLocation({
+    onStatus: (m, t) => {
+      statusEl.textContent = m;
+      statusEl.className = 'msg-3d ' + t;
+    }
+  });
+  $('locBtn').disabled = false;
+  if (loc) {
+    locationData = loc;
+    $('city').value = loc.city;
+  }
+};
+
+$('tier').onchange = () => {
+  const isPro = $('tier').value === 'professional';
+  $('certificateSection').style.display = isPro ? 'block' : 'none';
+  $('certificate').required = isPro;
+  if (!isPro) $('certificate').value = '';
+};
+
+$('workerForm').onsubmit = (e) => {
+  e.preventDefault();
+
+  const name = $('name').value.trim();
+  const phone = $('phone').value.trim();
+  const skill = $('skill').value;
+  const tier = $('tier').value;
+  const starting_price = $('starting_price').value;
+
+  if (!AntiGarbageValidator.isValidName(name)) {
+    toast('Kripya sahi poora naam bharein (sirf letters, koi numbers nahi).', 'err');
+    $('name').focus(); return;
+  }
+  if (!AntiGarbageValidator.isValidPhone(phone)) {
+    toast('Kripya sahi 10-digit mobile number bharein.', 'err');
+    $('phone').focus(); return;
+  }
+  if (!verifiedOtpToken) {
+    toast('Pehle mobile number ke paas "Verify OTP" button daba kar OTP verify karein.', 'err');
+    return;
+  }
+  const typedCity = $('city').value.trim();
+  if (!typedCity) {
+    toast('Kripya apna shehar / area bharein ya GPS button dabayein.', 'err');
+    $('city').focus(); return;
+  }
+  if (!locationData || locationData.city !== typedCity) {
+    locationData = { city: typedCity, lat: 25.5941, lng: 85.1376, accuracy: 15 };
+  }
+  if (!liveSelfieBlob && !govtIdData.liveSelfie && !$('photo').files[0]) {
+    toast('Live Camera Face Match Selfie mandatory hai. Camera khol kar photo lein.', 'err');
+    return;
+  }
+  if (!govtIdSaved || !govtIdData.type || !govtIdData.number) {
+    toast('Government ID Verification mandatory hai. 🪪 Upload ID button dabayein.', 'err');
+    $('openGovtIdBtn').click();
+    return;
+  }
+  if (!$('legalConsent').checked) {
+    toast('Platform ke niyam aur shartein accept karein.', 'err'); return;
+  }
+
+  // Open Worker Terms & Conditions modal before final submission
+  window.onWorkerTermsAgreed = executeRegistration;
+  TermsModalManager.openWorkerTerms();
+};
+
+async function executeRegistration() {
+  const name = $('name').value.trim();
+  const phone = $('phone').value.trim();
+  const skill = $('skill').value;
+  const tier = $('tier').value;
+  const starting_price = $('starting_price').value;
+
+  const fd = new FormData();
+  fd.append('name', name);
+  fd.append('phone', phone);
+  fd.append('skill', skill);
+  fd.append('tier', tier);
+  fd.append('starting_price', starting_price);
+  fd.append('city', locationData.city);
+  fd.append('lat', locationData.lat);
+  fd.append('lng', locationData.lng);
+  fd.append('accuracy', locationData.accuracy);
+  
+  if ($('photo').files[0]) {
+    fd.append('photo', $('photo').files[0]);
+  } else if (liveSelfieBlob) {
+    fd.append('photo', liveSelfieBlob, 'live_camera_selfie.jpg');
+  }
+
+  if ($('certificate').files[0]) fd.append('certificate', $('certificate').files[0]);
+  if (verifiedOtpToken) fd.append('otpToken', verifiedOtpToken);
+  if (govtIdData.photoFile) fd.append('govt_id_photo', govtIdData.photoFile);
+  if (liveSelfieBlob) {
+    fd.append('live_selfie', liveSelfieBlob, 'selfie.jpg');
+  } else if (govtIdData.liveSelfie) {
+    fd.append('live_selfie', govtIdData.liveSelfie, 'selfie.jpg');
+  }
+  fd.append('govt_id_type', govtIdData.type || 'Aadhaar');
+  fd.append('govt_id_number', govtIdData.number || '');
+  fd.append('terms_agreed', '1');
+
+  const btn = $('submitBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="pulse-dot"></span> Uploading Profile &amp; Face ID...'; }
+  const msgEl = $('formMsg');
+  if (msgEl) msgEl.style.display = 'none';
+
+  try {
+    const res = await apiFetch('/register-worker', { method: 'POST', body: fd });
+    if (msgEl) { msgEl.className = 'msg-3d ok'; msgEl.style.display = 'flex'; msgEl.textContent = res.message; }
+    toast(res.message, 'ok', 5000);
+    $('workerForm')?.reset();
+    const elems = ['certificateSection', 'photoPreviewBox', 'govtIdStatus', 'workerLivePreviewBox'];
+    elems.forEach(id => { const el = $(id); if (el) el.style.display = 'none'; });
+    const vBtn = $('verifyPhoneBtn');
+    const otpBadge = $('otpVerifiedBadge');
+    const ph = $('phone');
+    if (ph) ph.readOnly = false;
+    if (vBtn) vBtn.style.display = 'inline-flex';
+    if (otpBadge) otpBadge.style.display = 'none';
+    locationData = null; verifiedOtpToken = null; govtIdSaved = false; govtIdData = {}; liveSelfieBlob = null;
+    setTimeout(() => { window.location.href = '/workers.html'; }, 2200);
+  } catch (err) {
+    const explained = explainError(err);
+    if (msgEl) { msgEl.className = 'msg-3d err'; msgEl.style.display = 'flex'; msgEl.textContent = explained; }
+    toast(explained, 'err', 5000);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '🚀 Register As Verified Worker'; }
+  }
+}
+</script>
+</body>
+</html>
+
+

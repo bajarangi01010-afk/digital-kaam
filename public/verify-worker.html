@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Official Worker Verification — Digital Kaam Trust Shield</title>
+<meta name="theme-color" content="#042f2e">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .trust-seal-hero {
+    text-align: center;
+    padding: 24px 16px;
+    background: radial-gradient(circle at center, rgba(20, 184, 166, 0.25) 0%, rgba(4, 47, 46, 0.95) 100%);
+    border: 2px solid var(--primary-glow);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.5), 0 0 25px rgba(20, 184, 166, 0.3);
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .trust-seal-hero::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%; width: 200%; height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%);
+    transform: rotate(30deg);
+    pointer-events: none;
+  }
+  .trust-checklist {
+    list-style: none;
+    margin: 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .trust-checklist li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(4, 34, 31, 0.7);
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--surface-glass-border);
+    font-size: 14px;
+    font-weight: 600;
+    color: #f0fdfa;
+  }
+  .trust-check-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <div class="appbar-inner">
+    <div class="appbar-brand">
+      <img src="/icon.svg" class="appbar-logo-3d" alt="Logo">
+      <div>
+        <h1>Digital Kaam</h1>
+        <div class="appbar-subtitle">Official Worker Verification Portal</div>
+      </div>
+    </div>
+    <div class="appbar-actions">
+      <span class="badge-3d trust">🛡️ Shield Active</span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <!-- Loading Skeleton -->
+  <div id="loading" class="card-3d" style="text-align:center; padding:30px;">
+    <div class="pulse-dot" style="width:20px; height:20px; margin-bottom:12px;"></div>
+    <h3 style="color:#fff;">Worker Record Verify Kiya Ja Raha Hai...</h3>
+    <p class="hint">Digital Kaam Secure Database Lookup</p>
+  </div>
+
+  <div id="verifiedContent" style="display:none;">
+    <!-- Trust Seal Hero Banner -->
+    <div class="trust-seal-hero">
+      <div style="font-size:44px; filter:drop-shadow(0 4px 10px rgba(16,185,129,0.5));">🛡️</div>
+      <div style="display:inline-flex; align-items:center; gap:6px; background:#10b981; color:#fff; font-weight:800; font-size:12px; padding:4px 12px; border-radius:999px; margin-top:6px;">
+        ✓ 100% OFFICIALLY VERIFIED
+      </div>
+      <h2 id="wName" style="font-size:22px; font-weight:900; color:#fff; margin-top:10px;">Rajesh Sharma</h2>
+      <p id="wSkill" style="font-size:14.5px; color:var(--primary-light); font-weight:700;">⚡ Electrician</p>
+      <div id="wIdCode" style="font-size:12.5px; color:var(--text-muted); font-family:monospace; margin-top:3px;">ID: DK-W0001</div>
+    </div>
+
+    <!-- Worker Profile Details Card -->
+    <div class="card-3d">
+      <div class="worker-card-3d">
+        <div class="worker-photo-wrapper">
+          <img id="wPhoto" class="worker-photo-3d" style="width:100px; height:100px;" src="/icon.svg" alt="Photo" onerror="this.src='/icon.svg'">
+          <span class="worker-verified-tick">✓</span>
+        </div>
+        <div class="worker-info-3d">
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span id="wTierBadge" class="badge-3d trust">🎓 Professional Worker</span>
+            <span id="wProBadge" class="badge-3d gold" style="display:none;">👑 Pro Member</span>
+          </div>
+          <div class="worker-meta-line" style="margin-top:6px;">📍 Shehar / Area: <b id="wCity" style="color:#fff;">-</b></div>
+          <div class="worker-meta-line">📞 Mobile Number: <b id="wPhoneText" style="color:var(--primary-light);">-</b></div>
+          <div class="worker-meta-line" id="wGovtIdLine" style="color:var(--primary-light); font-weight:700;">🪪 Govt ID: <b id="wGovtIdText" style="color:#34d399;">Aadhaar Verified (UIDAI)</b></div>
+          <div class="worker-meta-line">⭐ Rating: <b id="wRating" style="color:#fbbf24;">5.0</b> <span id="wTotalReviews" style="color:var(--text-muted); font-size:12px;">(0 reviews)</span></div>
+          <div class="worker-meta-line">📦 Kaam Complete: <b id="wJobsDone" style="color:#34d399;">0+ Safal Orders</b></div>
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top:16px;">
+        <a id="wCallBtn" href="tel:" class="btn-3d wa">
+          📞 Direct Call Worker
+        </a>
+        <a id="wWaBtn" href="https://wa.me/" target="_blank" class="btn-3d small" style="background:#10b981;">
+          💬 WhatsApp
+        </a>
+        <button class="btn-3d secondary small" onclick="window.location.href='/workers.html'">
+          🔍 Search
+        </button>
+      </div>
+    </div>
+
+    <!-- Security & Trust Verification Checklist -->
+    <div class="card-3d">
+      <div class="section-title" style="margin-top:0;">🛡️ 4-Point Safety & Trust Verification</div>
+      <ul class="trust-checklist">
+        <li>
+          <span class="trust-check-icon">🪪</span>
+          <div>
+            <div style="color:#fff;">Govt Identity & Aadhaar Verified</div>
+            <div style="font-size:12px; color:var(--text-muted);">Asli pehchan aur photo govt record se match hai.</div>
+          </div>
+          <span class="badge-3d trust" style="margin-left:auto;">Passed</span>
+        </li>
+        <li>
+          <span class="trust-check-icon">👮</span>
+          <div>
+            <div style="color:#fff;">Police & Background Checked</div>
+            <div style="font-size:12px; color:var(--text-muted);">Koi criminal ya fraud report nahi hai.</div>
+          </div>
+          <span class="badge-3d trust" style="margin-left:auto;">Clear</span>
+        </li>
+        <li>
+          <span class="trust-check-icon">📲</span>
+          <div>
+            <div style="color:#fff;">Mandatory Live Phone OTP Shield</div>
+            <div style="font-size:12px; color:var(--text-muted);">Mobile number 2-step authenticated hai.</div>
+          </div>
+          <span class="badge-3d trust" style="margin-left:auto;">Active</span>
+        </li>
+        <li>
+          <span class="trust-check-icon">💰</span>
+          <div>
+            <div style="color:#fff;">100% Escrow Money-Back Guarantee</div>
+            <div style="font-size:12px; color:var(--text-muted);">Kaam pasand na aane par direct refund protection.</div>
+          </div>
+          <span class="badge-3d trust" style="margin-left:auto;">Protected</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Customer Reviews Section -->
+    <div class="section-title">💬 Verified Customer Reviews</div>
+    <div id="reviewsList" class="card-3d"></div>
+
+    <!-- 24/7 Helpline & WhatsApp Community Card -->
+    <div class="card-3d" style="background:rgba(4,34,31,0.5); border:1px solid rgba(245,158,11,0.4); text-align:center;">
+      <div style="font-size:28px;">👥</div>
+      <h4 style="color:#fff; margin:4px 0;">Digital Kaam Official Community & Support</h4>
+      <p style="font-size:13px; color:var(--text-sub);">Sabhi verified workers aur customers ke saath join karein, alerts aur customer support paayein.</p>
+      <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap; margin-top:12px;">
+        <a href="https://chat.whatsapp.com/L94CfvZd4DGFzJMjhktaDh" target="_blank" class="btn-3d small" style="background:linear-gradient(135deg,#25D366,#128C7E); color:#fff; font-weight:800;">
+          💬 Join WhatsApp Community
+        </a>
+        <a href="tel:6205399450" class="btn-3d danger small">
+          🚨 Safety Helpline (Call Admin)
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 📞 Official Verification Helpline & Community Bar -->
+  <div class="card-3d" style="margin-top:18px; padding:14px; background:radial-gradient(circle at top left, rgba(20,184,166,0.15), rgba(4,47,46,0.85));">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+      <div>
+        <div style="font-weight:800; color:#fff; font-size:14px;">👥 Official Community & Verification Helpline</div>
+        <div style="font-size:12.5px; color:var(--text-sub); margin-top:2px;">
+          Join Us: <a href="https://chat.whatsapp.com/L94CfvZd4DGFzJMjhktaDh" target="_blank" style="color:var(--primary-light); font-weight:700;">WhatsApp Group / Community Link</a>
+        </div>
+      </div>
+      <a href="https://chat.whatsapp.com/L94CfvZd4DGFzJMjhktaDh" target="_blank" class="btn-3d small wa" style="width:auto; padding:6px 14px; text-decoration:none;">
+        💬 Join Community
+      </a>
+    </div>
+  </div>
+
+  <div id="errorState" class="card-3d" style="display:none; text-align:center; padding:30px;">
+    <div style="font-size:44px;">❌</div>
+    <h3 style="color:#f87171; margin-top:8px;">Worker Verification Record Nahi Mila</h3>
+    <p class="hint" style="margin:6px 0 16px;">Kripya QR code dobara scan karein ya customer support se sampark karein.</p>
+    <button class="btn-3d" onclick="window.location.href='/workers.html'">🏠 Home Par Jayein</button>
+  </div>
+</main>
+
+<nav class="bottomnav-3d">
+  <a href="/workers.html"><span class="icon">🔍</span>Worker Dhundo</a>
+  <a href="/customer.html"><span class="icon">🧑</span>Customer Hub</a>
+  <a href="/index.html"><span class="icon">📝</span>Register</a>
+  <a href="/booking-status.html"><span class="icon">📦</span>Tracking</a>
+</nav>
+
+<script src="/js/common.js"></script>
+<script>
+async function loadWorkerProfile() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const workerId = urlParams.get('id') || '1';
+
+  try {
+    const w = await apiFetch(`/api/public/worker/${workerId}`);
+
+    $('loading').style.display = 'none';
+    $('verifiedContent').style.display = 'block';
+
+    $('wName').textContent = w.name;
+    $('wSkill').textContent = w.skill;
+    $('wIdCode').textContent = `OFFICIAL ID: ${w.id_code}`;
+    $('wPhoto').src = w.photo_path || '/icon.svg';
+    $('wCity').textContent = w.city;
+    $('wPhoneText').textContent = w.phone ? `+91 ${w.phone}` : '-';
+    if ($('wGovtIdText')) {
+      $('wGovtIdText').textContent = w.govt_id_type ? `${w.govt_id_type} Verified (${w.masked_id_number || 'UIDAI Protected'})` : 'Aadhaar Verified (UIDAI)';
+    }
+    $('wRating').textContent = w.rating;
+    $('wTotalReviews').textContent = `(${w.total_reviews} reviews)`;
+    $('wJobsDone').textContent = `${w.completed_jobs}+ Safal Orders`;
+
+    if (w.is_pro_member) {
+      $('wProBadge').style.display = 'inline-flex';
+    }
+
+    if (w.tier === 'professional') {
+      $('wTierBadge').textContent = '🎓 Professional (Certified)';
+    } else if (w.tier === 'experienced') {
+      $('wTierBadge').textContent = '🧰 Experienced Worker';
+    } else {
+      $('wTierBadge').textContent = '🌱 Verified Worker';
+    }
+
+    $('wCallBtn').href = `tel:${w.phone || '6205399450'}`;
+    $('wWaBtn').href = `https://wa.me/91${w.phone || '6205399450'}`;
+
+    // Render Reviews
+    const revContainer = $('reviewsList');
+    if (w.reviews && w.reviews.length > 0) {
+      revContainer.innerHTML = w.reviews.map(r => `
+        <div style="border-bottom:1px solid var(--surface-glass-border); padding:10px 0;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b style="color:#fff; font-size:14.5px;">${esc(r.customer_name)}</b>
+            <span style="color:#fbbf24;">${'★'.repeat(r.rating)}</span>
+          </div>
+          <p style="font-size:13px; color:var(--text-main); margin-top:4px;">${esc(r.comment || 'Badiya kaam kiya!')}</p>
+        </div>
+      `).join('');
+    } else {
+      revContainer.innerHTML = `<p class="hint">Abhi is worker ka pehla order complete hona baaki hai.</p>`;
+    }
+
+  } catch (e) {
+    $('loading').style.display = 'none';
+    $('errorState').style.display = 'block';
+  }
+}
+
+loadWorkerProfile();
+</script>
+</body>
+</html>

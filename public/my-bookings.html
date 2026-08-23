@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Worker Panel — Digital Kaam 3D</title>
+<meta name="theme-color" content="#0d9488">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg">
+<link rel="stylesheet" href="/css/style.css">
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+<header class="appbar">
+  <div class="appbar-inner">
+    <div class="appbar-brand">
+      <img src="/icon.svg" class="appbar-logo-3d" alt="Logo">
+      <div>
+        <h1>Worker Panel</h1>
+        <div class="appbar-subtitle">Job Orders & Live GPS</div>
+      </div>
+    </div>
+    <div class="appbar-actions">
+      <span class="badge-3d gold" id="statusBadgeHeader">🧰 Worker Dashboard</span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <!-- Worker Login Card with OTP -->
+  <div class="card-3d" id="loginCard">
+    <div class="section-title" style="margin-top:0;">🔐 Worker Login</div>
+    <label for="phone">Registered Mobile Number</label>
+    <div style="display:flex; gap:8px;">
+      <input type="tel" id="phone" maxlength="10" inputmode="numeric" placeholder="10-digit mobile number" style="flex:1;">
+      <button class="btn-3d small" onclick="requestWorkerLogin()">📲 Login with OTP</button>
+    </div>
+    <p class="hint">Apna registered number daalein aur OTP verify karke bookings dekhein.</p>
+  </div>
+
+  <!-- Worker Status & Live GPS Broadcast -->
+  <div id="workerControlPanel" style="display:none;">
+    <div class="card-3d hero-3d">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <h3 id="workerGreeting" style="font-size:18px; font-weight:800; color:#fff;">Namaste, Worker</h3>
+            <span id="workerProCrown" class="badge-3d gold" style="display:none;">👑 Pro Member</span>
+          </div>
+          <p id="workerSub" style="font-size:13px; color:var(--text-sub);">🛠️ Loading profile...</p>
+          <div id="workerIdDisplay" style="font-size:12px; color:var(--text-muted); font-family:monospace; margin-top:2px;">ID: -</div>
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn-3d small secondary" onclick="showIdCard()">
+          🪪 Mera ID Card
+        </button>
+        <button id="proPassBtn" class="btn-3d small" style="background:linear-gradient(180deg, #f59e0b, #d97706); box-shadow:0 4px 0 #78350f;" onclick="openProPassModal()">
+          👑 Pro Pass (0% Comm)
+        </button>
+        <button id="shareBtn" class="btn-3d small secondary">
+          📍 Live GPS Start
+        </button>
+      </div>
+      <div id="shareStatus" class="hint" style="margin-top:8px; font-weight:600; color:#34d399;"></div>
+    </div>
+
+    <!-- 3D Worker Digital Wallet Card -->
+    <div class="wallet-card-3d">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="font-size:12px; color:var(--text-muted); font-weight:700; text-transform:uppercase;">💰 Available Wallet Balance</div>
+          <div id="walletBalance" class="wallet-balance-num">₹0</div>
+        </div>
+        <button class="btn-3d small" style="width:auto; padding:8px 14px;" onclick="openWithdrawModal()">
+          💸 Payout / Withdraw
+        </button>
+      </div>
+
+      <div class="wallet-stats-grid">
+        <div class="wallet-stat-box">
+          <div style="font-size:11.5px; color:var(--text-muted);">Lifetime Kamai</div>
+          <div id="walletLifetime" style="font-size:16px; font-weight:800; color:#fff;">₹0</div>
+        </div>
+        <div class="wallet-stat-box">
+          <div style="font-size:11.5px; color:var(--text-muted);">Safal Orders</div>
+          <div id="walletJobsCount" style="font-size:16px; font-weight:800; color:#34d399;">0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bookings List -->
+  <div class="section-title">📋 Customer Bookings</div>
+  <div id="list">
+    <div class="empty-state-3d">
+      <span class="big-icon">📭</span>
+      <h3 style="color:#fff;">Login Karein</h3>
+      <p style="font-size:13px; margin-top:4px;">Upar apna registered number daal kar bookings load karein.</p>
+    </div>
+  </div>
+
+  <!-- 📞 Official Admin Support Bar -->
+  <div class="card-3d" style="margin-top:18px; padding:14px; background:radial-gradient(circle at top left, rgba(20,184,166,0.15), rgba(4,47,46,0.85));">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+      <div>
+        <div style="font-weight:800; color:#fff; font-size:14px;">📞 Official Worker Helpline & Support (24/7)</div>
+        <div style="font-size:12.5px; color:var(--text-sub); margin-top:2px;">
+          Direct Call: 
+          <a href="tel:6205399450" style="color:var(--primary-light); font-weight:700;">6205399450</a> • 
+          <a href="tel:9065064475" style="color:var(--primary-light); font-weight:700;">9065064475</a> • 
+          <a href="tel:8603766262" style="color:var(--primary-light); font-weight:700;">8603766262</a>
+        </div>
+      </div>
+      <a href="https://wa.me/916205399450" target="_blank" class="btn-3d small wa" style="width:auto; padding:6px 14px; text-decoration:none;">
+        💬 Worker WhatsApp Support
+      </a>
+    </div>
+  </div>
+</main>
+
+<nav class="bottomnav-3d">
+  <a href="/workers.html"><span class="icon">🔍</span>Worker Dhundo</a>
+  <a href="/index.html"><span class="icon">📝</span>Register</a>
+  <a href="/my-bookings.html" class="active"><span class="icon">🧰</span>Worker Panel</a>
+  <a href="/booking-status.html"><span class="icon">📦</span>Tracking</a>
+  <a href="/admin.html"><span class="icon">🔐</span>Admin</a>
+</nav>
+
+<script src="/js/common.js"></script>
+<script src="/js/otp-modal.js"></script>
+<script>
+let currentWorker = null;
+let watchId = null;
+let isSharingGps = false;
+
+function statusBadge(s) {
+  const map = {
+    pending: '<span class="badge-3d gold">⏳ New Job Request</span>',
+    accepted: '<span class="badge-3d trust">🚗 On the Way (Accepted)</span>',
+    in_progress: '<span class="badge-3d trust" style="background:#10b981; color:#fff;">⚙️ In-Progress</span>',
+    work_finished: '<span class="badge-3d gold">💰 Commission Pending</span>',
+    rejected: '<span class="badge-3d danger">❌ Rejected</span>',
+    completed: '<span class="badge-3d">🏁 Completed</span>'
+  };
+  return map[s] || `<span class="badge-3d">${s}</span>`;
+}
+
+function requestWorkerLogin() {
+  const phone = $('phone').value.trim();
+  if (!AntiGarbageValidator.isValidPhone(phone)) {
+    toast('Kripya valid 10-digit mobile number daalein.', 'err');
+    return;
+  }
+
+  OTPManager.requestAndOpen({
+    phone,
+    purpose: 'worker_login',
+    onVerified: () => {
+      toast('Login verified successfully!', 'ok');
+      sessionStorage.setItem('dk_worker_phone', phone);
+      loadBookings(phone);
+    }
+  });
+}
+
+async function loadBookings(phone) {
+  $('list').innerHTML = '<div class="skeleton-3d"></div><div class="skeleton-3d"></div>';
+  try {
+    const d = await apiFetch(`/my-bookings?phone=${encodeURIComponent(phone)}`);
+    if (!d.found) {
+      $('list').innerHTML = `
+        <div class="empty-state-3d">
+          <span class="big-icon">🔍</span>
+          <h3 style="color:#fff;">Worker Account Nahi Mila</h3>
+          <p style="font-size:13px; margin-top:4px;">Is mobile number se koi registered worker nahi mila. <a href="/index.html">Naya Register Karein</a></p>
+        </div>
+      `;
+      $('workerControlPanel').style.display = 'none';
+      return;
+    }
+
+    currentWorker = d.worker;
+    $('workerGreeting').textContent = `Namaste, ${d.worker.name}!`;
+    $('workerSub').textContent = `🛠️ ${d.worker.skill} • 📍 ${d.worker.city}`;
+    $('workerIdDisplay').textContent = `OFFICIAL ID: ${d.worker.id_code}`;
+    $('workerControlPanel').style.display = 'block';
+
+    if (d.worker.is_pro_member) {
+      $('workerProCrown').style.display = 'inline-flex';
+      $('proPassBtn').innerHTML = '👑 Pro Pass Active';
+    }
+
+    // Load Wallet
+    loadWallet(d.worker.id);
+
+    if (!d.bookings.length) {
+      $('list').innerHTML = `
+        <div class="empty-state-3d">
+          <span class="big-icon">📭</span>
+          <h3 style="color:#fff;">Abhi Koi Active Booking Nahi Hai</h3>
+          <p style="font-size:13px; margin-top:4px;">Jab koi customer aapko book karega, yahan details aayengi.</p>
+        </div>
+      `;
+      return;
+    }
+
+    $('list').innerHTML = d.bookings.map(b => bookingCard(b)).join('');
+  } catch (e) {
+    $('list').innerHTML = `<p class="msg-3d err">${esc(e.message)}</p>`;
+  }
+}
+
+async function loadWallet(workerId) {
+  try {
+    const w = await apiFetch(`/api/worker/wallet/${workerId}`);
+    $('walletBalance').textContent = `₹${Math.round(w.balance || 0)}`;
+    $('walletLifetime').textContent = `₹${Math.round(w.lifetimeEarnings || 0)}`;
+    $('walletJobsCount').textContent = w.completedJobs || 0;
+  } catch (e) {}
+}
+
+function bookingCard(b) {
+  const isPending = b.status === 'pending';
+  const isAccepted = b.status === 'accepted';
+  const isInProgress = b.status === 'in_progress';
+  const isWorkFinished = b.status === 'work_finished';
+  const isCompleted = b.status === 'completed';
+
+  return `
+  <article class="card-3d" id="card-${b.id}">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <span style="font-size:16px; font-weight:800; color:#fff;">👤 ${esc(b.customer_name)}</span>
+      ${statusBadge(b.status)}
+    </div>
+
+    <div class="worker-meta-line" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+      <span>📞 <a href="tel:${esc(b.customer_phone)}" style="font-weight:700;">${esc(b.customer_phone)}</a></span>
+      <span class="badge-3d gold" style="font-size:11.5px;">⏰ Arrival: ${esc(b.service_date || 'Aaj / Immediate')}</span>
+    </div>
+    <div class="worker-meta-line" style="color:var(--text-main); margin-top:4px;">
+      📍 <b>Service Address:</b> ${esc(b.address || '-')}
+    </div>
+    ${b.message ? `<div class="worker-meta-line" style="margin-top:4px;">📝 <i>"${esc(b.message)}"</i></div>` : ''}
+
+    <div class="worker-meta-line" style="margin-top:8px; padding-top:8px; border-top:1px solid var(--surface-glass-border);">
+      <span>Andaza Amount: <b>₹${b.estimated_amount || '-'}</b></span>
+      &nbsp;|&nbsp;
+      <span style="color:#34d399;">Advance Token: <b>₹${b.advance_amount || '-'}</b></span>
+    </div>
+
+    ${b.customer_lat != null ? `
+      <button class="btn-3d secondary small" style="margin-top:10px;" onclick="navigateTo(${b.customer_lat}, ${b.customer_lng})">
+        🧭 Customer Tak Google Maps Navigation
+      </button>
+    ` : ''}
+
+    <!-- 1. ACCEPT / REJECT -->
+    ${isPending ? `
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn-3d small" onclick="setStatus(${b.id}, 'accepted')">✅ Accept Job</button>
+        <button class="btn-3d danger small" onclick="setStatus(${b.id}, 'rejected')">❌ Reject</button>
+      </div>
+    ` : ''}
+
+    <!-- 2. STEP 1 OTP: START JOB ON ARRIVAL -->
+    ${isAccepted ? `
+      <div style="margin-top:14px; border-top:1px solid var(--surface-glass-border); padding-top:12px; background:rgba(20,184,166,0.1); padding:12px; border-radius:10px;">
+        <div style="font-weight:800; color:var(--primary-light); font-size:14px;">🔐 Step 1: Customer Se Start OTP Lein</div>
+        <p style="font-size:12px; color:var(--text-sub); margin:2px 0 8px;">Customer ke ghar pahuchne par unke phone par dikh raha 4-digit Start OTP daalein:</p>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="startOtp-${b.id}" maxlength="4" placeholder="4-digit Start OTP" style="width:140px; text-align:center; font-size:18px; font-weight:800; letter-spacing:3px;">
+          <button class="btn-3d small" onclick="verifyStartOtp(${b.id})">🚀 Start Job</button>
+        </div>
+        <button type="button" class="btn-3d small secondary" style="margin-top:10px; width:100%; border:1px solid #f59e0b; color:#fbbf24;" onclick="reportDelayAlert(${b.id})">
+          🚨 Traffic / 10 Min Delay Alert Bhejo
+        </button>
+      </div>
+    ` : ''}
+
+    <!-- 3. STEP 2 OTP: COMPLETE JOB, FINAL BILL & MISSED OTP SOLVERS -->
+    ${isInProgress ? `
+      <div style="margin-top:14px; border-top:1px solid var(--surface-glass-border); padding-top:12px; background:rgba(52,211,153,0.1); padding:12px; border-radius:10px;">
+        <div style="font-weight:800; color:#34d399; font-size:14px;">🏁 Step 2: Kaam Poora Hone Par Completion OTP</div>
+        <p style="font-size:12px; color:var(--text-sub); margin:2px 0 8px;">Customer se 4-digit Completion OTP lein ya niche diya 1-Tap Approval use karein:</p>
+        
+        <label>Final Total Bill (₹)</label>
+        <input id="amt-${b.id}" type="number" min="1" placeholder="Jaise: 600" value="${b.actual_job_amount || b.estimated_amount || 500}">
+        
+        <label>Completion OTP</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="compOtp-${b.id}" maxlength="4" placeholder="4-digit Code" style="width:140px; text-align:center; font-size:18px; font-weight:800; letter-spacing:3px;">
+          <button class="btn-3d small" onclick="verifyCompleteOtp(${b.id})">✅ Complete Job</button>
+        </div>
+
+        <!-- 5. MISSED OTP EMERGENCY RESOLUTION TOOLS -->
+        <div style="margin-top:12px; padding-top:10px; border-top:1px dashed rgba(52,211,153,0.3);">
+          <div style="font-size:12px; font-weight:700; color:#fbbf24; margin-bottom:6px;">⚠️ Agar Customer OTP Dena Bhool Gaye / Phone Band Hai:</div>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <button type="button" class="btn-3d small secondary" style="width:100%; border:1px solid #38bdf8; color:#38bdf8;" onclick="sendCustomerApprovalRequest(${b.id})">
+              📲 Customer Ko 1-Tap Approval Request Bhejo
+            </button>
+            <button type="button" class="btn-3d small secondary" style="width:100%;" onclick="openProofUploadModal(${b.id})">
+              📸 Kaam Ki Photo Upload Karke Auto-Approve Karein
+            </button>
+          </div>
+        </div>
+
+        <!-- 9. MASTERMIND CUSTOMER PAYMENT REFUSAL SHIELD -->
+        <div style="margin-top:12px; padding-top:10px; border-top:1px dashed rgba(239,68,68,0.3);">
+          <button type="button" class="btn-3d small danger" style="width:100%;" onclick="openDisputeShieldModal(${b.id})">
+            🛡️ Customer Paise Dene Se Mana Kare To Yahan Dabayein (Dispute Shield)
+          </button>
+        </div>
+      </div>
+    ` : ''}
+
+    <!-- 4. COMMISSION PAYMENT FOR FREE TIER WORKERS -->
+    ${isWorkFinished ? `
+      <div style="margin-top:14px; border-top:1px solid var(--surface-glass-border); padding-top:12px;">
+        <div style="font-weight:700; color:#fbbf24; font-size:14px;">⚡ 10% Platform Commission Pay Karein</div>
+        <p class="hint">Commission verify hote hi invoice ban jayegi aur aapka wallet credit ho jayega.</p>
+        <button class="btn-3d" style="margin-top:8px;" onclick="completeJob(${b.id})">
+          💳 Pay 10% Commission
+        </button>
+
+        <!-- 9. Dispute Shield if customer refused during settlement -->
+        <button type="button" class="btn-3d small danger" style="margin-top:8px; width:100%;" onclick="openDisputeShieldModal(${b.id})">
+          🛡️ Customer Final Payment Se Mana Kar Raha Hai (Protection Claim)
+        </button>
+      </div>
+    ` : ''}
+
+    ${isCompleted ? `
+      <button class="btn-3d secondary small" style="margin-top:10px;" onclick="showInvoice(${JSON.stringify(b).replace(/"/g, '&quot;')})">
+        🧾 Digital Invoice Dekhein
+      </button>
+    ` : ''}
+  </article>
+  `;
+}
+
+function navigateTo(lat, lng) {
+  window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`, '_blank');
+}
+
+async function setStatus(id, status) {
+  try {
+    const d = await apiFetch(`/update-booking-status/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    toast(d.message, 'ok');
+    loadBookings($('phone').value.trim());
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
+async function reportDelayAlert(bookingId) {
+  const reason = prompt('Delay ka reason likhein (Jaise: Traffic jam, Bike puncture):', 'Traffic Jam') || 'Traffic Jam';
+  try {
+    const res = await apiFetch(`/api/job/report-delay/${bookingId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason, minutes: 10 })
+    });
+    toast(res.message, 'ok', 5000);
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
+async function verifyStartOtp(bookingId) {
+  const otp = $(`startOtp-${bookingId}`).value.trim();
+  if (!otp || otp.length !== 4) {
+    toast('Kripya valid 4-digit Start OTP daalein.', 'err');
+    return;
+  }
+
+  try {
+    const res = await apiFetch(`/api/job/verify-start-otp/${bookingId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ otp })
+    });
+    toast(res.message, 'ok');
+    loadBookings($('phone').value.trim());
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
+async function verifyCompleteOtp(bookingId) {
+  const otp = $(`compOtp-${bookingId}`).value.trim();
+  const job_amount = $(`amt-${bookingId}`).value;
+
+  if (!otp || otp.length !== 4) {
+    toast('Kripya valid 4-digit Completion OTP daalein.', 'err');
+    return;
+  }
+  if (!job_amount || Number(job_amount) <= 0) {
+    toast('Kripya sahi final bill amount daalein.', 'err');
+    return;
+  }
+
+  try {
+    const res = await apiFetch(`/api/job/verify-complete-otp/${bookingId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ otp, job_amount })
+    });
+    toast(res.message, 'ok', 5000);
+    loadBookings($('phone').value.trim());
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
+async function completeJob(id) {
+  const amount = $('amt-' + id)?.value || 500;
+
+  try {
+    toast('Commission order calculate ho raha hai...', 'info');
+    const d = await apiFetch(`/create-commission-order/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job_amount: amount })
+    });
+
+    const rz = new Razorpay({
+      key: d.keyId,
+      amount: d.amount * 100,
+      currency: 'INR',
+      name: 'Digital Kaam',
+      description: 'Platform Service Commission (10%)',
+      order_id: d.orderId,
+      theme: { color: '#0d9488' },
+      handler: async (x) => {
+        try {
+          const v = await apiFetch(`/verify-commission-payment/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(x)
+          });
+          toast(v.message, 'ok', 6000);
+          loadBookings($('phone').value.trim());
+        } catch (err) {
+          toast(err.message, 'err');
+        }
+      }
+    });
+
+    rz.open();
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
+/* ---------------- 🪪 3D OFFICIAL WORKER ID CARD MODAL ---------------- */
+function showIdCard() {
+  if (!currentWorker) return;
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'sheet-backdrop-3d';
+  backdrop.id = 'idCardBackdrop';
+  backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
+
+  const verifyUrl = `${window.location.origin}/verify-worker.html?id=${currentWorker.id}`;
+
+  backdrop.innerHTML = `
+    <div class="sheet-3d" style="max-width: 440px; text-align:center;">
+      <div class="sheet-handle"></div>
+      <h3 style="font-size:18px; font-weight:800; color:#fff; margin-bottom:12px;">🪪 Official Worker Identity Card</h3>
+
+      <div class="id-card-3d">
+        <div class="id-card-hologram"></div>
+        <div class="id-card-header">
+          <img src="/icon.svg" style="width:32px; height:32px;" alt="Logo">
+          <div style="text-align:left;">
+            <div style="font-size:14px; font-weight:900; color:#fff;">DIGITAL KAAM</div>
+            <div style="font-size:10px; color:var(--primary-light);">GOVT & POLICE VERIFIED WORKER</div>
+          </div>
+        </div>
+
+        <div class="id-card-body">
+          <img class="id-card-photo" src="${currentWorker.photo_path || '/icon.svg'}" onerror="this.src='/icon.svg'">
+          <div style="text-align:left; flex:1;">
+            <div style="font-size:16px; font-weight:900; color:#fff;">${esc(currentWorker.name)}</div>
+            <div style="font-size:12.5px; color:var(--primary-light); font-weight:700;">${esc(currentWorker.skill)}</div>
+            <div style="font-size:11.5px; color:var(--text-sub); margin-top:2px;">📍 ${esc(currentWorker.city)}</div>
+            <div style="font-size:11px; font-family:monospace; color:#34d399; margin-top:4px; font-weight:700;">${esc(currentWorker.id_code)}</div>
+          </div>
+          <div class="id-card-qr-wrap" id="qrcodeBox"></div>
+        </div>
+      </div>
+
+      <p class="hint" style="margin-top:12px;">Customer ko darwaze par yeh QR code scan karwayein for instant trust verification.</p>
+
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn-3d" onclick="window.print()">🖨️ Print / Save PDF</button>
+        <button class="btn-3d secondary" onclick="document.getElementById('idCardBackdrop')?.remove()">✕ Close</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+
+  // Generate QR Code
+  setTimeout(() => {
+    new QRCode(document.getElementById('qrcodeBox'), {
+      text: verifyUrl,
+      width: 76,
+      height: 76,
+      colorDark: '#042f2e',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  }, 50);
+}
+
+/* ---------------- 👑 PRO PASS SUBSCRIPTION MODAL ---------------- */
+function openProPassModal() {
+  if (!currentWorker) return;
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'sheet-backdrop-3d';
+  backdrop.id = 'proPassBackdrop';
+  backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
+
+  backdrop.innerHTML = `
+    <div class="sheet-3d" style="max-width: 460px; text-align:center;">
+      <div class="sheet-handle"></div>
+      <div style="font-size:40px;">👑</div>
+      <h3 style="font-size:20px; font-weight:900; color:#fbbf24; margin-top:4px;">Digital Kaam Pro Pass</h3>
+      <p style="font-size:13.5px; color:var(--text-sub); margin:6px 0 16px;">
+        Har mahine 10% commission bachayein aur 3X zyada direct customer calls paayein!
+      </p>
+
+      <div class="card-3d" style="text-align:left; background:rgba(4,34,31,0.6); padding:14px; margin-bottom:14px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:18px;">✅</span>
+          <b style="color:#fff; font-size:14px;">0% Commission on All Jobs (Poori kamai aapki)</b>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:18px;">👑</span>
+          <b style="color:#fff; font-size:14px;">Top #1 Priority in Customer Search & Carousel</b>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:18px;">🛡️</span>
+          <b style="color:#fff; font-size:14px;">Official Gold VIP Badge on Profile</b>
+        </div>
+      </div>
+
+      <div style="font-size:24px; font-weight:900; color:#fff; margin:12px 0;">
+        ₹299 <span style="font-size:14px; color:var(--text-muted); font-weight:500;">/ Month</span>
+      </div>
+
+      <button class="btn-3d" id="buyProBtn" style="background:linear-gradient(180deg, #f59e0b, #d97706); box-shadow:0 6px 0 #78350f;" onclick="buyProPass()">
+        🚀 Upgrade To Pro Pass (₹299)
+      </button>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+async function buyProPass() {
+  const phone = $('phone').value.trim();
+  const btn = $('buyProBtn');
+  btn.disabled = true;
+
+  try {
+    const d = await apiFetch('/api/worker/buy-pro-pass', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone })
+    });
+
+    const rz = new Razorpay({
+      key: d.keyId,
+      amount: d.amount * 100,
+      currency: 'INR',
+      name: 'Digital Kaam Pro Pass',
+      description: 'Monthly Pro Member Subscription',
+      order_id: d.orderId,
+      theme: { color: '#f59e0b' },
+      handler: async (x) => {
+        try {
+          const v = await apiFetch('/api/worker/verify-pro-pass', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, razorpay_payment_id: x.razorpay_payment_id })
+          });
+          toast(v.message, 'ok', 6000);
+          document.getElementById('proPassBackdrop')?.remove();
+          loadBookings(phone);
+        } catch (err) {
+          toast(err.message, 'err');
+        }
+      }
+    });
+
+    rz.open();
+  } catch (e) {
+    toast(e.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ---------------- 💸 WALLET WITHDRAWAL MODAL ---------------- */
+function openWithdrawModal() {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'sheet-backdrop-3d';
+  backdrop.id = 'withdrawBackdrop';
+  backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
+
+  backdrop.innerHTML = `
+    <div class="sheet-3d" style="max-width: 440px;">
+      <div class="sheet-handle"></div>
+      <h3 style="font-size:18px; font-weight:800; color:#fff;">💸 Wallet Balance Withdrawal</h3>
+      <p style="font-size:13px; color:var(--text-sub); margin:4px 0 14px;">
+        Apna UPI ID (GPay / PhonePe / Paytm) daalein aur instant payout transfer paayein.
+      </p>
+
+      <label>UPI ID / VPA</label>
+      <input type="text" id="upiId" placeholder="Jaise: 9876543210@paytm ya user@okaxis">
+
+      <label>Withdrawal Amount (₹)</label>
+      <input type="number" id="withdrawAmt" placeholder="Amount (₹)" min="10">
+
+      <button class="btn-3d" style="margin-top:14px;" onclick="submitWithdrawal(this)">
+        🏦 Transfer To Bank / UPI
+      </button>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+async function submitWithdrawal(btn) {
+  const upi_id = $('upiId').value.trim();
+  const amount = $('withdrawAmt').value.trim();
+
+  if (!upi_id || !amount || Number(amount) <= 0) {
+    toast('Kripya valid UPI ID aur amount bharein.', 'err');
+    return;
+  }
+
+  btn.disabled = true;
+  try {
+    const d = await apiFetch(`/api/worker/wallet/withdraw/${currentWorker.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ upi_id, amount })
+    });
+    toast(d.message, 'ok', 6000);
+    document.getElementById('withdrawBackdrop')?.remove();
+    loadWallet(currentWorker.id);
+  } catch (e) {
+    toast(e.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// 3D Live Location Broadcast
+$('shareBtn').onclick = () => {
+  if (isSharingGps) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+    isSharingGps = false;
+    $('shareBtn').textContent = '📍 Live GPS Start';
+    $('shareStatus').textContent = 'GPS sharing band hai.';
+    return;
+  }
+
+  if (!currentWorker) {
+    toast('Pehle login karein.', 'err');
+    return;
+  }
+  if (!navigator.geolocation) {
+    toast('Aapka device GPS support nahi karta.', 'err');
+    return;
+  }
+
+  isSharingGps = true;
+  $('shareBtn').textContent = '⏹ GPS Stop';
+  $('shareStatus').textContent = '🟢 Real-time GPS broadcasting active...';
+
+  watchId = navigator.geolocation.watchPosition(async (p) => {
+    const c = p.coords;
+    try {
+      await apiFetch(`/update-location/${currentWorker.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lat: c.latitude,
+          lng: c.longitude,
+          accuracy: c.accuracy,
+          heading: c.heading,
+          speed: c.speed
+        })
+      });
+      $('shareStatus').textContent = `🟢 Live • accuracy ±${Math.round(c.accuracy)}m • ${new Date().toLocaleTimeString('hi-IN')}`;
+    } catch (e) {
+      $('shareStatus').textContent = 'Location update network issue.';
+    }
+  }, (err) => {
+    $('shareStatus').textContent = 'GPS signal lost: ' + err.message;
+  }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+};
+
+// Digital Invoice Viewer Modal
+function showInvoice(b) {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'sheet-backdrop-3d';
+  backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
+
+  const total = b.actual_job_amount || b.estimated_amount || 500;
+  const advance = b.advance_amount || 50;
+  const balance = total - advance;
+
+  backdrop.innerHTML = `
+    <div class="sheet-3d" style="max-width: 480px;">
+      <div class="sheet-handle"></div>
+      <div class="receipt-card">
+        <div class="receipt-header">
+          <h2 style="font-size:18px; margin:0;">Digital Kaam 3D</h2>
+          <div style="font-size:12px; color:#64748b;">Official Service Receipt • #${b.id}</div>
+        </div>
+        <div class="receipt-row"><span>Customer:</span><b>${esc(b.customer_name)}</b></div>
+        <div class="receipt-row"><span>Date:</span><span>${esc(b.service_date || 'Completed')}</span></div>
+        <div class="receipt-row"><span>Service:</span><span>${esc(b.address || 'Local Home Visit')}</span></div>
+        <hr style="border:none; border-top:1px dashed #cbd5e1; margin:8px 0;">
+        <div class="receipt-row"><span>Total Job Fee:</span><b>₹${total}</b></div>
+        <div class="receipt-row"><span>Advance Paid Online:</span><span>- ₹${advance}</span></div>
+        <div class="receipt-row receipt-total"><span>Balance Paid to Worker:</span><span>₹${balance}</span></div>
+        <div style="text-align:center; margin-top:12px; font-size:11px; color:#10b981; font-weight:700;">
+          ✓ Verified & Completed via Digital Kaam
+        </div>
+      </div>
+      <button class="btn-3d secondary" style="margin-top:16px;" onclick="this.closest('.sheet-backdrop-3d').remove()">
+        ✕ Close Invoice
+      </button>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+// Auto-login if session exists
+const savedWorkerPhone = sessionStorage.getItem('dk_worker_phone');
+if (savedWorkerPhone) {
+  $('phone').value = savedWorkerPhone;
+  loadBookings(savedWorkerPhone);
+}
+
+// 5. Missed OTP Solution 1: Request 1-Tap Approval from Customer
+async function sendCustomerApprovalRequest(bookingId) {
+  try {
+    toast('Customer ke phone par approval request bheji ja rahi hai...', 'info');
+    const res = await apiFetch(`/api/job/request-customer-approval/${bookingId}`, { method: 'POST' });
+    toast(res.message, 'ok', 6000);
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
+// 5. Missed OTP Solution 2: Upload Work Photo Proof for Auto-Approval
+function openProofUploadModal(bookingId) {
+  document.getElementById('proofModalBackdrop')?.remove();
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'sheet-backdrop-3d';
+  backdrop.id = 'proofModalBackdrop';
+  backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
+
+  backdrop.innerHTML = `
+    <div class="sheet-3d" style="max-width: 440px; text-align:center;">
+      <div class="sheet-handle"></div>
+      <div style="font-size:32px; margin-bottom:4px;">📸</div>
+      <h3 style="font-size:18px; font-weight:800; color:#fff; margin:0 0 6px;">Completed Work Photo Upload</h3>
+      <p style="font-size:12.5px; color:var(--text-sub); margin-bottom:12px;">
+        Kiye gaye kaam ki saaf photo kheench kar upload karein. Isse bina OTP ke bhi kaam safalta se verify ho jayega:
+      </p>
+
+      <input type="file" id="proofFileInput" accept="image/*" capture="environment" style="display:none;" onchange="handleProofSelected(this, ${bookingId})">
+      
+      <button type="button" class="btn-3d" style="margin-bottom:10px;" onclick="$('proofFileInput').click()">
+        📷 Camera Se Photo Khechein / Select Karein
+      </button>
+
+      <button type="button" class="btn-3d secondary" onclick="document.getElementById('proofModalBackdrop').remove()">
+        ✕ Cancel
+      </button>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+async function handleProofSelected(input, bookingId) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const formData = new FormData();
+  formData.append('proof', file);
+
+  try {
+    toast('Photo verify ki ja rahi hai...', 'info');
+    const res = await fetch(`/api/job/upload-completion-proof/${bookingId}`, {
+      method: 'POST',
+      body: formData
+    }).then(r => r.json());
+
+    document.getElementById('proofModalBackdrop')?.remove();
+    toast(res.message || 'Kaam complete ho gaya! ✅', 'ok', 6000);
+    loadBookings($('phone').value.trim());
+  } catch (err) {
+    toast(err.message || 'Photo upload error', 'err');
+  }
+}
+
+// 9. Mastermind Customer Payment Refusal / Dispute Payout Shield
+function openDisputeShieldModal(bookingId) {
+  document.getElementById('disputeModalBackdrop')?.remove();
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'sheet-backdrop-3d';
+  backdrop.id = 'disputeModalBackdrop';
+  backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
+
+  backdrop.innerHTML = `
+    <div class="sheet-3d" style="max-width: 460px;">
+      <div class="sheet-handle"></div>
+      <div style="text-align:center;">
+        <div style="font-size:36px; margin-bottom:4px;">🛡️</div>
+        <h3 style="font-size:18px; font-weight:900; color:#ef4444; margin:0 0 6px;">Worker Protection Shield (Payment Guarantee)</h3>
+        <p style="font-size:12.5px; color:var(--text-sub); margin-bottom:14px;">
+          Agar customer kaam hone ke baad paise dene se mana kar raha hai, to Digital Kaam Guarantee Fund se aapki mehnat ka paisa turant aapke wallet mein transfer hoga.
+        </p>
+      </div>
+
+      <div class="protection-shield-card" style="margin-bottom:14px;">
+        <div style="font-weight:800; color:#34d399; font-size:13px; margin-bottom:4px;">✓ Protection Features:</div>
+        <ul style="font-size:12px; color:#f0fdfa; margin-left:18px; line-height:1.6;">
+          <li>Worker ko turant 85% guaranteed balance payout wallet mein release hoga.</li>
+          <li>Customer ka account turant freeze aur blacklisted hoga.</li>
+          <li>Recovery team customer se bacha hua bill vasool karegi.</li>
+        </ul>
+      </div>
+
+      <label>Dispute Ka Kaaran Likhein</label>
+      <textarea id="disputeReason" placeholder="Customer ne kya bola? (Jaise: Kaam pura hone par payment se mana kiya)"></textarea>
+
+      <button type="button" class="btn-3d danger" style="margin-top:10px;" onclick="submitPaymentDispute(${bookingId})">
+        🛡️ Payout Claim Karein &amp; Report Customer
+      </button>
+
+      <button type="button" class="btn-3d secondary" style="margin-top:8px;" onclick="document.getElementById('disputeModalBackdrop').remove()">
+        ✕ Cancel
+      </button>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+async function submitPaymentDispute(bookingId) {
+  const reason = $('disputeReason')?.value.trim() || 'Customer ne kaam ke baad final payment dene se mana kar diya.';
+  try {
+    toast('Protection Fund se payout verify ho raha hai...', 'info');
+    const res = await apiFetch(`/api/job/raise-payment-dispute/${bookingId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason })
+    });
+    document.getElementById('disputeModalBackdrop')?.remove();
+    toast(res.message, 'ok', 7000);
+    loadBookings($('phone').value.trim());
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+</script>
+</body>
+</html>
+

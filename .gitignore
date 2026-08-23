@@ -1,0 +1,25 @@
+﻿# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.class
+*.so
+
+# Environment & Secrets (Security Protection)
+.env
+.env.local
+key.pem
+cert.pem
+
+# Database files
+*.db-wal
+*.db-shm
+
+# Node / JS dependencies
+node_modules/
+npm-debug.log*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

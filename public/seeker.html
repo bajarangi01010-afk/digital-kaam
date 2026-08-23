@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Customer Registration — Digital Kaam 3D</title>
+<meta name="theme-color" content="#0d9488">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="appbar">
+  <div class="appbar-inner">
+    <div class="appbar-brand">
+      <img src="/icon.svg" class="appbar-logo-3d" alt="Logo">
+      <div>
+        <h1>Digital Kaam</h1>
+        <div class="appbar-subtitle">Customer Registration</div>
+      </div>
+    </div>
+    <div class="appbar-actions">
+      <span class="badge-3d trust">🛡️ Instant Booking</span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <div class="card-3d hero-3d">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div style="font-size:36px;">🧑</div>
+      <div>
+        <h2 style="font-size:18px; font-weight:800; color:#fff;">Customer Profile</h2>
+        <p style="font-size:13px; color:var(--text-sub); margin-top:2px;">
+          Yahan register karke aap easily apne service bookings aur live worker track kar sakte hain.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <form id="seekerForm" class="card-3d" autocomplete="off">
+    <div class="section-title">👤 1. Apni Details</div>
+
+    <label for="name">Aapka Naam</label>
+    <input type="text" id="name" required maxlength="50" placeholder="Jaise: Amit Verma">
+
+    <label for="phone">Mobile Number</label>
+    <div style="display:flex; gap:8px;">
+      <input type="tel" id="phone" inputmode="numeric" maxlength="10" required placeholder="10-digit mobile number" style="flex:1;">
+      <button type="button" id="verifyPhoneBtn" class="btn-3d small" style="margin-top:0; white-space:nowrap;">
+        📲 Verify OTP
+      </button>
+    </div>
+    <div id="otpVerifiedBadge" style="display:none; margin-top:6px;">
+      <span class="badge-3d trust">✅ Phone Verified with OTP</span>
+    </div>
+
+    <div class="section-title">📍 2. Aapka Shehar / Area</div>
+    <label for="city">Current Location</label>
+    <input type="text" id="city" readonly required placeholder="Location button dabayein">
+    <button type="button" id="locBtn" class="btn-3d secondary" style="margin-top:8px;">
+      📍 Meri Accurate Location Lein
+    </button>
+    <p id="locStatus" class="msg-3d" style="display:none;"></p>
+
+    <button type="submit" class="btn-3d" id="submitBtn" style="margin-top:20px;">
+      ✅ Customer Register Karein
+    </button>
+    <div id="formMsg" class="msg-3d" style="display:none;"></div>
+  </form>
+
+  <p class="footer-note">Booking kar chuke hain? <a href="/booking-status.html">Live Tracking & Status Dekhein</a></p>
+</main>
+
+<nav class="bottomnav-3d">
+  <a href="/workers.html"><span class="icon">🔍</span>Worker Dhundo</a>
+  <a href="/index.html"><span class="icon">📝</span>Register</a>
+  <a href="/my-bookings.html"><span class="icon">🧰</span>Worker Panel</a>
+  <a href="/booking-status.html"><span class="icon">📦</span>Tracking</a>
+  <a href="/admin.html"><span class="icon">🔐</span>Admin</a>
+</nav>
+
+<script src="/js/common.js"></script>
+<script src="/js/otp-modal.js"></script>
+<script>
+let loc = null;
+let verifiedOtpToken = null;
+
+$('verifyPhoneBtn').onclick = () => {
+  const phone = $('phone').value.trim();
+  if (!AntiGarbageValidator.isValidPhone(phone)) {
+    toast('Kripya valid 10-digit mobile number daalein.', 'err');
+    return;
+  }
+  OTPManager.requestAndOpen({
+    phone,
+    purpose: 'seeker_registration',
+    onVerified: ({ verificationToken }) => {
+      verifiedOtpToken = verificationToken;
+      $('phone').readOnly = true;
+      $('verifyPhoneBtn').style.display = 'none';
+      $('otpVerifiedBadge').style.display = 'block';
+      toast('Mobile number verify ho gaya!', 'ok');
+    }
+  });
+};
+
+$('locBtn').onclick = async () => {
+  $('locBtn').disabled = true;
+  const s = $('locStatus');
+  s.style.display = 'flex';
+  loc = await getAccurateLocation({
+    onStatus: (m, t) => { s.textContent = m; s.className = 'msg-3d ' + t; }
+  });
+  $('locBtn').disabled = false;
+  if (loc) $('city').value = loc.city;
+};
+
+$('seekerForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const name = $('name').value.trim();
+  const phone = $('phone').value.trim();
+
+  if (!AntiGarbageValidator.isValidName(name)) {
+    toast('Kripya sahi naam daalein.', 'err');
+    return;
+  }
+  if (!AntiGarbageValidator.isValidPhone(phone)) {
+    toast('Kripya sahi mobile number daalein.', 'err');
+    return;
+  }
+  if (!loc) {
+    toast('Pehle GPS location lein.', 'err');
+    return;
+  }
+
+  const btn = $('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="pulse-dot"></span> Saving...';
+
+  try {
+    const d = await apiFetch('/register-seeker', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        phone,
+        city: loc.city,
+        lat: loc.lat,
+        lng: loc.lng,
+        accuracy: loc.accuracy,
+        otpToken: verifiedOtpToken
+      })
+    });
+    $('formMsg').className = 'msg-3d ok';
+    $('formMsg').style.display = 'flex';
+    $('formMsg').textContent = d.message;
+    toast(d.message, 'ok');
+    $('seekerForm').reset();
+    loc = null;
+    verifiedOtpToken = null;
+    $('phone').readOnly = false;
+    $('verifyPhoneBtn').style.display = 'inline-flex';
+    $('otpVerifiedBadge').style.display = 'none';
+    setTimeout(() => { window.location.href = '/workers.html'; }, 1800);
+  } catch (err) {
+    $('formMsg').className = 'msg-3d err';
+    $('formMsg').style.display = 'flex';
+    $('formMsg').textContent = err.message;
+    toast(err.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '✅ Customer Register Karein';
+  }
+};
+</script>
+</body>
+</html>

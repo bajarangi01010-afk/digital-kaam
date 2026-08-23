@@ -1,0 +1,20 @@
+{
+  "name": "digital-kaam",
+  "version": "2.0.0",
+  "description": "Digital Kaam 2.0 - Hyperlocal 3D Services Platform",
+  "main": "server.js",
+  "scripts": {
+    "start": "python server.py",
+    "dev": "python server.py",
+    "node-start": "node server.js",
+    "node-dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "razorpay": "^2.9.5",
+    "sharp": "^0.33.5"
+  }
+}

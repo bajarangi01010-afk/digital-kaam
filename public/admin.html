@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Admin Dashboard — Digital Kaam 3D</title>
+<meta name="theme-color" content="#042f2e">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="appbar" style="background:#042f2e;">
+  <div class="appbar-inner">
+    <div class="appbar-brand">
+      <img src="/icon.svg" class="appbar-logo-3d" alt="Logo">
+      <div>
+        <h1>Digital Kaam</h1>
+        <div class="appbar-subtitle">Super Admin & KYC Verification</div>
+      </div>
+    </div>
+    <div class="appbar-actions">
+      <span class="badge-3d gold">🔐 Admin Portal</span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <!-- Admin Login Card -->
+  <div class="card-3d" id="adminLoginCard">
+    <div class="section-title" style="margin-top:0;">🔑 Admin Authentication</div>
+    <label for="password">Admin Security Password</label>
+    <div style="display:flex; gap:8px;">
+      <input type="password" id="password" placeholder="Admin secret password daalein" style="flex:1;">
+      <button class="btn-3d small" id="login">🔓 Login</button>
+      <button class="btn-3d danger small" id="logoutBtn" style="display:none; width:auto;">🚪 Logout</button>
+    </div>
+    <p id="message" class="msg-3d" style="display:none;"></p>
+  </div>
+
+  <!-- Platform Stats -->
+  <div id="statsRow" style="display:none; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+    <div class="card-3d" style="text-align:center; padding:12px; margin-bottom:0;">
+      <div style="font-size:24px;">🛠️</div>
+      <div id="totalWorkersCount" style="font-size:20px; font-weight:800; color:#fff;">0</div>
+      <div style="font-size:12px; color:var(--text-muted);">Registered Workers</div>
+    </div>
+    <div class="card-3d" style="text-align:center; padding:12px; margin-bottom:0;">
+      <div style="font-size:24px;">👥</div>
+      <div id="totalSeekersCount" style="font-size:20px; font-weight:800; color:#fff;">0</div>
+      <div style="font-size:12px; color:var(--text-muted);">Registered Customers</div>
+    </div>
+  </div>
+
+  <div class="section-title">🧾 Worker Verification & KYC Queue</div>
+  <div id="workers">
+    <div class="empty-state-3d">
+      <span class="big-icon">🔐</span>
+      <h3 style="color:#fff;">Admin Login Required</h3>
+      <p style="font-size:13px; margin-top:4px;">Upar password daal kar login karein.</p>
+    </div>
+  </div>
+
+  <div class="section-title">👥 Registered Customers</div>
+  <div id="seekers"></div>
+</main>
+
+<nav class="bottomnav-3d">
+  <a href="/workers.html"><span class="icon">🔍</span>Worker Dhundo</a>
+  <a href="/index.html"><span class="icon">📝</span>Register</a>
+  <a href="/my-bookings.html"><span class="icon">🧰</span>Worker Panel</a>
+  <a href="/booking-status.html"><span class="icon">📦</span>Tracking</a>
+  <a href="/admin.html" class="active"><span class="icon">🔐</span>Admin</a>
+</nav>
+
+<script src="/js/common.js"></script>
+<script>
+let pwd = '';
+let adminToken = '';
+
+async function api(url, opt = {}) {
+  opt.headers = { 
+    ...(opt.headers || {}), 
+    'x-admin-password': pwd,
+    'x-admin-token': adminToken,
+    'Authorization': 'Bearer ' + (adminToken || pwd)
+  };
+  return apiFetch(url, opt);
+}
+
+function workerRow(x) {
+  const isApproved = x.verification_status === 'approved';
+  const isRejected = x.verification_status === 'rejected';
+  const statusTag = isApproved 
+    ? '<span class="badge-3d trust">✅ Approved &amp; Active</span>' 
+    : isRejected 
+    ? '<span class="badge-3d danger">❌ Rejected</span>' 
+    : '<span class="badge-3d gold">⏳ Pending Review</span>';
+
+  const photo = x.photo_path || '/icon.svg';
+
+  return `
+  <article class="card-3d" id="wcard-${x.id}">
+    <div class="worker-card-3d">
+      <div class="worker-photo-wrapper">
+        <img class="worker-photo-3d" src="${esc(photo)}" alt="${esc(x.name)}" onerror="this.src='/icon.svg'">
+      </div>
+      <div class="worker-info-3d">
+        <div class="worker-name-3d">${esc(x.name)} ${statusTag}</div>
+        <div class="worker-meta-line">🛠️ <b>${esc(x.skill)}</b> • 📍 ${esc(x.city)}</div>
+        <div class="worker-meta-line">📞 <a href="tel:${esc(x.phone)}">+91 ${esc(x.phone)}</a> &nbsp;|&nbsp; ID: <code>${esc(x.id_code || 'DK-W' + x.id)}</code></div>
+        <div class="worker-meta-line">
+          Category: <b>${esc(x.tier)}</b> &nbsp;|&nbsp; 
+          Price: <b>₹${x.starting_price || '-'}</b>
+        </div>
+        ${x.govt_id_type ? `
+          <div class="worker-meta-line" style="color:var(--primary-light); font-weight:700;">
+            🪪 <b>Govt ID:</b> ${esc(x.govt_id_type)} — <code>${esc(x.govt_id_number || 'No Number')}</code>
+          </div>
+        ` : ''}
+        <div class="worker-meta-line" style="font-size:12px; color:var(--text-muted);">
+          OTP Verified: <b>${x.phone_verified ? 'Yes (Shield Active)' : 'No'}</b>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top:12px; flex-wrap:wrap; gap:6px;">
+      ${x.govt_id_photo ? `
+        <a class="btn-3d secondary small" href="${esc(x.govt_id_photo)}" target="_blank" style="text-decoration:none;">
+          🪪 Govt ID Photo
+        </a>
+      ` : ''}
+      ${x.live_selfie_path ? `
+        <a class="btn-3d secondary small" href="${esc(x.live_selfie_path)}" target="_blank" style="text-decoration:none;">
+          📸 Live Selfie
+        </a>
+      ` : ''}
+      ${x.certificate_path ? `
+        <button class="btn-3d secondary small" onclick="showCert(${x.id})">
+          📄 Certificate
+        </button>
+      ` : ''}
+      ${isApproved ? `
+        <button class="btn-3d danger small" onclick="verify(${x.id}, 'reject')">
+          🚫 Suspend Worker
+        </button>
+      ` : `
+        <button class="btn-3d small" onclick="verify(${x.id}, 'approve')">
+          ✅ Approve Worker
+        </button>
+        <button class="btn-3d danger small" onclick="verify(${x.id}, 'reject')">
+          ❌ Reject
+        </button>
+      `}
+    </div>
+  </article>
+  `;
+}
+
+function customerRow(x) {
+  const phone = x.phone || '-';
+  const bookingsCount = x.total_bookings || 0;
+  const spent = x.total_spent || 0;
+
+  return `
+  <article class="card-3d">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:16px; font-weight:800; color:#fff;">👤 ${esc(x.name || 'Customer')}</span>
+      <span class="badge-3d trust">${esc(x.type || 'Customer')}</span>
+    </div>
+    <div class="worker-meta-line" style="margin-top:6px;">
+      📞 <a href="tel:${esc(phone)}" style="font-weight:700;">+91 ${esc(phone)}</a>
+      &nbsp;|&nbsp; 📍 <b>Address / City:</b> ${esc(x.city || 'Area Recorded')}
+    </div>
+    ${x.govt_id_type ? `
+      <div class="worker-meta-line" style="color:var(--primary-light); font-weight:600;">
+        🪪 <b>Govt ID:</b> ${esc(x.govt_id_type)} — <code>${esc(x.govt_id_number || 'Masked')}</code>
+      </div>
+    ` : ''}
+    <div class="worker-meta-line">
+      📦 Total Orders: <b style="color:var(--primary-light);">${bookingsCount} Orders</b>
+      &nbsp;|&nbsp;
+      💰 Total Spent: <b style="color:#34d399;">₹${spent}</b>
+    </div>
+    <div class="worker-meta-line" style="font-size:12px; color:var(--text-muted);">
+      Registered: ${esc(x.created_at || '-')}
+    </div>
+
+    <div class="btn-row" style="margin-top:12px;">
+      <button class="btn-3d small secondary" onclick="viewCustomerBookings('${esc(phone)}')">
+        📦 Bookings Dekhein (${bookingsCount})
+      </button>
+      <button class="btn-3d danger small" style="width:auto; padding:6px 12px;" onclick="deleteCustomer('${esc(phone)}')">
+        🗑️ Delete
+      </button>
+    </div>
+  </article>
+  `;
+}
+
+async function viewCustomerBookings(phone) {
+  try {
+    toast('Customer bookings load ho rahi hain...', 'info');
+    const res = await api(`/admin/customer-bookings/${phone}`);
+    
+    document.getElementById('custBookingsBackdrop')?.remove();
+    const backdrop = document.createElement('div');
+    backdrop.className = 'sheet-backdrop-3d';
+    backdrop.id = 'custBookingsBackdrop';
+    backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
+
+    backdrop.innerHTML = `
+      <div class="sheet-3d" style="max-width:550px; max-height:85vh; overflow-y:auto;">
+        <div class="sheet-handle"></div>
+        <h3 style="font-size:18px; font-weight:800; color:#fff; margin-bottom:12px;">
+          📦 Customer Bookings (+91 ${esc(phone)})
+        </h3>
+
+        ${res.bookings.length ? res.bookings.map(b => `
+          <div class="card-3d" style="background:rgba(4,34,31,0.6); margin-bottom:10px; padding:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <b style="color:#fff; font-size:14px;">Order #${b.id}</b>
+              <span class="badge-3d ${b.status === 'completed' ? 'trust' : b.status === 'rejected' || b.status === 'cancelled' ? 'danger' : 'gold'}">${esc(b.status)}</span>
+            </div>
+            <div class="worker-meta-line" style="margin-top:6px;">
+              👤 <b>Customer Name:</b> <span style="color:#fff; font-weight:700;">${esc(b.customer_name || 'N/A')}</span>
+            </div>
+            <div class="worker-meta-line">
+              📞 <b>Customer Phone:</b> <a href="tel:${esc(b.customer_phone)}" style="font-weight:700;">+91 ${esc(b.customer_phone || phone)}</a>
+            </div>
+            <div class="worker-meta-line" style="color:var(--text-main);">
+              📍 <b>Customer Service Address:</b> <span style="color:#fbbf24;">${esc(b.address || '-')}</span>
+            </div>
+            <div class="worker-meta-line" style="margin-top:4px;">
+              🛠️ <b>Assigned Worker:</b> <b>${esc(b.worker_name)}</b> (${esc(b.worker_skill)})
+            </div>
+            <div class="worker-meta-line">
+              💰 Advance: ₹${b.advance_amount || 0} | Total: ₹${b.actual_job_amount || b.estimated_amount || 0}
+            </div>
+            ${b.refund_id ? `
+              <div class="worker-meta-line" style="color:#34d399; font-weight:700;">
+                💰 <b>100% Refund Processed:</b> ${esc(b.refund_id)} (₹${b.refund_amount || b.advance_amount})
+              </div>
+            ` : ''}
+            <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">📅 Booked on: ${esc(b.created_at)}</div>
+          </div>
+        `).join('') : '<p class="hint">Is customer ki abhi koi direct booking record nahi hai.</p>'}
+
+        <button class="btn-3d secondary" style="margin-top:14px;" onclick="document.getElementById('custBookingsBackdrop')?.remove()">
+          ✕ Close
+        </button>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
+async function deleteCustomer(phone) {
+  if (!confirm(`Kya aap sach mein customer (+91 ${phone}) ka record delete karna chahte hain?`)) return;
+  try {
+    const res = await api(`/admin/delete-customer/${phone}`, { method: 'POST' });
+    toast(res.message, 'ok');
+    load();
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
+async function load() {
+  pwd = $('password').value.trim();
+  if (!pwd) {
+    toast('Password daalein.', 'err');
+    return;
+  }
+
+  const msg = $('message');
+  msg.style.display = 'none';
+
+  try {
+    try {
+      const loginRes = await apiFetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pwd })
+      });
+      if (loginRes.token) {
+        adminToken = loginRes.token;
+        sessionStorage.setItem('dk_admin_token', adminToken);
+      }
+    } catch (authErr) {
+      // If login endpoint throws, fallback to direct headers
+    }
+
+    const [w, c] = await Promise.all([
+      api('/admin/pending-workers'),
+      api('/admin/customers')
+    ]);
+
+    sessionStorage.setItem('dk_admin_pwd', pwd);
+    $('logoutBtn').style.display = 'inline-flex';
+    $('login').textContent = '🔄 Refresh';
+
+    const pendingList = w.pending || (Array.isArray(w) ? w : []);
+    const custList = c.customers || (Array.isArray(c) ? c : []);
+
+    $('statsRow').style.display = 'grid';
+    $('totalWorkersCount').textContent = pendingList.length;
+    $('totalSeekersCount').textContent = custList.length;
+
+    $('workers').innerHTML = pendingList.length 
+      ? pendingList.map(workerRow).join('') 
+      : `<div class="empty-state-3d"><span class="big-icon">✅</span><h3 style="color:#fff;">Koi Worker Record Nahi Hai</h3></div>`;
+
+    $('seekers').innerHTML = custList.length 
+      ? custList.map(customerRow).join('') 
+      : `<div class="empty-state-3d"><span class="big-icon">👥</span><h3 style="color:#fff;">Abhi Koi Customer Nahi Hai</h3></div>`;
+    
+    toast('Admin access granted! ✅', 'ok');
+  } catch (e) {
+    sessionStorage.removeItem('dk_admin_pwd');
+    sessionStorage.removeItem('dk_admin_token');
+    $('logoutBtn').style.display = 'none';
+    $('login').textContent = '🔓 Login';
+    msg.className = 'msg-3d err';
+    msg.style.display = 'flex';
+    msg.textContent = e.message || 'Galat Admin Password.';
+    $('workers').innerHTML = `<div class="empty-state-3d"><span class="big-icon">🔐</span><h3 style="color:#fff;">Admin Login Required</h3><p style="font-size:13px; margin-top:4px;">Sahi password daal kar login karein.</p></div>`;
+    $('seekers').innerHTML = '';
+    $('statsRow').style.display = 'none';
+  }
+}
+
+function logoutAdmin() {
+  sessionStorage.removeItem('dk_admin_pwd');
+  sessionStorage.removeItem('dk_admin_token');
+  pwd = '';
+  adminToken = '';
+  $('password').value = '';
+  $('logoutBtn').style.display = 'none';
+  $('login').textContent = '🔓 Login';
+  $('statsRow').style.display = 'none';
+  $('workers').innerHTML = `<div class="empty-state-3d"><span class="big-icon">🔐</span><h3 style="color:#fff;">Logged Out</h3><p style="font-size:13px; margin-top:4px;">Dobara login karne ke liye password daalein.</p></div>`;
+  $('seekers').innerHTML = '';
+  toast('Admin session logged out.', 'info');
+}
+
+async function verify(id, action) {
+  try {
+    const d = await api(`/admin/verify-worker/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action })
+    });
+    toast(d.message, 'ok');
+    load();
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
+async function showCert(id) {
+  try {
+    const r = await fetch(`/admin/certificate/${id}`, { headers: { 'x-admin-password': pwd } });
+    if (!r.ok) { toast('Certificate open nahi ho paya.', 'err'); return; }
+    const b = await r.blob();
+    const u = URL.createObjectURL(b);
+    window.open(u, '_blank');
+    setTimeout(() => URL.revokeObjectURL(u), 60000);
+  } catch (e) {
+    toast('Certificate fetch error.', 'err');
+  }
+}
+
+$('login').onclick = load;
+$('logoutBtn').onclick = logoutAdmin;
+$('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') load(); });
+
+// Auto-login if session exists
+const savedPwd = sessionStorage.getItem('dk_admin_pwd');
+if (savedPwd) {
+  $('password').value = savedPwd;
+  load();
+}
+</script>
+</body>
+</html>
+

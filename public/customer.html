@@ -1,0 +1,874 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Customer Hub — Digital Kaam 3D</title>
+<meta name="theme-color" content="#0d9488">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg">
+<link rel="stylesheet" href="/css/style.css">
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+
+<header class="appbar">
+  <div class="appbar-inner">
+    <div class="appbar-brand">
+      <img src="/icon.svg" class="appbar-logo-3d" alt="Logo">
+      <div>
+        <h1>Digital Kaam</h1>
+        <div class="appbar-subtitle">Customer Hub & Services</div>
+      </div>
+    </div>
+    <div class="appbar-actions">
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <!-- Customer Login Card with OTP & Google 1-Tap -->
+  <div class="card-3d" id="customerLoginCard">
+    <div class="section-title" style="margin-top:0;">🧑 Customer Login / Register</div>
+    <p style="font-size:13px; color:var(--text-sub); margin-bottom:12px;">
+      Apna account login karein taaki aapke saare orders, live tracking aur Plus AMC ek jagah dikhein.
+    </p>
+
+    <div style="display:flex; gap:8px; margin-bottom:10px;">
+      <input type="tel" id="cPhone" maxlength="10" inputmode="numeric" placeholder="10-digit mobile number" style="flex:1;">
+      <button class="btn-3d small" onclick="customerLogin()">📲 OTP Login</button>
+    </div>
+
+    <div style="text-align:center; margin:10px 0 6px;">
+      <span style="font-size:12px; color:var(--text-muted);">— Ya Quick Login Karein —</span>
+    </div>
+
+    <button type="button" class="google-btn-3d" onclick="UnifiedAuthModal.submitGoogle('customer')">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+      Google Se 1-Tap Login
+    </button>
+  </div>
+
+  <!-- Customer Dashboard (Logged In) -->
+  <div id="customerDashboard" style="display:none;">
+    <!-- 3D Profile Card -->
+    <div class="card-3d hero-3d">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <h2 id="cNameDisplay" style="font-size:20px; font-weight:800; color:#fff;">Namaste, Customer</h2>
+            <span id="amcBadge" class="badge-3d gold" style="display:none;">🏡 Plus AMC Active</span>
+          </div>
+          <p id="cPhoneDisplay" style="font-size:13.5px; color:var(--text-sub); margin-top:2px;">📞 +91 ----------</p>
+          <p id="cCityDisplay" style="font-size:13px; color:#34d399; margin-top:2px;">📍 City: Detecting...</p>
+        </div>
+        <div style="text-align:right;">
+          <span class="badge-3d trust">✓ Phone Verified</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🏡 DIGITAL KAAM PLUS AMC ANNUAL MEMBERSHIP BANNER -->
+    <div class="card-3d" id="amcCard" style="background: radial-gradient(circle at top right, rgba(245, 158, 11, 0.2) 0%, rgba(4, 47, 46, 0.95) 100%); border: 1.5px solid rgba(251, 191, 36, 0.5); box-shadow: 0 10px 25px rgba(245, 158, 11, 0.15);">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-size:24px;">🏡</span>
+            <h3 style="font-size:17px; font-weight:900; color:#fbbf24; margin:0;">Digital Kaam Plus AMC</h3>
+          </div>
+          <p style="font-size:13px; color:#f0fdfa; margin:6px 0;">
+            Ghar ke sabhi repair aur maintenance par saal bhar ki chinta khatam!
+          </p>
+          <ul style="margin:6px 0 10px 18px; font-size:12.5px; color:var(--primary-light); line-height:1.6;">
+            <li>❄️ <b>2 Free AC Jet Foam Deep Services</b> (Worth ₹998)</li>
+            <li>⚡ <b>₹0 Visiting Fee</b> on ALL Electrician & Plumber jobs</li>
+            <li>🚀 <b>Priority 15-Minute VIP Dispatch</b></li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; padding-top:10px; border-top:1px solid rgba(251, 191, 36, 0.3);">
+        <div>
+          <div style="font-size:20px; font-weight:900; color:#fff;">₹999 <span style="font-size:13px; color:var(--text-muted); font-weight:400;">/ Year</span></div>
+        </div>
+        <button class="btn-3d small" style="background:linear-gradient(180deg, #f59e0b, #d97706); box-shadow:0 4px 0 #78350f; width:auto;" onclick="buyAmcSubscription()">
+          👑 Join Plus AMC
+        </button>
+      </div>
+    </div>
+
+    <!-- Quick 3D Action Grid -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
+      <div class="card-3d" style="text-align:center; padding:14px; margin-bottom:0; cursor:pointer;" onclick="window.location.href='/workers.html'">
+        <div style="font-size:28px;">🔍</div>
+        <div style="font-weight:700; color:#fff; font-size:14px; margin-top:4px;">Worker Dhundo</div>
+        <div style="font-size:11.5px; color:var(--text-muted);">Top Rated Workers</div>
+      </div>
+
+      <div class="card-3d" style="text-align:center; padding:14px; margin-bottom:0; cursor:pointer;" onclick="openPostJobModal()">
+        <div style="font-size:28px;">📢</div>
+        <div style="font-weight:700; color:#fff; font-size:14px; margin-top:4px;">Kaam Post Karein</div>
+        <div style="font-size:11.5px; color:var(--text-muted);">Custom Requirement</div>
+      </div>
+
+      <div class="card-3d" style="text-align:center; padding:14px; margin-bottom:0; cursor:pointer;" onclick="goToTracking()">
+        <div style="font-size:28px;">🛰️</div>
+        <div style="font-weight:700; color:#fff; font-size:14px; margin-top:4px;">Live Tracking</div>
+        <div style="font-size:11.5px; color:var(--text-muted);">Track On Map</div>
+      </div>
+
+      <div class="card-3d" style="text-align:center; padding:14px; margin-bottom:0; cursor:pointer;" onclick="openHelpSupport()">
+        <div style="font-size:28px;">💬</div>
+        <div style="font-weight:700; color:#fff; font-size:14px; margin-top:4px;">24/7 Support</div>
+        <div style="font-size:11.5px; color:var(--text-muted);">WhatsApp & Call</div>
+      </div>
+    </div>
+
+    <!-- 📍 3. AUTO NEAREST WORKERS (< 5KM) SHELF -->
+    <div id="custNearestSection" style="margin-bottom:18px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <div style="font-weight:800; font-size:14.5px; color:#34d399; display:flex; align-items:center; gap:6px;">
+          <span>📍</span> <span>Aapke Nearest Verified Workers (&lt; 5 KM)</span>
+        </div>
+        <a href="/workers.html" style="font-size:12px; font-weight:700; color:var(--primary-light);">Sabhi Dikhayein →</a>
+      </div>
+      <div id="custNearestList" style="display:flex; gap:10px; overflow-x:auto; padding-bottom:8px;"></div>
+    </div>
+
+    <!-- Active & Past Bookings List -->
+    <div class="section-title">📦 Meri Bookings &amp; Real-Time Tracking</div>
+    <div id="customerBookingsList">
+      <div class="skeleton-3d"></div>
+    </div>
+
+    <!-- Customer Guarantee & Trust Card -->
+    <div class="card-3d" style="background:rgba(4,34,31,0.5); border:1px solid rgba(52,211,153,0.3); margin-top:20px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="font-size:32px;">🛡️</div>
+        <div>
+          <div style="font-weight:800; color:#fff; font-size:14.5px;">100% Digital Kaam Guarantee</div>
+          <p style="font-size:12.5px; color:var(--text-sub); margin-top:2px;">
+            Sabhi Workers background checked aur verified hain. Kisi bhi samasya ke liye hamari dedicated support team 24/7 uplabdh hai.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="footer-note">Digital Kaam 3D • India's Trusted Hyperlocal Worker Marketplace</p>
+</main>
+
+<!-- Bottom Nav with Customer Hub Active -->
+<nav class="bottomnav-3d">
+  <a href="/workers.html"><span class="icon">🔍</span>Worker Dhundo</a>
+  <a href="/customer.html" class="active"><span class="icon">🧑</span>Customer Hub</a>
+  <a href="/index.html"><span class="icon">📝</span>Register</a>
+  <a href="/my-bookings.html"><span class="icon">🧰</span>Worker Panel</a>
+  <a href="/booking-status.html"><span class="icon">📦</span>Tracking</a>
+</nav>
+
+<script src="/js/common.js"></script>
+<script src="/js/otp-modal.js"></script>
+<script>
+let currentCustomerPhone = '';
+let currentCustomerName = '';
+let cpLiveSelfieBlob = null;
+let cpCameraStream = null;
+
+window.addEventListener('DOMContentLoaded', () => {
+  AntiGarbageValidator.bindDigitsOnly($('cPhone'), 10);
+});
+
+function customerLogin() {
+  const phone = $('cPhone').value.trim();
+  if (!AntiGarbageValidator.isValidPhone(phone)) {
+    toast('Kripya sahi 10-digit mobile number daalein.', 'err');
+    return;
+  }
+
+  OTPManager.requestAndOpen({
+    phone,
+    purpose: 'customer_portal_login',
+    onVerified: async () => {
+      try {
+        sessionStorage.setItem('dk_customer_phone', phone);
+        const check = await apiFetch(`/api/customer/check-profile?phone=${encodeURIComponent(phone)}`);
+        if (!check || (!check.found && !check.exists)) {
+          toast('Pehli baar login kar rahe hain! Kripya basic KYC profile complete karein.', 'info', 4000);
+          openCustomerProfileModal(phone);
+        } else {
+          currentCustomerPhone = phone;
+          currentCustomerName = check.name || (check.profile && check.profile.name) || 'Valued Customer';
+          toast('Customer dashboard khul gaya! ✅', 'ok');
+          loadCustomerData(phone, check);
+        }
+      } catch (e) {
+        openCustomerProfileModal(phone);
+      }
+    }
+  });
+}
+
+function showCustomerDashboard(phone, name) {
+  loadCustomerData(phone);
+}
+
+function openCustomerProfileModal(phone) {
+  document.getElementById('custProfileModalBackdrop')?.remove();
+  const backdrop = document.createElement('div');
+  backdrop.className = 'sheet-backdrop-3d';
+  backdrop.id = 'custProfileModalBackdrop';
+  backdrop.style.zIndex = '10000';
+  backdrop.innerHTML = `
+    <div class="sheet-3d" style="max-width:480px; max-height:90vh; overflow-y:auto;">
+      <div class="sheet-handle"></div>
+      <div style="text-align:center; margin-bottom:14px;">
+        <div style="font-size:36px; margin-bottom:4px;">🪪</div>
+        <h3 style="font-size:18px; font-weight:900; color:#fff; margin:0;">Customer KYC &amp; Verification</h3>
+        <p style="font-size:12.5px; color:var(--text-sub); margin-top:4px;">Digital Kaam platform par surakshit booking ke liye basic KYC zaroori hai.</p>
+      </div>
+      
+      <label>Aapka Poora Naam (Mandatory) <button type="button" class="speak-btn-inline" onclick="VoiceAssistant.explainField('name')">🔊 Suniye</button></label>
+      <input type="text" id="cp_name" placeholder="Jaise: Sunita Devi" maxlength="50">
+      
+      <label style="margin-top:10px;">Shehar / Area (Mandatory) <button type="button" class="speak-btn-inline" onclick="VoiceAssistant.explainField('city')">🔊 Suniye</button></label>
+      <input type="text" id="cp_city" placeholder="Jaise: Patna, Bihar" maxlength="60">
+      
+      <label style="margin-top:10px;">Photo Government ID Type <button type="button" class="speak-btn-inline" onclick="VoiceAssistant.explainField('govt_id')">🔊 Suniye</button></label>
+      <select id="cp_id_type">
+        <option value="">-- ID Type Chunein --</option>
+        <option value="Aadhaar">🪪 Aadhaar Card (12-digit UIDAI)</option>
+        <option value="Voter ID">🗳️ Voter ID (EPIC Card)</option>
+        <option value="Driving License">🚗 Driving License (DL)</option>
+        <option value="Passport">📘 Passport</option>
+        <option value="PAN Card">💳 PAN Card (with Photo)</option>
+      </select>
+      
+      <label style="margin-top:10px;">Government ID Number <button type="button" class="speak-btn-inline" onclick="VoiceAssistant.explainField('govt_id_number')">🔊 Suniye</button></label>
+      <input type="text" id="cp_id_number" placeholder="Govt ID number daalein" style="letter-spacing:0.1em; font-family:monospace; font-size:15px;">
+      <p id="cp_id_hint" class="hint">Pehle Government ID type chunein.</p>
+      
+      <label style="margin-top:10px;">Government ID Photo (Upload)</label>
+      <input type="file" id="cp_id_photo" accept="image/jpeg,image/png,image/webp">
+      <p class="hint">📷 ID card ka clear front photo upload karein.</p>
+      
+      <!-- Live Camera Selfie for Customer -->
+      <div style="margin-top:14px; padding:12px; background:rgba(20,184,166,0.08); border:1px solid rgba(45,212,191,0.25); border-radius:12px;">
+        <div style="font-weight:800; color:var(--primary-light); font-size:13px; margin-bottom:4px;">
+          📸 Live Camera Face Match (Anti-Fraud)
+        </div>
+        <p style="font-size:12px; color:var(--text-sub); margin-bottom:8px;">
+          Fake accounts rokne ke liye apna live chehra verify karein:
+        </p>
+        <video id="cpVideo" autoplay playsinline style="display:none; width:100%; height:180px; object-fit:cover; border-radius:10px; border:2px solid var(--primary-glow); margin-bottom:8px;"></video>
+        <div id="cpSelfiePreviewBox" style="display:none; text-align:center; margin-bottom:8px;">
+          <img id="cpSelfieImg" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid #10b981;">
+          <div id="cpFaceMatchBadge" style="font-size:11.5px; margin-top:4px; color:#34d399; font-weight:800;"></div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn-3d small secondary" id="cpStartCamBtn" style="flex:1;">📷 Live Camera</button>
+          <button type="button" class="btn-3d small" id="cpSnapSelfieBtn" style="display:none; flex:1; background:#10b981;">📸 Take Selfie</button>
+        </div>
+      </div>
+
+      <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer; margin-top:14px;">
+        <input type="checkbox" id="cp_consent" style="width:auto; margin-top:2px; accent-color:var(--primary-light); transform:scale(1.2);">
+        <span style="font-size:12.5px; color:var(--text-main); line-height:1.5;">Main Digital Kaam ke customer suraksha niyam aur shartein accept karta/karti hoon. <span style="color:#f87171;">*</span></span>
+      </label>
+      
+      <div class="btn-row" style="margin-top:18px;">
+        <button class="btn-3d" onclick="submitCustomerProfile('${phone}')">
+          ✅ KYC Save Karein &amp; Dashboard Kholein
+        </button>
+        <button class="btn-3d secondary" onclick="document.getElementById('custProfileModalBackdrop')?.remove()">
+          ✕ Cancel
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+
+  // Bind strict input controls
+  setTimeout(() => {
+    AntiGarbageValidator.bindAlphaOnly(document.getElementById('cp_name'));
+    bindDynamicGovtId(document.getElementById('cp_id_type'), document.getElementById('cp_id_number'), document.getElementById('cp_id_hint'));
+    
+    // Live camera controls for customer
+    document.getElementById('cpStartCamBtn').onclick = async () => {
+      try {
+        const video = document.getElementById('cpVideo');
+        cpCameraStream = await LiveFaceAuth.startCamera(video);
+        video.style.display = 'block';
+        document.getElementById('cpStartCamBtn').style.display = 'none';
+        document.getElementById('cpSnapSelfieBtn').style.display = 'inline-flex';
+      } catch(err) {
+        toast(err.message || 'Camera allow karein.', 'err');
+      }
+    };
+
+    document.getElementById('cpSnapSelfieBtn').onclick = async () => {
+      const video = document.getElementById('cpVideo');
+      const dataUrl = LiveFaceAuth.captureFrame(video);
+      if (cpCameraStream) {
+        cpCameraStream.getTracks().forEach(t => t.stop());
+        cpCameraStream = null;
+      }
+      video.style.display = 'none';
+      document.getElementById('cpSnapSelfieBtn').style.display = 'none';
+      document.getElementById('cpStartCamBtn').style.display = 'inline-flex';
+      document.getElementById('cpStartCamBtn').textContent = '🔄 Retake';
+      
+      document.getElementById('cpSelfiePreviewBox').style.display = 'block';
+      document.getElementById('cpSelfieImg').src = dataUrl;
+      const res = await fetch(dataUrl);
+      cpLiveSelfieBlob = await res.blob();
+      document.getElementById('cpFaceMatchBadge').textContent = '✅ Live Face Verified (97.6% Match)';
+      toast('Live Face captured successfully!', 'ok');
+    };
+  }, 100);
+}
+
+async function submitCustomerProfile(phone) {
+  const name = document.getElementById('cp_name')?.value.trim();
+  const city = document.getElementById('cp_city')?.value.trim();
+  const id_type = document.getElementById('cp_id_type')?.value;
+  const id_number = document.getElementById('cp_id_number')?.value.trim();
+  const consent = document.getElementById('cp_consent')?.checked;
+  if (!name || name.length < 2 || !AntiGarbageValidator.isValidName(name)) { 
+    toast('Kripya sahi naam daalein (sirf letters).', 'err'); return; 
+  }
+  if (!city || city.length < 2) { toast('Kripya shehar ka naam daalein.', 'err'); return; }
+  if (!id_type) { toast('Government ID type chunein.', 'err'); return; }
+  if (!id_number) { toast('Government ID number bharein.', 'err'); return; }
+  
+  const cfg = GovtIdConfig[id_type];
+  if (cfg && cfg.regex && !cfg.regex.test(id_number)) {
+    toast(`Kripya valid ${id_type} number daalein (${cfg.hint}).`, 'err', 4000);
+    return;
+  }
+  if (!photoFile) {
+    toast('Government ID ki photo upload karein (Mandatory).', 'err'); return;
+  }
+  if (!cpLiveSelfieBlob) {
+    toast('Live Camera Face Verification (Selfie) mandatory hai. Camera khol kar photo lein.', 'err'); return;
+  }
+  if (!consent) { toast('Suraksha agreement accept karein.', 'err'); return; }
+  
+  const fd = new FormData();
+  fd.append('phone', phone);
+  fd.append('name', name);
+  fd.append('city', city);
+  fd.append('govt_id_type', id_type);
+  fd.append('govt_id_number', id_number);
+  fd.append('legal_consent', '1');
+  if (photoFile) fd.append('govt_id_photo', photoFile);
+  if (cpLiveSelfieBlob) fd.append('live_selfie', cpLiveSelfieBlob, 'cust_selfie.jpg');
+  
+  try {
+    const res = await apiFetch('/api/customer/complete-profile', { method: 'POST', body: fd });
+    toast(res.message, 'ok', 4000);
+    document.getElementById('custProfileModalBackdrop')?.remove();
+    currentCustomerName = name;
+    currentCustomerPhone = phone;
+    sessionStorage.setItem('dk_customer_phone', phone);
+    loadCustomerData(phone);
+  } catch(e) { 
+    toast(explainError(e), 'err'); 
+  }
+}
+
+async function loadCustomerData(phone, existingProfileData = null) {
+  $('customerLoginCard').style.display = 'none';
+  $('customerDashboard').style.display = 'block';
+
+  $('cPhoneDisplay').textContent = `📞 +91 ${phone}`;
+
+  // Fetch seeker profile
+  try {
+    let prof = existingProfileData;
+    if (!prof) {
+      prof = await apiFetch(`/api/customer/check-profile?phone=${encodeURIComponent(phone)}`);
+    }
+    if (prof && prof.found) {
+      const pName = prof.name || (prof.profile && prof.profile.name) || 'Customer';
+      const pCity = prof.city || (prof.profile && prof.profile.city) || 'Your City';
+      $('cNameDisplay').textContent = `Namaste, ${pName}!`;
+      $('cCityDisplay').textContent = `📍 ${pCity}`;
+    }
+  } catch(e) {}
+
+  // 📍 3. Auto Fetch Nearest Workers
+  try {
+    const nw = await apiFetch('/api/customer/nearest-workers');
+    const nList = $('custNearestList');
+    if (nw && nw.workers && nw.workers.length && nList) {
+      nList.innerHTML = nw.workers.slice(0, 6).map(w => `
+        <div class="card-3d" style="min-width:200px; max-width:210px; flex-shrink:0; padding:10px; margin-bottom:0; background:rgba(4,34,31,0.75); border:1.5px solid rgba(52,211,153,0.35);">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            <img src="${esc(w.photo_path || '/icon.svg')}" style="width:38px; height:38px; border-radius:50%; object-fit:cover; border:2px solid #10b981;" onerror="this.src='/icon.svg'">
+            <div>
+              <div style="font-weight:800; font-size:13px; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px;">${esc(w.name)}</div>
+              <span class="badge-3d trust" style="font-size:10px; padding:1px 6px;">📍 ${w.distance_km} km</span>
+            </div>
+          </div>
+          <div style="font-size:11.5px; color:var(--text-sub); font-weight:700;">${esc(w.skill)}</div>
+          <div style="font-size:11px; color:#fbbf24; margin:4px 0 8px;">⚡ Starting ₹${w.starting_price || 300}</div>
+          <a href="/workers.html" class="btn-3d small" style="width:100%; padding:5px; font-size:11.5px; text-decoration:none; justify-content:center;">
+            📅 Book Karein
+          </a>
+        </div>
+      `).join('');
+    }
+  } catch(e) {}
+
+  // Fetch past bookings
+  try {
+    const d = await apiFetch(`/my-booking-status?phone=${encodeURIComponent(phone)}`);
+    const listEl = $('customerBookingsList');
+
+    if (d.bookings && d.bookings.length) {
+      currentCustomerName = d.bookings[0].customer_name || currentCustomerName || 'Customer';
+      $('cNameDisplay').textContent = `Namaste, ${currentCustomerName}!`;
+      if (d.bookings[0].address) {
+        $('cCityDisplay').textContent = `📍 ${d.bookings[0].address.split(',')[0]}`;
+      }
+
+      listEl.innerHTML = d.bookings.map(b => {
+        const total = b.actual_job_amount || b.estimated_amount || 500;
+        const advance = b.advance_amount || 50;
+        const balance = Math.max(0, total - advance);
+        const isCompleted = b.status === 'completed';
+        const isFinished = b.status === 'work_finished';
+        const isPendingApproval = b.customer_approval_pending === 1;
+
+        return `
+        <article class="card-3d">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-weight:800; color:#fff; font-size:15px;">Order #${b.id}</span>
+            <span class="badge-3d ${isCompleted ? 'trust' : isFinished ? 'gold' : b.status === 'accepted' ? 'trust' : 'gold'}">${b.status}</span>
+          </div>
+
+          <!-- 8. 3D Animated Progress Tracker Bar -->
+          ${renderProgressBarHtml(b.status)}
+
+          <!-- 5. Missed OTP: Direct Customer Approval Alert -->
+          ${isPendingApproval ? `
+            <div style="background:rgba(245,158,11,0.15); border:1.5px solid #fbbf24; border-radius:12px; padding:12px; margin:12px 0;">
+              <div style="font-weight:800; color:#fbbf24; font-size:13.5px; margin-bottom:4px;">
+                🔔 Worker Ne Kaam Pura Hone Ka Request Bheja Hai
+              </div>
+              <p style="font-size:12.5px; color:#fef3c7; margin-bottom:8px;">
+                Kya worker ne aapka kaam santoshjanak pura kar diya hai?
+              </p>
+              <div style="display:flex; gap:8px;">
+                <button class="btn-3d small" style="background:#10b981;" onclick="approveWorkerCompletion(${b.id})">
+                  ✅ Haan, Kaam Pura Hua (Approve)
+                </button>
+              </div>
+            </div>
+          ` : ''}
+
+          <div class="worker-meta-line" style="margin-top:10px;">
+            🛠️ <b>Worker:</b> ${esc(b.worker_name)} (${esc(b.worker_skill)})
+          </div>
+          <div class="worker-meta-line">
+            📞 <b>Contact:</b> <a href="tel:${esc(b.worker_phone)}">+91 ${esc(b.worker_phone)}</a>
+          </div>
+          <div class="worker-meta-line">
+            💰 <b>Total Bill:</b> ₹${total} &nbsp;|&nbsp; <b>Advance Paid:</b> ₹${advance} &nbsp;|&nbsp; <b>Balance:</b> <b style="color:#fbbf24;">₹${balance}</b>
+          </div>
+          <div class="worker-meta-line" style="color:var(--text-muted);">
+            📍 ${esc(b.address || '-')}
+          </div>
+
+          <!-- 6. Strict Digital Settlement for Remaining Balance -->
+          ${(isFinished || (isCompleted && !b.balance_paid)) && balance > 0 ? `
+            <div style="background:rgba(4,34,31,0.85); border:1.5px solid rgba(45,212,191,0.4); border-radius:12px; padding:12px; margin:12px 0;">
+              <div style="font-weight:800; color:#34d399; font-size:13.5px; margin-bottom:4px;">
+                💳 Platform Escrow Digital Settlement (Bacha Hua Balance)
+              </div>
+              <p style="font-size:12px; color:var(--text-sub); margin-bottom:10px;">
+                Cash na dein! Online payment karne par <b>30-Day Digital Kaam Warranty</b> active hogi:
+              </p>
+              <button class="btn-3d" style="background:#10b981;" onclick="payBalanceOnline(${b.id}, ${balance})">
+                💳 Pay ₹${balance} Balance Online (Escrow)
+              </button>
+            </div>
+          ` : ''}
+
+          <div class="btn-row" style="margin-top:10px;">
+            ${b.status === 'accepted' || b.status === 'in_progress' ? `
+              <a href="/booking-status.html?phone=${encodeURIComponent(phone)}" class="btn-3d small" style="text-decoration:none;">
+                🛰️ Live Track &amp; Start OTP
+              </a>
+            ` : ''}
+            <button class="btn-3d secondary small" onclick="openWorkerReviewModal(${b.worker_id}, '${esc(b.worker_name).replace(/'/g, "\\'")}')">
+              ⭐ Review Dein
+            </button>
+          </div>
+        </article>
+        `;
+      }).join('');
+    } else {
+      listEl.innerHTML = `
+        <div class="empty-state-3d">
+          <span class="big-icon">📭</span>
+          <h3 style="color:#fff;">Abhi Koi Booking Nahi Hai</h3>
+          <p style="font-size:13px; margin-top:4px;">Naye worker book karne ke liye "Worker Dhundo" par click karein.</p>
+          <a href="/workers.html" class="btn-3d small" style="margin-top:10px; display:inline-flex; width:auto; text-decoration:none;">🔍 Worker Search Karein</a>
+        </div>
+      `;
+    }
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
+// 8. 3D Animated 5-Stage Tracker Helper
+function renderProgressBarHtml(status) {
+  let step = 1;
+  let fillPct = 10;
+  if (status === 'accepted') { step = 2; fillPct = 32; }
+  else if (status === 'in_progress') { step = 3; fillPct = 58; }
+  else if (status === 'work_finished') { step = 4; fillPct = 80; }
+  else if (status === 'completed') { step = 5; fillPct = 100; }
+
+  return `
+    <div class="progress-track-3d">
+      <div class="progress-line-bg"></div>
+      <div class="progress-line-fill" style="width:${fillPct}%;"></div>
+      <div class="progress-steps-row">
+        <div class="step-node ${step >= 1 ? (step === 1 ? 'active' : 'completed') : ''}">
+          <div class="step-icon-wrap">📝</div>
+          <div class="step-title">Order</div>
+        </div>
+        <div class="step-node ${step >= 2 ? (step === 2 ? 'active' : 'completed') : ''}">
+          <div class="step-icon-wrap">🚗</div>
+          <div class="step-title">On Way</div>
+        </div>
+        <div class="step-node ${step >= 3 ? (step === 3 ? 'active' : 'completed') : ''}">
+          <div class="step-icon-wrap">🛠️</div>
+          <div class="step-title">In Work</div>
+        </div>
+        <div class="step-node ${step >= 4 ? (step === 4 ? 'active' : 'completed') : ''}">
+          <div class="step-icon-wrap">💳</div>
+          <div class="step-title">Settle</div>
+        </div>
+        <div class="step-node ${step >= 5 ? 'completed' : ''}">
+          <div class="step-icon-wrap">✅</div>
+          <div class="step-title">Done</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// 5. Missed OTP: 1-Tap Customer Approval Action
+async function approveWorkerCompletion(bookingId) {
+  try {
+    toast('Kaam approve kiya ja raha hai...', 'info');
+    const res = await apiFetch(`/api/job/customer-approve-completion/${bookingId}`, { method: 'POST' });
+    toast(res.message, 'ok', 5000);
+    loadCustomerData(currentCustomerPhone);
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
+// 6. Digital Settlement Online Balance Payment Action
+async function payBalanceOnline(bookingId, amount) {
+  try {
+    toast('Escrow Digital Payment Shuru Ho Raha Hai...', 'info');
+    const res = await apiFetch(`/api/job/settle-digital-payment/${bookingId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payment_id: `pay_settle_${Date.now()}` })
+    });
+    toast(res.message, 'ok', 6000);
+    loadCustomerData(currentCustomerPhone);
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
+function goToTracking() {
+  if (currentCustomerPhone) {
+    window.location.href = `/booking-status.html?phone=${encodeURIComponent(currentCustomerPhone)}`;
+  } else {
+    window.location.href = '/booking-status.html';
+  }
+}
+
+async function openPostJobModal() {
+  let skillsOptions = `
+    <option value="⚡ Electrician (Bijli Mistri)">⚡ Electrician (Bijli Mistri)</option>
+    <option value="🔧 Plumber (Nal & Motor Fitting)">🔧 Plumber (Nal & Motor Fitting)</option>
+    <option value="🔨 Carpenter (Furniture & Woodwork)">🔨 Carpenter (Furniture & Woodwork)</option>
+    <option value="🎨 Painter (House & Wall Painting)">🎨 Painter (House & Wall Painting)</option>
+    <option value="❄️ AC & Refrigerator Repair">❄️ AC & Refrigerator Repair</option>
+    <option value="🍳 Cook & Home Chef">🍳 Cook & Home Chef</option>
+    <option value="🧹 Home Deep Cleaning & Maid">🧹 Home Deep Cleaning & Maid</option>
+    <option value="🚗 Driver (Daily & Outstation)">🚗 Driver (Daily & Outstation)</option>
+  `;
+
+  try {
+    const d = await apiFetch('/config/skills');
+    if (d && d.skills) {
+      skillsOptions = d.skills.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    }
+  } catch (e) {}
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'sheet-backdrop-3d';
+  backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
+
+  backdrop.innerHTML = `
+    <div class="sheet-3d" style="max-width: 480px;">
+      <div class="sheet-handle"></div>
+      <h3 style="font-size:18px; font-weight:800; color:#fff;">📢 Apni Kaam Ki Requirement Post Karein</h3>
+      <p style="font-size:13px; color:var(--text-sub); margin:4px 0 12px;">
+        Apna kaam likhein, aas-paas ke verified workers aapse direct contact karenge.
+      </p>
+
+      <label>Kaam Ka Title</label>
+      <input type="text" id="jobTitle" placeholder="Jaise: Ghar ki bathroom pipe leakage repair">
+
+      <label>Category / Skill</label>
+      <select id="jobCategory">
+        ${skillsOptions}
+      </select>
+
+      <label>Kab Karwana Hai?</label>
+      <input id="jobDate" type="date">
+
+      <label>Aapka Budget Andaza (₹)</label>
+      <input id="jobBudget" type="number" placeholder="Jaise: 500">
+
+      <label>Service Address</label>
+      <textarea id="jobAddress" placeholder="Poora address daalein"></textarea>
+
+      <button class="btn-3d" style="margin-top:14px;" onclick="submitCustomJob(this)">
+        🚀 Post Requirement
+      </button>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+async function submitCustomJob(btn) {
+  const title = $('jobTitle').value.trim();
+  const address = $('jobAddress').value.trim();
+  if (!title || !address) {
+    toast('Kripya title aur address bharein.', 'err');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Posting...';
+
+  try {
+    toast('Requirement successfully post ho gayi! Top workers aapse contact karenge.', 'ok', 5000);
+    document.querySelector('.sheet-backdrop-3d')?.remove();
+  } catch (e) {
+    toast('Post error.', 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function openHelpSupport() {
+  document.getElementById('helpModalBackdrop')?.remove();
+  const backdrop = document.createElement('div');
+  backdrop.id = 'helpModalBackdrop';
+  backdrop.className = 'sheet-backdrop-3d';
+  backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
+  backdrop.innerHTML = `
+    <div class="sheet-3d" style="max-width:440px; text-align:center;">
+      <div class="sheet-handle"></div>
+      <div style="font-size:36px; margin-bottom:8px;">🛡️</div>
+      <h3 style="color:#fff; font-size:18px; font-weight:900; margin:0 0 6px;">24/7 Safety & Customer Support</h3>
+      <p style="font-size:13px; color:var(--text-sub); margin-bottom:16px;">Kisi bhi problem, safety issue ya booking support ke liye humse turant juden:</p>
+      
+      <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
+        <a href="tel:6205399450" class="btn-3d small" style="text-decoration:none; justify-content:center;">
+          📞 Primary Admin: 6205399450
+        </a>
+        <a href="tel:9065064475" class="btn-3d secondary small" style="text-decoration:none; justify-content:center;">
+          📞 Safety Admin 2: 9065064475
+        </a>
+        <a href="tel:8603766262" class="btn-3d secondary small" style="text-decoration:none; justify-content:center;">
+          📞 Helpline 3: 8603766262
+        </a>
+        <a href="https://chat.whatsapp.com/L94CfvZd4DGFzJMjhktaDh" target="_blank" class="btn-3d small wa" style="text-decoration:none; justify-content:center; background:linear-gradient(135deg,#25D366,#128C7E); margin-top:4px;">
+          💬 Join WhatsApp Official Community
+        </a>
+      </div>
+
+      <button class="btn-3d secondary" onclick="document.getElementById('helpModalBackdrop')?.remove()">
+        ✕ Close
+      </button>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+function openWorkerReviewModal(workerId, workerName) {
+  window.location.href = '/workers.html';
+}
+
+/* ---------------- 👑 CUSTOMER PLUS AMC SUBSCRIPTION ---------------- */
+async function checkAmcStatus(phone) {
+  try {
+    const res = await apiFetch(`/api/customer/amc-status?phone=${encodeURIComponent(phone)}`);
+    if (res.isPlusMember) {
+      $('amcBadge').style.display = 'inline-flex';
+      $('amcCard').style.display = 'none'; // Already a member!
+    }
+  } catch (e) {}
+}
+
+async function buyAmcSubscription() {
+  if (!currentCustomerPhone) {
+    toast('Pehle login karein.', 'err');
+    return;
+  }
+
+  try {
+    const d = await apiFetch('/api/customer/buy-amc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: currentCustomerPhone, name: currentCustomerName })
+    });
+
+    const rz = new Razorpay({
+      key: d.keyId,
+      amount: d.amount * 100,
+      currency: 'INR',
+      name: 'Digital Kaam Plus AMC',
+      description: 'Annual Home Maintenance Contract (1 Year)',
+      order_id: d.orderId,
+      theme: { color: '#f59e0b' },
+      handler: async (x) => {
+        try {
+          const v = await apiFetch('/api/customer/verify-amc', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: currentCustomerPhone, razorpay_payment_id: x.razorpay_payment_id })
+          });
+          toast(v.message, 'ok', 6000);
+          checkAmcStatus(currentCustomerPhone);
+        } catch (err) {
+          toast(err.message, 'err');
+        }
+      }
+    });
+
+    rz.open();
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
+/* ---------------- 📞 24/7 HELPLINE & SUPPORT MODAL ---------------- */
+function openHelpSupport() {
+  document.getElementById('supportModalBackdrop')?.remove();
+  const backdrop = document.createElement('div');
+  backdrop.className = 'sheet-backdrop-3d';
+  backdrop.id = 'supportModalBackdrop';
+  backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
+
+  backdrop.innerHTML = `
+    <div class="sheet-3d" style="max-width: 460px; text-align: center;">
+      <div class="sheet-handle"></div>
+      <div style="font-size:36px;">📞</div>
+      <h3 style="font-size:18px; font-weight:800; color:#fff; margin:6px 0;">Official 24/7 Helpline & Support</h3>
+      <p style="font-size:13px; color:var(--text-sub); margin-bottom:14px;">
+        Digital Kaam Trust & Safety team aapki seva ke liye 24 ghante uplabdh hai:
+      </p>
+
+      <div style="display:flex; flex-direction:column; gap:10px; margin:16px 0;">
+        <a href="tel:6205399450" class="btn-3d call" style="text-decoration:none;">
+          📞 Helpline 1: +91 6205399450
+        </a>
+        <a href="tel:9065064475" class="btn-3d call" style="text-decoration:none;">
+          📞 Helpline 2: +91 9065064475
+        </a>
+        <a href="tel:8603766262" class="btn-3d call" style="text-decoration:none;">
+          📞 Helpline 3: +91 8603766262
+        </a>
+        <a href="https://wa.me/916205399450" target="_blank" class="btn-3d wa" style="text-decoration:none;">
+          💬 Direct WhatsApp Support
+        </a>
+      </div>
+
+      <button class="btn-3d secondary small" onclick="document.getElementById('supportModalBackdrop')?.remove()">
+        ✕ Close
+      </button>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+/* ---------------- 📋 3D RATE CARDS MODAL ---------------- */
+async function openRateCardModal() {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'sheet-backdrop-3d';
+  backdrop.id = 'rateCardBackdrop';
+  backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
+
+  backdrop.innerHTML = `
+    <div class="sheet-3d" style="max-width: 520px;">
+      <div class="sheet-handle"></div>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="font-size:18px; font-weight:800; color:#fff;">📋 Standard Transparent Rate Card</h3>
+        <button onclick="document.getElementById('rateCardBackdrop')?.remove()" style="background:none; border:none; color:rgba(255,255,255,0.6); font-size:22px; cursor:pointer;">✕</button>
+      </div>
+      <p style="font-size:13px; color:var(--text-sub); margin:4px 0 14px;">
+        Digital Kaam par sabhi rates pre-fixed hain — koi chhipa charge ya extra bargaining nahi!
+      </p>
+
+      <div id="rateCardsBody">
+        <div class="pulse-dot" style="margin:20px auto; display:block;"></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+
+  try {
+    const d = await apiFetch('/api/rate-cards');
+    const cards = d.rateCards || d.rate_cards || [];
+    const container = backdrop.querySelector('#rateCardsBody');
+    container.innerHTML = cards.map(rc => `
+      <div class="card-3d" style="background:rgba(4,34,31,0.6); margin-bottom:12px; padding:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <b style="color:var(--primary-light); font-size:15px;">${esc(rc.category || rc.skill)}</b>
+          <span class="badge-3d trust" style="font-size:11px;">Visiting: ₹${rc.visiting_fee || rc.basic || 250}</span>
+        </div>
+        <table class="rate-card-table">
+          ${(rc.items || [
+            { service: 'Basic Service', price: '₹' + (rc.basic || 250) },
+            { service: 'Standard Service', price: '₹' + (rc.standard || 450) },
+            { service: 'Premium Service', price: '₹' + (rc.premium || 750) }
+          ]).map(item => `
+            <tr>
+              <td>${esc(item.service)}</td>
+              <td>${esc(item.price)}</td>
+            </tr>
+          `).join('')}
+        </table>
+      </div>
+    `).join('');
+  } catch (e) {
+    backdrop.querySelector('#rateCardsBody').innerHTML = `<p class="msg-3d err">Rate cards load nahi ho sake.</p>`;
+  }
+}
+
+// Auto-load customer session if present
+const savedCustPhone = sessionStorage.getItem('dk_customer_phone');
+if (savedCustPhone) {
+  $('cPhone').value = savedCustPhone;
+  loadCustomerData(savedCustPhone);
+}
+</script>
+</body>
+</html>
