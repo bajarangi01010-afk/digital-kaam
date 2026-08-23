@@ -279,6 +279,35 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- 24/7 ALWAYS-ON KEEP-ALIVE SYSTEM ---
+@app.get("/healthz")
+@app.get("/api/health/ping")
+def healthcheck_ping():
+    return {
+        "status": "healthy",
+        "timestamp": time.time(),
+        "uptime": "24/7 Always-On",
+        "service": "Digital Kaam 2.0"
+    }
+
+# Background self-ping keep-alive loop to prevent free cloud containers from sleeping
+import threading
+def keep_alive_daemon():
+    time.sleep(15)
+    import urllib.request
+    while True:
+        try:
+            render_url = os.getenv("RENDER_EXTERNAL_URL") or os.getenv("KEEP_ALIVE_URL")
+            target_url = f"{render_url.rstrip('/')}/healthz" if render_url else f"http://127.0.0.1:{PORT}/healthz"
+            req = urllib.request.Request(target_url, headers={"User-Agent": "DigitalKaamKeepAlive/1.0"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                pass
+        except Exception:
+            pass
+        time.sleep(600) # Ping every 10 minutes to stay 100% warm 24/7
+
+threading.Thread(target=keep_alive_daemon, daemon=True).start()
+
 # In-memory Rate Limiting Tracker
 ip_rate_limits = {}
 
