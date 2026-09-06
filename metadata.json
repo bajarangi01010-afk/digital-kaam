@@ -1,0 +1,6 @@
+{
+  "name": "Digital Kaam",
+  "description": "India's trusted two-sided local services marketplace with Dual-Trust verification, OTP authorization, and worker Skill Passport.",
+  "requestFramePermissions": ["camera", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

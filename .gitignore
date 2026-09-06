@@ -1,0 +1,38 @@
+# Node dependencies & build
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Python
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Flutter & Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub/
+.pub-cache/
+**/build/
+**/ephemeral/
+*.iml
+.idea/
+
+# General / OS
+.DS_Store
+Thumbs.db
+*.log
+coverage/
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
