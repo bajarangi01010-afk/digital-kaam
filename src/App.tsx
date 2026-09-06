@@ -329,7 +329,7 @@ export default function App() {
     );
   };
 
-  // Optional Landing Page preview trigger
+  // 1. Initial Screen: Animated Logo Landing Page with "Digital Kaam" and "Kaam Aasan"
   if (showLandingPreview) {
     return (
       <Suspense fallback={<LazyLoadingFallback message={lang === 'hi' ? 'लैंडिंग पेज लोड हो रहा है...' : 'Loading Landing Page...'} />}>
@@ -337,29 +337,31 @@ export default function App() {
           lang={lang}
           onToggleLang={handleToggleLang}
           onSelectRole={(role) => {
+            sound.playClick();
             setShowLandingPreview(false);
-            if (role === 'WORKER') {
-              setActiveSection('WORKER_PORTAL');
-            } else {
-              setActiveSection('CUSTOMER_PORTAL');
-            }
+            setRegistrationMode(role);
           }}
         />
       </Suspense>
     );
   }
 
-  // Optional Registration flow preview
+  // 2. Worker Mandatory Aadhaar, OTP, GPS, Live Face Match & Skills Registration Flow
   if (registrationMode === 'WORKER') {
     return (
       <Suspense fallback={<LazyLoadingFallback message={lang === 'hi' ? 'कारीगर पंजीकरण लोड हो रहा है...' : 'Loading Worker Onboarding...'} />}>
         <WorkerRegistrationFlow
           lang={lang}
-          onBackToLanding={() => setRegistrationMode(null)}
+          onBackToLanding={() => {
+            sound.playClick();
+            setRegistrationMode(null);
+            setShowLandingPreview(true);
+          }}
           onCompleteWorkerRegistration={(newWorker) => {
             setWorkers((prev) => [newWorker, ...prev]);
             setActiveWorker(newWorker);
             setRegistrationMode(null);
+            setShowLandingPreview(false);
             setActiveSection('WORKER_PORTAL');
           }}
         />
@@ -367,15 +369,21 @@ export default function App() {
     );
   }
 
+  // 3. Customer Mandatory Aadhaar, OTP, GPS & Live Face Match Registration Flow
   if (registrationMode === 'CUSTOMER') {
     return (
       <Suspense fallback={<LazyLoadingFallback message={lang === 'hi' ? 'ग्राहक पंजीकरण लोड हो रहा है...' : 'Loading Customer Onboarding...'} />}>
         <CustomerRegistrationFlow
           lang={lang}
-          onBackToLanding={() => setRegistrationMode(null)}
+          onBackToLanding={() => {
+            sound.playClick();
+            setRegistrationMode(null);
+            setShowLandingPreview(true);
+          }}
           onCompleteCustomerRegistration={(newCustomer) => {
             setCustomer(newCustomer);
             setRegistrationMode(null);
+            setShowLandingPreview(false);
             setActiveSection('CUSTOMER_PORTAL');
           }}
         />
