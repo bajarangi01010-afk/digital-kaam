@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { Sidebar, NavSection } from './components/Sidebar';
 import { LazyLoadingFallback } from './components/LazyLoadingFallback';
+import { smartBrainApi } from './services/smartBrainApi';
 
 // Advanced Code Splitting & On-Demand Lazy Loading
 const CustomerDashboardView = lazy(() => import('./components/CustomerDashboardView').then(m => ({ default: m.CustomerDashboardView })));
@@ -80,6 +81,33 @@ export default function App() {
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(INITIAL_AUDIT_LOGS);
   const [disputes, setDisputes] = useState<DisputeItem[]>(INITIAL_DISPUTES);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Real-time synchronization with Smart Brain Engine
+  useEffect(() => {
+    let active = true;
+    const syncWithSmartBrain = async () => {
+      try {
+        const [brainWorkers, brainJobs] = await Promise.all([
+          smartBrainApi.getWorkers(),
+          smartBrainApi.getPostedJobs(),
+        ]);
+        if (active) {
+          if (brainWorkers && brainWorkers.length > 0) {
+            setWorkers(brainWorkers);
+          }
+          if (brainJobs && brainJobs.length > 0) {
+            setPostedJobs(brainJobs);
+          }
+        }
+      } catch (err) {
+        // Safe fallback to local data
+      }
+    };
+    syncWithSmartBrain();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Modals & Drawers
   const [isPostJobModalOpen, setIsPostJobModalOpen] = useState(false);
@@ -177,11 +205,13 @@ export default function App() {
         };
       })
     );
+    smartBrainApi.applyForJob(jobId, workerObj).catch(() => {});
   };
 
   // Customer adds a new posted job
   const handleAddPostedJob = (newJob: PostedJob) => {
     setPostedJobs((prev) => [newJob, ...prev]);
+    smartBrainApi.postJob(newJob).catch(() => {});
     handleAddAuditLog(
       'JOB_POSTED',
       newJob.id,

@@ -280,9 +280,17 @@ export const WorkerDashboardView: React.FC<Props> = ({
                     {/* Top Row */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
-                        <span className="text-[10px] font-bold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded">
-                          {job.category}
-                        </span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[10px] font-bold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded">
+                            {job.category}
+                          </span>
+                          {(job.postedAt?.includes('अभी') || job.postedAt?.includes('Just now') || job.postedAt?.includes('min') || job.postedAt?.includes('मिनट')) && (
+                            <span className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+                              नया काम (Live Alert)
+                            </span>
+                          )}
+                        </div>
                         <h4 className="text-sm font-bold text-slate-900 mt-1">{job.title}</h4>
                       </div>
                       <div className="text-right shrink-0">

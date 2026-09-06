@@ -3,6 +3,7 @@ import { CustomerProfile, WorkerProfile, Booking, BookingStatus, PostedJob } fro
 import { translations, Language } from '../utils/i18n';
 import { sound } from '../utils/audio';
 import { CustomerProfileSection } from './CustomerProfileSection';
+import { WorkerDetailModal } from './WorkerDetailModal';
 import {
   MapPin,
   ShieldCheck,
@@ -78,6 +79,7 @@ export const CustomerDashboardView: React.FC<Props> = ({
 
   // Quick Corner Profile Drawer/Modal state
   const [isCornerProfileOpen, setIsCornerProfileOpen] = useState(false);
+  const [viewingWorker, setViewingWorker] = useState<WorkerProfile | null>(null);
 
   // Radar & distance slider (mirroring Worker UI)
   const [locationRadarOn, setLocationRadarOn] = useState(true);
@@ -458,9 +460,28 @@ export const CustomerDashboardView: React.FC<Props> = ({
                     </div>
 
                     {/* Bio */}
-                    <p className="text-xs text-slate-600 mt-3 line-clamp-2 leading-relaxed">
+                    <p className="text-xs text-slate-600 mt-3 line-clamp-2 leading-relaxed cursor-pointer" onClick={() => setViewingWorker(worker)}>
                       {worker.bio}
                     </p>
+
+                    {/* Skill Tags Real-time */}
+                    {worker.skills && worker.skills.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2.5">
+                        {worker.skills.slice(0, 3).map((sk: any, sIdx: number) => (
+                          <span
+                            key={sIdx}
+                            className="text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md"
+                          >
+                            {typeof sk === 'string' ? sk : sk.name}
+                          </span>
+                        ))}
+                        {worker.skills.length > 3 && (
+                          <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md">
+                            +{worker.skills.length - 3} अधिक
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     {/* Distance & Area */}
                     <div className="mt-2.5 flex items-center justify-between text-xs text-slate-500">
@@ -482,7 +503,20 @@ export const CustomerDashboardView: React.FC<Props> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        id={`view-worker-${worker.id}-btn`}
+                        onClick={() => {
+                          sound.playClick();
+                          setViewingWorker(worker);
+                        }}
+                        className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                        title="पूरी प्रोफाइल, कौशल और सरकारी सत्यापन देखें"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>पूरी प्रोफाइल</span>
+                      </button>
+
                       <button
                         id={`direct-call-${worker.id}-btn`}
                         onClick={() => handleDirectCall(worker)}
@@ -877,6 +911,21 @@ export const CustomerDashboardView: React.FC<Props> = ({
           </div>
         </div>
       )}
+      {/* Full Worker Profile Modal */}
+      <WorkerDetailModal
+        worker={viewingWorker}
+        isOpen={!!viewingWorker}
+        onClose={() => setViewingWorker(null)}
+        lang={lang}
+        onBookWorker={(w) => {
+          setViewingWorker(null);
+          onBookWorker(w);
+        }}
+        onDirectCall={(w) => {
+          setViewingWorker(null);
+          handleDirectCall(w);
+        }}
+      />
     </div>
   );
 };
