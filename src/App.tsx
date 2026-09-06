@@ -3,26 +3,29 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { Sidebar, NavSection } from './components/Sidebar';
-import { CustomerDashboardView } from './components/CustomerDashboardView';
-import { CustomerProfileSection } from './components/CustomerProfileSection';
-import { CustomerProfilePage } from './components/CustomerProfilePage';
-import { WorkerDashboardView } from './components/WorkerDashboardView';
-import { DashboardView } from './components/DashboardView';
-import { MarketplaceView } from './components/MarketplaceView';
-import { ActiveGigsView } from './components/ActiveGigsView';
-import { PaymentsEscrowView } from './components/PaymentsEscrowView';
-import { VerificationQueue } from './components/VerificationQueue';
-import { DisputesAuditView } from './components/DisputesAuditView';
-import { FlutterMobileSimulator } from './components/FlutterMobileSimulator';
-import { FlutterCodeViewer } from './components/FlutterCodeViewer';
-import { PostJobModal } from './components/PostJobModal';
-import { EscrowBookingModal } from './components/EscrowBookingModal';
-import { HandshakeOtpModal } from './components/HandshakeOtpModal';
-import { AnimatedLandingPage } from './components/AnimatedLandingPage';
-import { WorkerRegistrationFlow } from './components/WorkerRegistrationFlow';
-import { CustomerRegistrationFlow } from './components/CustomerRegistrationFlow';
+import { LazyLoadingFallback } from './components/LazyLoadingFallback';
+
+// Advanced Code Splitting & On-Demand Lazy Loading
+const CustomerDashboardView = lazy(() => import('./components/CustomerDashboardView').then(m => ({ default: m.CustomerDashboardView })));
+const CustomerProfileSection = lazy(() => import('./components/CustomerProfileSection').then(m => ({ default: m.CustomerProfileSection })));
+const CustomerProfilePage = lazy(() => import('./components/CustomerProfilePage').then(m => ({ default: m.CustomerProfilePage })));
+const WorkerDashboardView = lazy(() => import('./components/WorkerDashboardView').then(m => ({ default: m.WorkerDashboardView })));
+const DashboardView = lazy(() => import('./components/DashboardView').then(m => ({ default: m.DashboardView })));
+const MarketplaceView = lazy(() => import('./components/MarketplaceView').then(m => ({ default: m.MarketplaceView })));
+const ActiveGigsView = lazy(() => import('./components/ActiveGigsView').then(m => ({ default: m.ActiveGigsView })));
+const PaymentsEscrowView = lazy(() => import('./components/PaymentsEscrowView').then(m => ({ default: m.PaymentsEscrowView })));
+const VerificationQueue = lazy(() => import('./components/VerificationQueue').then(m => ({ default: m.VerificationQueue })));
+const DisputesAuditView = lazy(() => import('./components/DisputesAuditView').then(m => ({ default: m.DisputesAuditView })));
+const FlutterMobileSimulator = lazy(() => import('./components/FlutterMobileSimulator').then(m => ({ default: m.FlutterMobileSimulator })));
+const FlutterCodeViewer = lazy(() => import('./components/FlutterCodeViewer').then(m => ({ default: m.FlutterCodeViewer })));
+const PostJobModal = lazy(() => import('./components/PostJobModal').then(m => ({ default: m.PostJobModal })));
+const EscrowBookingModal = lazy(() => import('./components/EscrowBookingModal').then(m => ({ default: m.EscrowBookingModal })));
+const HandshakeOtpModal = lazy(() => import('./components/HandshakeOtpModal').then(m => ({ default: m.HandshakeOtpModal })));
+const AnimatedLandingPage = lazy(() => import('./components/AnimatedLandingPage').then(m => ({ default: m.AnimatedLandingPage })));
+const WorkerRegistrationFlow = lazy(() => import('./components/WorkerRegistrationFlow').then(m => ({ default: m.WorkerRegistrationFlow })));
+const CustomerRegistrationFlow = lazy(() => import('./components/CustomerRegistrationFlow').then(m => ({ default: m.CustomerRegistrationFlow })));
 
 import {
   INITIAL_WORKERS,
@@ -299,48 +302,54 @@ export default function App() {
   // Optional Landing Page preview trigger
   if (showLandingPreview) {
     return (
-      <AnimatedLandingPage
-        lang={lang}
-        onToggleLang={handleToggleLang}
-        onSelectRole={(role) => {
-          setShowLandingPreview(false);
-          if (role === 'WORKER') {
-            setActiveSection('WORKER_PORTAL');
-          } else {
-            setActiveSection('CUSTOMER_PORTAL');
-          }
-        }}
-      />
+      <Suspense fallback={<LazyLoadingFallback message={lang === 'hi' ? 'लैंडिंग पेज लोड हो रहा है...' : 'Loading Landing Page...'} />}>
+        <AnimatedLandingPage
+          lang={lang}
+          onToggleLang={handleToggleLang}
+          onSelectRole={(role) => {
+            setShowLandingPreview(false);
+            if (role === 'WORKER') {
+              setActiveSection('WORKER_PORTAL');
+            } else {
+              setActiveSection('CUSTOMER_PORTAL');
+            }
+          }}
+        />
+      </Suspense>
     );
   }
 
   // Optional Registration flow preview
   if (registrationMode === 'WORKER') {
     return (
-      <WorkerRegistrationFlow
-        lang={lang}
-        onBackToLanding={() => setRegistrationMode(null)}
-        onCompleteWorkerRegistration={(newWorker) => {
-          setWorkers((prev) => [newWorker, ...prev]);
-          setActiveWorker(newWorker);
-          setRegistrationMode(null);
-          setActiveSection('WORKER_PORTAL');
-        }}
-      />
+      <Suspense fallback={<LazyLoadingFallback message={lang === 'hi' ? 'कारीगर पंजीकरण लोड हो रहा है...' : 'Loading Worker Onboarding...'} />}>
+        <WorkerRegistrationFlow
+          lang={lang}
+          onBackToLanding={() => setRegistrationMode(null)}
+          onCompleteWorkerRegistration={(newWorker) => {
+            setWorkers((prev) => [newWorker, ...prev]);
+            setActiveWorker(newWorker);
+            setRegistrationMode(null);
+            setActiveSection('WORKER_PORTAL');
+          }}
+        />
+      </Suspense>
     );
   }
 
   if (registrationMode === 'CUSTOMER') {
     return (
-      <CustomerRegistrationFlow
-        lang={lang}
-        onBackToLanding={() => setRegistrationMode(null)}
-        onCompleteCustomerRegistration={(newCustomer) => {
-          setCustomer(newCustomer);
-          setRegistrationMode(null);
-          setActiveSection('CUSTOMER_PORTAL');
-        }}
-      />
+      <Suspense fallback={<LazyLoadingFallback message={lang === 'hi' ? 'ग्राहक पंजीकरण लोड हो रहा है...' : 'Loading Customer Onboarding...'} />}>
+        <CustomerRegistrationFlow
+          lang={lang}
+          onBackToLanding={() => setRegistrationMode(null)}
+          onCompleteCustomerRegistration={(newCustomer) => {
+            setCustomer(newCustomer);
+            setRegistrationMode(null);
+            setActiveSection('CUSTOMER_PORTAL');
+          }}
+        />
+      </Suspense>
     );
   }
 
@@ -563,6 +572,7 @@ export default function App() {
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
           <div className="max-w-7xl mx-auto space-y-6">
+            <Suspense fallback={<LazyLoadingFallback />}>
             {/* 1. Customer Dashboard & Profile (Default and Primary Customer View) */}
             {activeSection === 'CUSTOMER_PORTAL' && (
               <CustomerDashboardView
@@ -673,57 +683,65 @@ export default function App() {
             {activeSection === 'FLUTTER_CODE' && (
               <FlutterCodeViewer />
             )}
+            </Suspense>
           </div>
         </main>
       </div>
 
-      {/* Global Modals & Drawers */}
-
-      {/* 1. Corner Profile Drawer / Modal (Accessible from anywhere in the app) */}
-      {isCornerProfileDrawerOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white max-w-2xl w-full rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
-            <CustomerProfileSection
-              customer={customer}
-              lang={lang}
-              onUpdateCustomer={handleUpdateCustomer}
-              onClose={() => setIsCornerProfileDrawerOpen(false)}
-              isModalOrDrawer={true}
-            />
+      {/* Global Modals & Drawers with on-demand Lazy Loading */}
+      <Suspense fallback={<LazyLoadingFallback isModal={true} />}>
+        {/* 1. Corner Profile Drawer / Modal */}
+        {isCornerProfileDrawerOpen && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white max-w-2xl w-full rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+              <CustomerProfileSection
+                customer={customer}
+                lang={lang}
+                onUpdateCustomer={handleUpdateCustomer}
+                onClose={() => setIsCornerProfileDrawerOpen(false)}
+                isModalOrDrawer={true}
+              />
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* 2. Customer Post a Job Modal */}
-      <PostJobModal
-        isOpen={isPostJobModalOpen}
-        onClose={() => setIsPostJobModalOpen(false)}
-        lang={lang}
-        customerName={customer.name}
-        customerPhone={customer.phone}
-        customerAddress={customer.address}
-        onAddPostedJob={handleAddPostedJob}
-      />
+        {/* 2. Customer Post a Job Modal */}
+        {isPostJobModalOpen && (
+          <PostJobModal
+            isOpen={isPostJobModalOpen}
+            onClose={() => setIsPostJobModalOpen(false)}
+            lang={lang}
+            customerName={customer.name}
+            customerPhone={customer.phone}
+            customerAddress={customer.address}
+            onAddPostedJob={handleAddPostedJob}
+          />
+        )}
 
-      {/* 3. Customer Direct Book with Escrow Modal */}
-      <EscrowBookingModal
-        isOpen={bookingWorkerModalTarget !== null}
-        onClose={() => setBookingWorkerModalTarget(null)}
-        worker={bookingWorkerModalTarget}
-        customerName={customer.name}
-        customerPhone={customer.phone}
-        customerAddress={customer.address}
-        lang={lang}
-        onConfirmBooking={handleConfirmEscrowBooking}
-      />
+        {/* 3. Customer Direct Book with Escrow Modal */}
+        {bookingWorkerModalTarget !== null && (
+          <EscrowBookingModal
+            isOpen={bookingWorkerModalTarget !== null}
+            onClose={() => setBookingWorkerModalTarget(null)}
+            worker={bookingWorkerModalTarget}
+            customerName={customer.name}
+            customerPhone={customer.phone}
+            customerAddress={customer.address}
+            lang={lang}
+            onConfirmBooking={handleConfirmEscrowBooking}
+          />
+        )}
 
-      {/* 4. Real Handshake OTP & ID Badge Scanner Modal */}
-      <HandshakeOtpModal
-        booking={handshakeBookingTarget}
-        onClose={() => setHandshakeBookingTarget(null)}
-        lang={lang}
-        onUpdateBookingStatus={handleUpdateBookingStatus}
-      />
+        {/* 4. Real Handshake OTP & ID Badge Scanner Modal */}
+        {handshakeBookingTarget !== null && (
+          <HandshakeOtpModal
+            booking={handshakeBookingTarget}
+            onClose={() => setHandshakeBookingTarget(null)}
+            lang={lang}
+            onUpdateBookingStatus={handleUpdateBookingStatus}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

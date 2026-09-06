@@ -9,3 +9,4 @@ fuzzywuzzy==0.18.0
 python-Levenshtein==0.25.0
 pydantic==2.6.4
 s2sphere==0.2.5
+pyjwt>=2.8.0
