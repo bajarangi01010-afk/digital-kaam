@@ -115,8 +115,8 @@ export default function App() {
   const [handshakeBookingTarget, setHandshakeBookingTarget] = useState<Booking | null>(null);
   const [isCornerProfileDrawerOpen, setIsCornerProfileDrawerOpen] = useState(false);
 
-  // Optional preview screens
-  const [showLandingPreview, setShowLandingPreview] = useState(false);
+  // Welcome Landing Page opens first by default
+  const [showLandingPreview, setShowLandingPreview] = useState(true);
   const [registrationMode, setRegistrationMode] = useState<'WORKER' | 'CUSTOMER' | null>(null);
 
   const t = translations[lang];
