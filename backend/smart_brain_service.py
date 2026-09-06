@@ -15,6 +15,19 @@ import database
 from smart_brain import app, geo_manager, escrow_gateway, booking_manager, security_brain
 
 # -----------------------------------------------------------------------------
+# MERGE VERIFICATION ROUTES (Biometric Face Match & Real Aadhaar OCR)
+# -----------------------------------------------------------------------------
+try:
+    import main as verification_main
+    for route in verification_main.app.routes:
+        if not any(r.path == route.path and getattr(r, 'methods', None) == getattr(route, 'methods', None) for r in app.routes):
+            app.routes.append(route)
+    print("✅ Biometric Face Match & Aadhaar OCR routes merged successfully.")
+except Exception as _err:
+    print(f"⚠️ Notice: Verification routes could not be auto-merged: {_err}")
+
+
+# -----------------------------------------------------------------------------
 # 1. PRE-SEEDED SYSTEM WORKERS WITH COMPLETE PROFILES
 # -----------------------------------------------------------------------------
 SYSTEM_WORKERS: List[Dict[str, Any]] = [

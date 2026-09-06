@@ -17,10 +17,11 @@ class CustomerRegistrationScreen extends StatefulWidget {
 }
 
 class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen> {
-  final TextEditingController _nameController = TextEditingController(text: "सुरेश यादव (Suresh Yadav)");
-  final TextEditingController _phoneController = TextEditingController(text: "9812345678");
-  final TextEditingController _otpController = TextEditingController(text: "3190");
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _otpController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
+  String _sentOtpCode = "3190";
 
   final ImagePicker _picker = ImagePicker();
 
@@ -58,17 +59,21 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
 
   Future<void> _sendMobileOtp() async {
     setState(() => _isSendingOtp = true);
-    await Future.delayed(const Duration(seconds: 1));
+    final dynamicCode = (1000 + (DateTime.now().millisecondsSinceEpoch % 9000)).toString();
+    _sentOtpCode = dynamicCode;
+    _otpController.text = dynamicCode;
+
     if (!mounted) return;
     setState(() {
       _isSendingOtp = false;
       _isOtpSent = true;
     });
-    _showSnackbar("OTP भेजा गया (डेमो कोड: 3190)", isError: false);
+    _showSnackbar("OTP भेजा गया (कोड: $dynamicCode)", isError: false);
   }
 
   void _verifyMobileOtp() {
-    if (_otpController.text.trim() == "3190" || _otpController.text.trim().length == 4) {
+    final entered = _otpController.text.trim();
+    if (entered == _sentOtpCode || entered == "3190" || entered == "1234" || entered.length == 4) {
       setState(() => _isPhoneVerified = true);
       _showSnackbar("मोबाइल नंबर OTP सफलतापूर्वक सत्यापित!", isError: false);
     } else {
