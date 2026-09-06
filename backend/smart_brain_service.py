@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 import smart_brain
+import database
 from smart_brain import app, geo_manager, escrow_gateway, booking_manager, security_brain
 
 # -----------------------------------------------------------------------------
@@ -154,9 +155,9 @@ SYSTEM_WORKERS: List[Dict[str, Any]] = [
 ]
 
 # -----------------------------------------------------------------------------
-# 2. REAL-TIME POSTED KAAM (JOBS) STORE & STATE
+# 2. REAL-TIME POSTED KAAM (JOBS) STORE & PERSISTENT DATABASE SYNC
 # -----------------------------------------------------------------------------
-POSTED_JOBS: List[Dict[str, Any]] = [
+INITIAL_SEED_JOBS: List[Dict[str, Any]] = [
     {
         "id": "job-101",
         "title": "मेन डिस्ट्रीब्यूशन बॉक्स में एमसीबी ट्रिपिंग समस्या",
@@ -201,6 +202,15 @@ POSTED_JOBS: List[Dict[str, Any]] = [
         "interestedWorkers": [],
     }
 ]
+
+# Sync persistent database on launch
+db_jobs = database.get_all_posted_jobs()
+if not db_jobs:
+    for sj in INITIAL_SEED_JOBS:
+        database.save_posted_job(sj)
+    POSTED_JOBS: List[Dict[str, Any]] = list(INITIAL_SEED_JOBS)
+else:
+    POSTED_JOBS: List[Dict[str, Any]] = db_jobs
 
 # -----------------------------------------------------------------------------
 # 3. AUTO-SEED WORKERS INTO S2 GEOSPATIAL MANAGER ON LOAD
@@ -280,6 +290,10 @@ async def create_new_job_feed(body: JobCreatePayload):
         "interestedWorkers": [],
     }
     POSTED_JOBS.insert(0, new_job)
+    try:
+        database.save_posted_job(new_job)
+    except Exception as e:
+        print(f"Failed to persist job to DB: {e}")
     return {"status": "success", "job": new_job}
 
 @app.post("/api/jobs/{job_id}/apply", tags=["digital-kaam-feed"])
@@ -308,5 +322,31 @@ async def apply_to_job(job_id: str, body: JobApplyPayload):
     if not any(w["workerId"] == worker["worker_id"] for w in target_job["interestedWorkers"]):
         target_job["interestedWorkers"].append(bid)
         target_job["status"] = "WORKER_REQUESTED"
+        try:
+            database.apply_to_posted_job(job_id, bid)
+        except Exception as e:
+            print(f"Failed to persist application to DB: {e}")
 
     return {"status": "success", "job": target_job, "applied": bid}
+
+
+# -----------------------------------------------------------------------------
+# 5. SANDBOX ESCROW PAYMENT ORDER API (Razorpay Test Mode Ready)
+# -----------------------------------------------------------------------------
+class EscrowOrderPayload(BaseModel):
+    amount: int = Field(..., ge=10, le=50000)
+    booking_id: str = Field(..., min_length=1)
+    customer_phone: Optional[str] = Field(default="9876543210")
+
+@app.post("/api/escrow/create-test-order", tags=["digital-kaam-escrow"])
+async def create_test_escrow_order(body: EscrowOrderPayload):
+    """Generates a mock/sandbox Razorpay-compatible UPI order for testing ₹0 cost."""
+    order_id = f"order_test_{int(datetime.now(timezone.utc).timestamp() * 1000)}"
+    return {
+        "status": "created",
+        "order_id": order_id,
+        "amount": body.amount,
+        "currency": "INR",
+        "upi_qr_mock": f"upi://pay?pa=digitalkaam.escrow@icici&pn=DigitalKaamEscrow&am={body.amount}&cu=INR&tr={order_id}",
+        "sandbox_mode": True,
+    }

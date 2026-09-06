@@ -1,7 +1,7 @@
 import { WorkerProfile, PostedJob, Booking } from '../types';
 import { INITIAL_WORKERS, INITIAL_POSTED_JOBS } from '../data/mockData';
 
-const BASE_URL = 'http://localhost:8000';
+const BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000';
 
 class SmartBrainApiService {
   private isOnline = false;

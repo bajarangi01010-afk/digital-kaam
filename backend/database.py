@@ -7,6 +7,7 @@ Also supports PostgreSQL via DATABASE_URL environment variable for 24/7 cloud de
 
 import os
 import sqlite3
+import json
 import time
 from typing import List, Dict, Any, Optional
 
@@ -65,6 +66,42 @@ def init_db():
         eta_minutes INTEGER DEFAULT 5,
         created_at REAL,
         updated_at REAL
+    )
+    """)
+
+    
+    # 3. Posted Jobs Table (Real-time Feed Persistence)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS posted_jobs (
+        job_id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        category TEXT NOT NULL,
+        description TEXT,
+        image_url TEXT,
+        budget INTEGER DEFAULT 500,
+        customer_name TEXT NOT NULL,
+        customer_phone TEXT,
+        customer_address TEXT,
+        customer_trust_score INTEGER DEFAULT 98,
+        distance_km REAL DEFAULT 1.0,
+        posted_at TEXT,
+        status TEXT DEFAULT 'OPEN',
+        interested_workers TEXT DEFAULT '[]',
+        created_at REAL
+    )
+    """)
+
+    # 4. Escrow Hash-Chained Ledger Table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS escrow_transactions (
+        tx_id TEXT PRIMARY KEY,
+        booking_id TEXT NOT NULL,
+        tx_type TEXT NOT NULL,
+        amount REAL NOT NULL,
+        fee REAL DEFAULT 0,
+        prev_hash TEXT,
+        curr_hash TEXT,
+        created_at REAL
     )
     """)
 
@@ -175,3 +212,96 @@ def get_platform_kpis() -> Dict[str, Any]:
 
 # Initialize tables immediately on module import
 init_db()
+
+
+# ──────────────────────────────────────────────────────────
+#  POSTED JOBS PERSISTENCE METHODS
+# ──────────────────────────────────────────────────────────
+
+def save_posted_job(job: Dict[str, Any]):
+    """Saves or updates a posted job with JSON-serialized applicants."""
+    conn = get_db_connection()
+    workers_json = json.dumps(job.get("interestedWorkers", []))
+    conn.execute("""
+    INSERT OR REPLACE INTO posted_jobs (
+        job_id, title, category, description, image_url, budget,
+        customer_name, customer_phone, customer_address, customer_trust_score,
+        distance_km, posted_at, status, interested_workers, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        job.get("id") or job.get("job_id"),
+        job.get("title", ""),
+        job.get("category", ""),
+        job.get("description", ""),
+        job.get("imageUrl") or job.get("image_url", ""),
+        int(job.get("budget", 500)),
+        job.get("customerName") or job.get("customer_name", ""),
+        job.get("customerPhone") or job.get("customer_phone", ""),
+        job.get("customerAddress") or job.get("customer_address", ""),
+        int(job.get("customerTrustScore") or job.get("customer_trust_score", 98)),
+        float(job.get("distanceKm") or job.get("distance_km", 1.0)),
+        job.get("postedAt") or job.get("posted_at", "अभी"),
+        job.get("status", "OPEN"),
+        workers_json,
+        time.time()
+    ))
+    conn.commit()
+    conn.close()
+
+def get_all_posted_jobs() -> List[Dict[str, Any]]:
+    """Retrieves all posted jobs ordered by recency."""
+    conn = get_db_connection()
+    rows = conn.execute("SELECT * FROM posted_jobs ORDER BY created_at DESC").fetchall()
+    conn.close()
+    result = []
+    for r in rows:
+        d = dict(r)
+        try:
+            workers = json.loads(d.get("interested_workers") or "[]")
+        except Exception:
+            workers = []
+        result.append({
+            "id": d["job_id"],
+            "title": d["title"],
+            "category": d["category"],
+            "description": d["description"],
+            "imageUrl": d["image_url"],
+            "budget": d["budget"],
+            "customerName": d["customer_name"],
+            "customerPhone": d["customer_phone"],
+            "customerAddress": d["customer_address"],
+            "customerTrustScore": d["customer_trust_score"],
+            "distanceKm": d["distance_km"],
+            "postedAt": d["posted_at"],
+            "status": d["status"],
+            "interestedWorkers": workers,
+        })
+    return result
+
+def apply_to_posted_job(job_id: str, bid: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Appends a worker's bid to the job's applicants list in SQLite."""
+    conn = get_db_connection()
+    row = conn.execute("SELECT * FROM posted_jobs WHERE job_id = ?", (job_id,)).fetchone()
+    if not row:
+        conn.close()
+        return None
+    d = dict(row)
+    try:
+        workers = json.loads(d.get("interested_workers") or "[]")
+    except Exception:
+        workers = []
+    
+    # Check if worker already applied
+    if not any(w.get("workerId") == bid.get("workerId") for w in workers):
+        workers.append(bid)
+        conn.execute("""
+        UPDATE posted_jobs 
+        SET interested_workers = ?, status = 'WORKER_REQUESTED'
+        WHERE job_id = ?
+        """, (json.dumps(workers), job_id))
+        conn.commit()
+    
+    conn.close()
+    d["interestedWorkers"] = workers
+    d["id"] = d["job_id"]
+    return d

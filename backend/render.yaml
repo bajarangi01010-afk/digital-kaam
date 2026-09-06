@@ -1,11 +1,16 @@
 services:
   - type: web
-    name: digital-kaam-api
+    name: digital-kaam-smart-brain
     env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    region: singapore
+    buildCommand: pip install -r backend/requirements.txt && pip install pyjwt==2.13.0 uvicorn fastapi pydantic s2sphere
+    startCommand: python -m uvicorn smart_brain_service:app --app-dir backend --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: PORT
         value: 8000
+      - key: SB_ENV
+        value: production
