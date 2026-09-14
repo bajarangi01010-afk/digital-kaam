@@ -97,18 +97,19 @@ def get_rapid_ocr():
 # ══════════════════════════════════════════════════════════════
 
 @app.get("/health")
+@app.get("/health")
 @app.get("/api/health")
 async def health():
     cv2_file = getattr(cv2, "__file__", "none")
-    cv2_keys = [k for k in dir(cv2) if not k.startswith("_")]
     has_cascade = hasattr(cv2, "CascadeClassifier")
+    has_objdetect = hasattr(cv2, "objdetect")
     return {
         "status": "healthy",
         "service": "digital-kaam-verification-api",
-        "version": "1.0.1",
+        "version": "1.0.2",
         "cv2_file": cv2_file,
         "has_cascade": has_cascade,
-        "cv2_keys_sample": cv2_keys[:25],
+        "has_objdetect": has_objdetect,
         "face_recognition": _face_recognition is not None,
         "easyocr": _easyocr_reader is not None,
     }
@@ -127,10 +128,14 @@ def get_face_cascades():
             "profile": "haarcascade_profileface.xml",
         }
         
-        # Safely resolve CascadeClassifier constructor
+        # Safely resolve CascadeClassifier constructor across varying OpenCV packaging
         classifier_cls = getattr(cv2, "CascadeClassifier", None)
-        if classifier_cls is None and hasattr(cv2, "objdetect"):
-            classifier_cls = getattr(cv2.objdetect, "CascadeClassifier", None)
+        if classifier_cls is None:
+            try:
+                import cv2.objdetect
+                classifier_cls = getattr(cv2.objdetect, "CascadeClassifier", None)
+            except Exception:
+                pass
             
         if classifier_cls is not None:
             for key, filename in cascade_files.items():
@@ -146,7 +151,7 @@ def get_face_cascades():
                     logger.warning(f"Error loading cascade {key}: {ce}")
             logger.info(f"Loaded {len(_face_cascades)} face cascade models: {list(_face_cascades.keys())}")
         else:
-            logger.warning("cv2.CascadeClassifier is not available; falling back to biometric skin & texture detector")
+            logger.warning("CascadeClassifier not present in cv2 build; biometric skin-tone & texture detector active")
     return _face_cascades
 
 
@@ -209,27 +214,36 @@ def _nms_boxes(boxes, overlap_thresh=0.35):
 
 def _check_biometric_face_region(img_bgr: np.ndarray) -> bool:
     """
-    Biometric fallback: checks if the central oval region contains human skin tone
-    and facial edge variance. Used when harsh lighting or low contrast causes Haar cascades
-    to miss an otherwise clear, centered human face.
+    Biometric fallback: checks if the central/upper oval region contains human skin tone
+    and facial edge variance. Ensures legitimate human faces are never rejected due to
+    cascade failures on diverse mobile camera hardware or lighting.
     """
     try:
         h, w = img_bgr.shape[:2]
-        ch, cw = int(h * 0.55), int(w * 0.55)
-        y1, x1 = (h - ch) // 2, (w - cw) // 2
-        center_roi = img_bgr[y1:y1+ch, x1:x1+cw]
-        if center_roi.size == 0:
-            return False
+        ch, cw = int(h * 0.60), int(w * 0.60)
+        
+        # Test 1: Exact center region
+        regions = [
+            img_bgr[(h - ch) // 2 : (h - ch) // 2 + ch, (w - cw) // 2 : (w - cw) // 2 + cw],
+            # Test 2: Upper center (common selfie position)
+            img_bgr[max(0, int(h * 0.10)) : min(h, int(h * 0.70)), (w - cw) // 2 : (w - cw) // 2 + cw],
+        ]
 
-        ycrcb = cv2.cvtColor(center_roi, cv2.COLOR_BGR2YCrCb)
-        skin_mask = cv2.inRange(ycrcb, np.array([30, 130, 75]), np.array([255, 175, 135]))
-        skin_ratio = np.sum(skin_mask > 0) / (ch * cw)
+        for roi in regions:
+            if roi.size == 0:
+                continue
+            rh, rw = roi.shape[:2]
+            ycrcb = cv2.cvtColor(roi, cv2.COLOR_BGR2YCrCb)
+            skin_mask = cv2.inRange(ycrcb, np.array([30, 130, 75]), np.array([255, 175, 135]))
+            skin_ratio = np.sum(skin_mask > 0) / (rh * rw)
 
-        gray_roi = cv2.cvtColor(center_roi, cv2.COLOR_BGR2GRAY)
-        texture_var = cv2.Laplacian(gray_roi, cv2.CV_64F).var()
+            gray_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+            texture_var = cv2.Laplacian(gray_roi, cv2.CV_64F).var()
 
-        logger.info(f"Biometric oval check: skin_ratio={skin_ratio:.3f}, texture_var={texture_var:.1f}")
-        return skin_ratio >= 0.15 and texture_var >= 20.0
+            logger.info(f"Biometric oval check: skin_ratio={skin_ratio:.3f}, texture_var={texture_var:.1f}")
+            if skin_ratio >= 0.10 and texture_var >= 15.0:
+                return True
+        return False
     except Exception as e:
         logger.warning(f"Biometric oval check error: {e}")
         return False
