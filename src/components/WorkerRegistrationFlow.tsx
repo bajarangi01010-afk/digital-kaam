@@ -189,7 +189,7 @@ export const WorkerRegistrationFlow: React.FC<Props> = ({
     setEnteredOtp(''); // Do not auto-fill mock code so user inputs from real SMS
 
     try {
-      const res = await fetch('/api/auth/send-registration-otp', {
+      const res = await fetch(`${apiBaseUrl}/api/auth/send-registration-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: cleanPhone, otp: code, role: 'worker' }),

@@ -166,7 +166,7 @@ export const CustomerRegistrationFlow: React.FC<Props> = ({
     setEnteredOtp('');
 
     try {
-      const res = await fetch('/api/auth/send-registration-otp', {
+      const res = await fetch(`${apiBaseUrl}/api/auth/send-registration-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: cleanPhone, otp: code, role: 'customer' }),
