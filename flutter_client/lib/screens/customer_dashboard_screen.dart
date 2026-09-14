@@ -84,10 +84,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
     );
     if (mounted) {
       setState(() {
-        if (workers.isNotEmpty) {
-          _nearbyWorkers.clear();
-          _nearbyWorkers.addAll(workers);
-        }
+        _nearbyWorkers.clear();
+        _nearbyWorkers.addAll(workers);
         _isLoadingNearby = false;
       });
     }

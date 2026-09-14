@@ -62,48 +62,8 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
   final TextEditingController _startOtpController = TextEditingController();
   final TextEditingController _completionOtpController = TextEditingController();
 
-  // Mock nearby customer posted jobs
-  final List<Map<String, dynamic>> _nearbyJobs = [
-    {
-      "id": "JOB-101",
-      "customerName": "अमित शर्मा (Amit Sharma)",
-      "customerRating": "4.9 ★",
-      "customerTrust": "आधार सत्यापित (Aadhaar Verified)",
-      "completedJobs": "14 सफल काम",
-      "title": "मेन स्विचबोर्ड शॉर्ट सर्किट व पंखा रिपेयर",
-      "distance": "1.2 किमी दूर",
-      "locality": "सेक्टर 18, ब्लॉक B",
-      "budget": "₹450",
-      "requested": false,
-      "timeAgo": "5 मिनट पहले पोस्ट किया गया",
-    },
-    {
-      "id": "JOB-102",
-      "customerName": "सुनीता वर्मा (Sunita Verma)",
-      "customerRating": "4.8 ★",
-      "customerTrust": "आधार सत्यापित (Aadhaar Verified)",
-      "completedJobs": "8 सफल काम",
-      "title": "किचन सिंक पाइप लीकेज व नल रिप्लेसमेंट",
-      "distance": "2.4 किमी दूर",
-      "locality": "सेक्टर 21, गली नं 3",
-      "budget": "₹380",
-      "requested": false,
-      "timeAgo": "18 मिनट पहले पोस्ट किया गया",
-    },
-    {
-      "id": "JOB-103",
-      "customerName": "राजेश गुप्ता (Rajesh Gupta)",
-      "customerRating": "5.0 ★",
-      "customerTrust": "आधार सत्यापित (Aadhaar Verified)",
-      "completedJobs": "22 सफल काम",
-      "title": "कमरे की दीवार पर प्राइमर व एक्रेलिक पेंट",
-      "distance": "3.1 किमी दूर",
-      "locality": "सेक्टर 15A, मेन रोड",
-      "budget": "₹1,200",
-      "requested": false,
-      "timeAgo": "35 मिनट पहले पोस्ट किया गया",
-    },
-  ];
+  // Real-time nearby customer posted jobs (no mock data)
+  final List<Map<String, dynamic>> _nearbyJobs = [];
 
   bool _isLoadingJobs = false;
 
@@ -123,7 +83,7 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
     setState(() => _isLoadingJobs = true);
     try {
       final liveJobs = await LocationService.instance.fetchPostedJobs();
-      if (mounted && liveJobs.isNotEmpty) {
+      if (mounted) {
         setState(() {
           _nearbyJobs.clear();
           _nearbyJobs.addAll(liveJobs);
@@ -819,10 +779,57 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Nearby Jobs List
-            ..._nearbyJobs.map((job) {
-              final bool requested = job["requested"] as bool;
-            return Container(
+            // Nearby Jobs List or Clean Empty State
+            if (_nearbyJobs.isEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+                decoration: BoxDecoration(
+                  color: theme.card,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: theme.border),
+                  boxShadow: theme.cardShadow,
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: theme.brandBlue.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.work_outline_rounded, color: theme.brandBlue, size: 28),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      "फिलहाल कोई काम उपलब्ध नहीं है",
+                      style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      "जैसे ही कोई ग्राहक काम पोस्ट करेगा, वह यहाँ लाइव दिखेगा।",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: theme.textSecondary, fontSize: 12),
+                    ),
+                    const SizedBox(height: 14),
+                    OutlinedButton.icon(
+                      onPressed: _loadLivePostedJobs,
+                      icon: const Icon(Icons.refresh_rounded, size: 16),
+                      label: const Text("ताज़ा करें"),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: theme.brandBlue,
+                        side: BorderSide(color: theme.brandBlue),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              ..._nearbyJobs.map((job) {
+                final bool requested = job["requested"] as bool;
+                return Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(

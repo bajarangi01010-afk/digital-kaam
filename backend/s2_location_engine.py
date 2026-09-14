@@ -419,88 +419,29 @@ class S2LocationEngine:
     # ──────────────────────────────────────────────────────────
 
     def _seed_default_workers(self):
-        """Pre-populates verified nearby workers for instant radar discovery."""
-        # Base coordinates: Central Delhi / Connaught Place
-        base_lat, base_lng = 28.6139, 77.2090
-
-        sample_workers = [
-            {
-                "worker_id": "W-101",
-                "name": "राजेश कुमार (Rajesh Kumar)",
-                "skill": "इलेक्ट्रीशियन (Electrician)",
-                "lat": base_lat + 0.0075,   # ~ 850m
-                "lng": base_lng + 0.0062,
-                "visiting_fee": 149,
-                "rating": 4.9,
-                "total_jobs": 142,
-                "phone": "+91 98112 34567",
-                "photo_url": "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150",
-            },
-            {
-                "worker_id": "W-102",
-                "name": "मोहित शर्मा (Mohit Sharma)",
-                "skill": "प्लंबर (Plumber)",
-                "lat": base_lat - 0.0112,   # ~ 1.2 km
-                "lng": base_lng + 0.0085,
-                "visiting_fee": 199,
-                "rating": 4.8,
-                "total_jobs": 98,
-                "phone": "+91 98223 45678",
-                "photo_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
-            },
-            {
-                "worker_id": "W-103",
-                "name": "दिनेश कारपेंटर (Dinesh Suthar)",
-                "skill": "कारपेंटर (Carpenter)",
-                "lat": base_lat + 0.0180,   # ~ 2.1 km
-                "lng": base_lng - 0.0120,
-                "visiting_fee": 249,
-                "rating": 4.7,
-                "total_jobs": 64,
-                "phone": "+91 98334 56789",
-                "photo_url": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
-            },
-            {
-                "worker_id": "W-104",
-                "name": "सोनू पेंटर (Sonu Painter)",
-                "skill": "पेंटर (Painter)",
-                "lat": base_lat - 0.0240,   # ~ 2.7 km
-                "lng": base_lng - 0.0150,
-                "visiting_fee": 199,
-                "rating": 4.9,
-                "total_jobs": 185,
-                "phone": "+91 98445 67890",
-                "photo_url": "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150",
-            },
-            {
-                "worker_id": "W-105",
-                "name": "मुकेश वेल्डर (Mukesh Welder)",
-                "skill": "वेल्डर व फैब्रिकेटर",
-                "lat": base_lat + 0.0310,   # ~ 3.5 km
-                "lng": base_lng + 0.0210,
-                "visiting_fee": 299,
-                "rating": 4.6,
-                "total_jobs": 42,
-                "phone": "+91 98556 78901",
-                "photo_url": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150",
-            }
-        ]
-
-        for w in sample_workers:
-            self.update_worker_location(
-                worker_id=w["worker_id"],
-                lat=w["lat"],
-                lng=w["lng"],
-                name=w["name"],
-                skill=w["skill"],
-                visiting_fee=w["visiting_fee"],
-                rating=w["rating"],
-                total_jobs=w["total_jobs"],
-                phone=w["phone"],
-                photo_url=w["photo_url"],
-                is_verified=True,
-                is_available=True,
-            )
+        """Loads real registered workers from persistent SQLite database."""
+        try:
+            db_workers = database.get_all_workers()
+            for w in db_workers:
+                wid = w.get("worker_id")
+                if wid:
+                    self.update_worker_location(
+                        worker_id=wid,
+                        lat=float(w.get("lat") or 28.6139),
+                        lng=float(w.get("lng") or 77.2090),
+                        name=w.get("name") or "Worker",
+                        skill=w.get("skill") or "कारीगर",
+                        visiting_fee=int(w.get("visiting_fee") or 299),
+                        rating=float(w.get("rating") or 4.9),
+                        total_jobs=int(w.get("total_jobs") or 14),
+                        phone=w.get("phone") or "",
+                        photo_url=w.get("photo_url") or "",
+                        is_verified=bool(w.get("is_verified", 1)),
+                        is_available=bool(w.get("is_available", 1)),
+                        address=w.get("address") or "",
+                    )
+        except Exception:
+            pass
 
 # Global Singleton Instance
 s2_engine = S2LocationEngine()
