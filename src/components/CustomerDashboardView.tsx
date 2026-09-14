@@ -628,7 +628,13 @@ export const CustomerDashboardView: React.FC<Props> = ({
           </div>
 
           <div className="grid grid-cols-1 gap-5">
-            {myPostedJobs.map((job) => (
+            {myPostedJobs.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-10 text-center space-y-2">
+                <p className="text-sm font-bold text-slate-700">आपने अभी कोई काम पोस्ट नहीं किया है</p>
+                <p className="text-xs text-slate-500">ऊपर दिए गए 'नया काम पोस्ट करें' बटन पर क्लिक करके काम पोस्ट करें।</p>
+              </div>
+            ) : (
+              myPostedJobs.map((job) => (
               <div
                 key={job.id}
                 className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4"
@@ -709,7 +715,7 @@ export const CustomerDashboardView: React.FC<Props> = ({
                   )}
                 </div>
               </div>
-            ))}
+            )))}
           </div>
         </div>
       )}
@@ -725,7 +731,13 @@ export const CustomerDashboardView: React.FC<Props> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {myBookings.map((b) => (
+            {myBookings.length === 0 ? (
+              <div className="col-span-full bg-white rounded-2xl border border-slate-200 shadow-xs p-10 text-center space-y-2">
+                <p className="text-base font-bold text-slate-800">अभी कोई सक्रिय बुकिंग नहीं है</p>
+                <p className="text-xs text-slate-500">कारीगरों की सूची से किसी को बुक करें या नया काम पोस्ट करें।</p>
+              </div>
+            ) : (
+              myBookings.map((b) => (
               <div
                 key={b.id}
                 className="bg-white rounded-2xl border-2 border-blue-500 shadow-md p-5 space-y-4"
@@ -809,7 +821,7 @@ export const CustomerDashboardView: React.FC<Props> = ({
                   </button>
                 </div>
               </div>
-            ))}
+            )))}
           </div>
         </div>
       )}

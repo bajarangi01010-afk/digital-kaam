@@ -42,21 +42,21 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
 
   // Booking Feature & Bank Details State
   bool _isBookingEnabled = true;
-  bool _hasBankDetails = true;
-  String _bankName = "भारतीय स्टेट बैंक (SBI)";
-  String _accountNumber = "XXXX-XXXX-4819";
-  String _ifscCode = "SBIN0004210";
-  String _accountHolderName = "annu kumar";
-  String _upiId = "annukumar@oksbi";
-  int _customVisitPrice = 350; // Worker decides their own booking price
+  bool _hasBankDetails = false;
+  String _bankName = "";
+  String _accountNumber = "";
+  String _ifscCode = "";
+  String _accountHolderName = "";
+  String _upiId = "";
+  int _customVisitPrice = 199; // Worker decides their own booking price
 
-  // Earning & Escrow State
-  double _totalEarnings = 4850.0;
-  double _escrowHoldAmount = 350.0;
-  int _completedJobsCount = 14;
+  // Earning & Escrow State (Fresh user starts with 0)
+  double _totalEarnings = 0.0;
+  double _escrowHoldAmount = 0.0;
+  int _completedJobsCount = 0;
 
   // Active Job Demo State for Handshake OTP Workflow
-  bool _hasActiveJob = true;
+  bool _hasActiveJob = false;
   String _jobState = "ARRIVED"; // "ARRIVED", "IN_PROGRESS", "COMPLETED"
   final TextEditingController _startOtpController = TextEditingController();
   final TextEditingController _completionOtpController = TextEditingController();
@@ -1234,8 +1234,22 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
           const SizedBox(height: 24),
           Text("हालिया संपन्न काम (Past Jobs)", style: TextStyle(color: theme.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
-          _buildPastBookingCard(theme, "राजेश गुप्ता", "कमरे की दीवार पेंटिंग", "₹1,200", "आज, 2:30 PM", "संपन्न (5.0 ★)"),
-          _buildPastBookingCard(theme, "सुनीता वर्मा", "किचन सिंक पाइप लीकेज", "₹380", "कल, 11:15 AM", "संपन्न (4.8 ★)"),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: theme.card,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: theme.border),
+            ),
+            child: Column(
+              children: [
+                Icon(Icons.history_rounded, size: 36, color: theme.textMuted),
+                const SizedBox(height: 8),
+                Text("अभी तक कोई पुराना काम नहीं है", style: TextStyle(color: theme.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
         ],
       ),
     );

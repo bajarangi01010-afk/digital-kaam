@@ -31,6 +31,7 @@ const AppFeaturesGuideModal = lazy(() => import('./components/AppFeaturesGuideMo
 
 import {
   INITIAL_WORKERS,
+  EMPTY_WORKER,
   INITIAL_BOOKINGS,
   INITIAL_POSTED_JOBS,
   INITIAL_AUDIT_LOGS,
@@ -95,7 +96,7 @@ export default function App() {
     if (savedSession?.isLoggedIn && savedSession.role === 'WORKER' && savedSession.workerData) {
       return savedSession.workerData;
     }
-    return INITIAL_WORKERS[0];
+    return EMPTY_WORKER;
   });
   const [customer, setCustomer] = useState<CustomerProfile>(() => {
     if (savedSession?.isLoggedIn && savedSession.role === 'CUSTOMER' && savedSession.customerData) {

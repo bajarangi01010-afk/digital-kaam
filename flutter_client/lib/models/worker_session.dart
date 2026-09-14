@@ -9,22 +9,22 @@ class WorkerSession {
   static bool isLoggedIn = false;
   static String role = "WORKER"; // "WORKER" or "CUSTOMER"
 
-  // User Profile Attributes
-  static String name = "annu kumar";
-  static String primarySkill = "इलेक्ट्रीशियन (Electrician)";
-  static String phone = "+91 98765 43210";
-  static String address = "सेक्टर 18, ब्लॉक B, नोएडा";
+  // User Profile Attributes (Clean defaults - no hardcoded mock user)
+  static String name = "";
+  static String primarySkill = "";
+  static String phone = "";
+  static String address = "";
   static File? profilePhoto;
   static Uint8List? profilePhotoBytes;
-  static String workerId = "DK-VERIFIED-9842";
-  static String aadhaarStatus = "✓ 100% आधार बायोमेट्रिक व लाइव फेस सत्यापित";
-  static double rating = 4.9;
-  static int completedJobs = 14;
-  static int customVisitPrice = 350;
+  static String workerId = "";
+  static String aadhaarStatus = "सत्यापन लंबित";
+  static double rating = 5.0;
+  static int completedJobs = 0;
+  static int customVisitPrice = 199;
   static bool isBookingEnabled = true;
-  static double lat = 25.6090;
-  static double lng = 85.1343;
-  static String s2Token = "39ed5843";
+  static double lat = 28.6139;
+  static double lng = 77.2090;
+  static String s2Token = "";
 
   static void update({
     String? newRole,
@@ -208,6 +208,22 @@ class WorkerSession {
   static Future<void> clearSession() async {
     try {
       isLoggedIn = false;
+      role = "WORKER";
+      name = "";
+      primarySkill = "";
+      phone = "";
+      address = "";
+      profilePhoto = null;
+      profilePhotoBytes = null;
+      workerId = "";
+      aadhaarStatus = "सत्यापन लंबित";
+      rating = 5.0;
+      completedJobs = 0;
+      customVisitPrice = 199;
+      isBookingEnabled = true;
+      lat = 28.6139;
+      lng = 77.2090;
+      s2Token = "";
       final file = await _getSessionFile();
       if (await file.exists()) {
         await file.delete();

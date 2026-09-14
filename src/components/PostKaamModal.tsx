@@ -27,7 +27,7 @@ export const PostKaamModal: React.FC<Props> = ({ isOpen, onClose, workers, onSub
     const startOtp = `${Math.floor(1000 + Math.random() * 9000)}`;
     const completionOtp = `${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const visit = chosenWorker.pricing.visitCharge;
+    const visit = chosenWorker?.pricing?.visitCharge ?? 199;
     const task = Math.max(200, budget - visit - 50);
     const platformFee = Math.round(budget * 0.02);
     const gst = Math.round(platformFee * 0.18);
@@ -39,9 +39,9 @@ export const PostKaamModal: React.FC<Props> = ({ isOpen, onClose, workers, onSub
       customerName,
       customerPhone: '+91 98100 23411',
       customerAddress: address,
-      workerId: chosenWorker.id,
-      workerName: chosenWorker.name,
-      workerKaamId: chosenWorker.kaamId,
+      workerId: chosenWorker?.id || 'open-broadcast',
+      workerName: chosenWorker?.name || 'सत्यापित कारीगर',
+      workerKaamId: chosenWorker?.kaamId || 'BROADCAST',
       serviceCategory: category,
       jobTitle: jobTitle || `${category} Diagnostics & Repair`,
       description: description || 'Routine inspection and troubleshooting with genuine parts.',

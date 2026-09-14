@@ -8,7 +8,7 @@ interface Props {
 }
 
 export const VerificationQueue: React.FC<Props> = ({ workers, onUpdateWorkerVerification }) => {
-  const [selectedWorker, setSelectedWorker] = useState<WorkerProfile>(workers[0]);
+  const [selectedWorker, setSelectedWorker] = useState<WorkerProfile | null>(workers[0] || null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const handleApprove = (worker: WorkerProfile) => {
@@ -60,49 +60,54 @@ export const VerificationQueue: React.FC<Props> = ({ workers, onUpdateWorkerVeri
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-4 space-y-3">
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Registered Technicians</h3>
           <div className="space-y-2">
-            {workers.map((worker) => {
-              const isSelected = selectedWorker.id === worker.id;
-              return (
-                <div
-                  key={worker.id}
-                  onClick={() => setSelectedWorker(worker)}
-                  className={`p-3.5 rounded-xl border transition cursor-pointer ${
-                    isSelected
-                      ? 'bg-blue-50/60 border-blue-300 shadow-xs'
-                      : 'bg-white border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={worker.avatar}
-                      alt={worker.name}
-                      loading="lazy"
-                      decoding="async"
-                      className="w-11 h-11 rounded-full object-cover border border-slate-200"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-bold text-slate-900 truncate">{worker.name}</h4>
-                        <span className="text-[10px] font-mono font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
-                          {worker.kaamId}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 truncate">{worker.trade}</p>
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="text-[10px] text-emerald-600 font-semibold">{worker.verificationLevel}</span>
-                        <span className="text-[10px] text-slate-400">{worker.jobsCompleted} jobs</span>
+            {workers.length === 0 ? (
+              <p className="text-xs text-slate-400 py-6 text-center">अभी कोई कारीगर रजिस्टर नहीं है</p>
+            ) : (
+              workers.map((worker) => {
+                const isSelected = selectedWorker?.id === worker.id;
+                return (
+                  <div
+                    key={worker.id}
+                    onClick={() => setSelectedWorker(worker)}
+                    className={`p-3.5 rounded-xl border transition cursor-pointer ${
+                      isSelected
+                        ? 'bg-blue-50/60 border-blue-300 shadow-xs'
+                        : 'bg-white border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={worker.avatar}
+                        alt={worker.name}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-11 h-11 rounded-full object-cover border border-slate-200"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold text-slate-900 truncate">{worker.name}</h4>
+                          <span className="text-[10px] font-mono font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                            {worker.kaamId}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 truncate">{worker.trade}</p>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-[10px] text-emerald-600 font-semibold">{worker.verificationLevel}</span>
+                          <span className="text-[10px] text-slate-400">{worker.jobsCompleted} jobs</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
 
         {/* Right Detail Pane */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-xs p-6 space-y-6">
-          <div className="flex items-center justify-between border-b pb-4 border-slate-100 flex-wrap gap-3">
+        {selectedWorker ? (
+          <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-xs p-6 space-y-6">
+            <div className="flex items-center justify-between border-b pb-4 border-slate-100 flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <img
                 src={selectedWorker.avatar}
@@ -205,7 +210,14 @@ export const VerificationQueue: React.FC<Props> = ({ workers, onUpdateWorkerVeri
             </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-xs p-12 text-center text-slate-400 text-xs flex flex-col items-center justify-center space-y-2">
+          <ShieldCheck className="w-10 h-10 text-slate-300" />
+          <p className="font-bold text-slate-600">कोई कारीगर चयनित नहीं है</p>
+          <p>लिस्ट में से किसी कारीगर को चुनें या नए रजिस्ट्रेशन का इंतज़ार करें।</p>
+        </div>
+      )}
     </div>
+  </div>
   );
 };

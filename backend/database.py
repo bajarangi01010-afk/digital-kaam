@@ -146,39 +146,8 @@ def init_db():
 
     conn.commit()
 
-    # Seed initial verified workers if empty
-    cursor.execute("SELECT COUNT(*) FROM workers")
-    count = cursor.fetchone()[0]
-    if count == 0:
-        _seed_db_workers(cursor)
-        conn.commit()
-
+    # Database tables ready for real users (fresh database without mock data)
     conn.close()
-
-def _seed_db_workers(cursor):
-    """Inserts initial verified realistic workers into SQLite database."""
-    initial_workers = [
-        ("W-101", "राजेश कुमार (Rajesh Kumar)", "इलेक्ट्रीशियन (Electrician)", "+91 98112 34567", "कनॉट प्लेस, नई दिल्ली", 28.6214, 77.2152, "390ce2b4", 149, 4.9, 142, "State Bank of India", "38472910482", "SBIN0001234", "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150", 1, 1, time.time()),
-        ("W-102", "मोहित शर्मा (Mohit Sharma)", "प्लंबर (Plumber)", "+91 98223 45678", "लाजपत नगर, नई दिल्ली", 28.6027, 77.2175, "390ce2ac", 199, 4.8, 98, "Punjab National Bank", "59281039481", "PUNB0123456", "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150", 1, 1, time.time()),
-        ("W-103", "दिनेश कारपेंटर (Dinesh Suthar)", "कारपेंटर (Carpenter)", "+91 98334 56789", "करोल बाग, नई दिल्ली", 28.6319, 77.1970, "390ce2f1", 249, 4.7, 64, "HDFC Bank", "50100293847", "HDFC0000123", "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150", 1, 1, time.time()),
-        ("W-104", "सोनू पेंटर (Sonu Painter)", "पेंटर (Painter)", "+91 98445 67890", "साउथ एक्स, नई दिल्ली", 28.5899, 77.1940, "390ce32a", 199, 4.9, 185, "Bank of Baroda", "28371948572", "BARB0SAUTHX", "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150", 1, 1, time.time()),
-        ("W-105", "मुकेश वेल्डर (Mukesh Welder)", "वेल्डर व फैब्रिकेटर", "+91 98556 78901", "रोहिणी सेक्टर 7, दिल्ली", 28.6449, 77.2300, "390ce38d", 299, 4.6, 42, "ICICI Bank", "00123456789", "ICIC0000012", "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150", 1, 1, time.time()),
-        ("DK-VERIFIED-9842", "annu kumar (अन्नू कुमार)", "इलेक्ट्रीशियन (Electrician)", "+91 98765 43210", "सेक्टर 18, नोएडा", 28.6180, 77.2120, "390ce2b4", 350, 4.9, 14, "State Bank of India", "38472910482", "SBIN0001234", "", 1, 1, time.time()),
-    ]
-    cursor.executemany("""
-    INSERT OR REPLACE INTO workers (
-        worker_id, name, skill, phone, address, lat, lng, s2_token, visiting_fee,
-        rating, total_jobs, bank_name, account_no, ifsc, photo_url, is_verified, is_available, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, initial_workers)
-
-    # Seed sample active booking
-    cursor.execute("""
-    INSERT OR REPLACE INTO bookings (
-        booking_id, customer_name, customer_phone, customer_address, worker_id, service_name,
-        visiting_fee, escrow_status, start_otp, end_otp, tracking_status, distance_km, eta_minutes, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, ("DK-BK-7819", "राहुल वर्मा (Customer)", "+91 99887 76655", "फ्लैट 402, शांति अपार्टमेंट, नई दिल्ली", "DK-VERIFIED-9842", "इलेक्ट्रीशियन (Electrician)", 350, "LOCKED", "5182", "9341", "ON_THE_WAY", 1.03, 5, time.time() - 600, time.time()))
 
 # ──────────────────────────────────────────────────────────
 #  DATABASE QUERY METHODS

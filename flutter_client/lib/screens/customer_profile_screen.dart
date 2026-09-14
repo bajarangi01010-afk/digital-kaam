@@ -47,9 +47,9 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _name = widget.customerName;
-    _phone = widget.customerPhone ?? "+91 99887 76655";
-    _address = widget.customerAddress ?? "shivpur , sikariyan , darigaon road sasaram";
+    _name = widget.customerName.isNotEmpty ? widget.customerName : (WorkerSession.name.isNotEmpty ? WorkerSession.name : "ग्राहक");
+    _phone = widget.customerPhone ?? (WorkerSession.phone.isNotEmpty ? WorkerSession.phone : "");
+    _address = widget.customerAddress ?? (WorkerSession.address.isNotEmpty ? WorkerSession.address : "");
     _photo = widget.customerPhoto;
     _photoBytes = widget.customerBytes;
   }

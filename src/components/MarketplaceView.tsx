@@ -54,7 +54,13 @@ export const MarketplaceView: React.FC<Props> = ({ workers, onSelectWorkerForBoo
 
       {/* Workers Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filtered.map((worker) => (
+        {filtered.length === 0 ? (
+          <div className="col-span-full bg-white p-12 rounded-xl border border-slate-200 text-center space-y-2">
+            <p className="text-base font-bold text-slate-800">अभी कोई कारीगर उपलब्ध नहीं है</p>
+            <p className="text-xs text-slate-500">जैसे ही नए कारीगर रजिस्टर होंगे, वे यहाँ दिखाई देंगे।</p>
+          </div>
+        ) : (
+          filtered.map((worker) => (
           <div
             key={worker.id}
             className="bg-white rounded-xl border border-slate-200 shadow-xs p-6 flex flex-col justify-between hover:border-blue-400 hover:shadow-md transition space-y-5"
@@ -138,7 +144,7 @@ export const MarketplaceView: React.FC<Props> = ({ workers, onSelectWorkerForBoo
               </button>
             </div>
           </div>
-        ))}
+        )))}
       </div>
     </div>
   );
