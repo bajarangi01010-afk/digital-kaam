@@ -1101,6 +1101,48 @@ async def get_admin_data():
         "logged_out_accounts": database.get_all_logged_out_accounts(),
     }
 
+@app.delete("/api/admin/workers/{worker_id}")
+@app.post("/api/admin/workers/{worker_id}/delete")
+async def admin_delete_worker(worker_id: str):
+    """Admin endpoint to permanently delete a worker account from database and radar index."""
+    try:
+        # 1. Delete from SQLite DB
+        database.delete_worker(worker_id)
+
+        # 2. Remove from S2 Radar in-memory index
+        s2_engine.remove_worker(worker_id)
+
+        # 3. Remove from smart_brain_service.SYSTEM_WORKERS
+        if hasattr(smart_brain_service, "SYSTEM_WORKERS"):
+            smart_brain_service.SYSTEM_WORKERS[:] = [
+                w for w in smart_brain_service.SYSTEM_WORKERS if w.get("worker_id") != worker_id
+            ]
+
+        logger.info(f"Admin permanently deleted worker: {worker_id}")
+        return {
+            "status": "success",
+            "message": f"Worker {worker_id} successfully deleted",
+            "worker_id": worker_id
+        }
+    except Exception as e:
+        logger.exception(f"Error deleting worker {worker_id}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/admin/accounts/{account_id}")
+@app.post("/api/admin/accounts/{account_id}/delete")
+async def admin_delete_account(account_id: str):
+    """Admin endpoint to delete an archived or logged-out account."""
+    try:
+        database.delete_logged_out_account(account_id)
+        return {
+            "status": "success",
+            "message": f"Account {account_id} successfully deleted",
+            "account_id": account_id
+        }
+    except Exception as e:
+        logger.exception(f"Error deleting account {account_id}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # ══════════════════════════════════════════════════════════════
 #  FEATURE 5: USER LOGOUT ARCHIVE & PUBLIC QR WEB PROFILE

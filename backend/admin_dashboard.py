@@ -56,10 +56,12 @@ def get_admin_dashboard_html() -> str:
         photo_html = f'<img src="{a["photo_url"]}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid #60a5fa;">' if a.get("photo_url") else '<div style="width:38px;height:38px;border-radius:50%;background:#1e293b;border:2px solid #475569;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-weight:bold;font-size:14px;">👤</div>'
         role_label = "👷 कारीगर (Worker)" if a.get("role") == "WORKER" else "🛒 ग्राहक (Customer)"
         role_badge = '<span class="badge badge-info">' + role_label + '</span>'
+        aid = a.get("account_id") or ""
+        aname = (a.get("name") or "User").replace("'", "\\'")
 
         logged_out_rows += f"""
-        <tr>
-            <td style="font-family:monospace;font-weight:bold;color:#60a5fa;">{a.get("account_id")}</td>
+        <tr id="account-row-{aid}">
+            <td style="font-family:monospace;font-weight:bold;color:#60a5fa;">{aid}</td>
             <td>{role_badge}</td>
             <td>
                 <div style="display:flex;align-items:center;gap:12px;">
@@ -75,7 +77,12 @@ def get_admin_dashboard_html() -> str:
             <td style="font-weight:bold;color:#10b981;font-size:15px;">₹{a.get("visiting_fee", 350)}</td>
             <td><span style="color:#fbbf24;font-weight:bold;">{a.get("rating", 4.9)} ★</span> <span style="font-size:11px;color:#64748b;">({a.get("total_jobs", 14)} काम)</span></td>
             <td style="font-size:12px;color:#94a3b8;font-family:monospace;">{a.get("logout_time") or 'हाल ही में'}</td>
-            <td><span class="badge badge-secondary" style="border:1px solid #475569;background:#1e293b;color:#94a3b8;">💾 लॉगआउट (सुरक्षित आर्काइव)</span></td>
+            <td><span class="badge badge-secondary" style="border:1px solid #475569;background:#1e293b;color:#94a3b8;">💾 आर्काइव</span></td>
+            <td>
+                <button onclick="deleteAccount('{aid}', '{aname}')" style="background:#475569;color:#f87171;border:1px solid #64748b;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:3px;" onmouseover="this.style.background='#ef4444';this.style.color='#fff'" onmouseout="this.style.background='#475569';this.style.color='#f87171'">
+                    🗑️ हटाएं
+                </button>
+            </td>
         </tr>
         """
 
@@ -85,10 +92,12 @@ def get_admin_dashboard_html() -> str:
         photo_html = f'<img src="{w["photo_url"]}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid #38bdf8;">' if w.get("photo_url") else '<div style="width:38px;height:38px;border-radius:50%;background:#1e293b;border:2px solid #475569;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-weight:bold;font-size:14px;">👷</div>'
         verified_badge = '<span class="badge badge-success">✓ आधार व फेस सत्यापित</span>' if w.get("is_verified") else '<span class="badge badge-warning">लंबित (Pending)</span>'
         status_badge = '<span class="badge badge-active">🟢 ऑनलाइन (उपलब्ध)</span>' if w.get("is_available") else '<span class="badge badge-offline">व्यस्त / ऑफलाइन</span>'
+        wid = w.get("worker_id") or ""
+        wname = (w.get("name") or "Worker").replace("'", "\\'")
 
         worker_rows += f"""
-        <tr>
-            <td style="font-family:monospace;font-weight:bold;color:#38bdf8;">{w.get("worker_id")}</td>
+        <tr id="worker-row-{wid}">
+            <td style="font-family:monospace;font-weight:bold;color:#38bdf8;">{wid}</td>
             <td>
                 <div style="display:flex;align-items:center;gap:12px;">
                     {photo_html}
@@ -108,6 +117,11 @@ def get_admin_dashboard_html() -> str:
                 <div style="color:#94a3b8;font-family:monospace;">{w.get("account_no", "N/A")} • {w.get("ifsc", "N/A")}</div>
             </td>
             <td>{status_badge}</td>
+            <td>
+                <button onclick="deleteWorker('{wid}', '{wname}')" style="background:#ef4444;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;box-shadow:0 2px 6px rgba(239,68,68,0.3);transition:background 0.2s;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">
+                    🗑️ डिलीट करें
+                </button>
+            </td>
         </tr>
         """
 
@@ -678,10 +692,11 @@ def get_admin_dashboard_html() -> str:
                             <th>S2 सेल टोकन</th>
                             <th>बैंक व भुगतान विवरण</th>
                             <th>उपलब्धता</th>
+                            <th>कार्रवाई (Action)</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {worker_rows if worker_rows else '<tr><td colspan="9" style="text-align:center;padding:24px;color:#64748b;">कोई कारीगर डेटाबेस में नहीं मिला</td></tr>'}
+                        {worker_rows if worker_rows else '<tr><td colspan="10" style="text-align:center;padding:24px;color:#64748b;">कोई कारीगर डेटाबेस में नहीं मिला</td></tr>'}
                     </tbody>
                 </table>
             </div>
@@ -710,10 +725,11 @@ def get_admin_dashboard_html() -> str:
                             <th>रेटिंग व कार्य</th>
                             <th>लॉगआउट समय</th>
                             <th>आर्काइव स्थिति</th>
+                            <th>कार्रवाई (Action)</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {logged_out_rows if logged_out_rows else '<tr><td colspan="9" style="text-align:center;padding:24px;color:#64748b;">कोई लॉगआउट खाता नहीं है (सभी डेटा सुरक्षित हैं)</td></tr>'}
+                        {logged_out_rows if logged_out_rows else '<tr><td colspan="10" style="text-align:center;padding:24px;color:#64748b;">कोई लॉगआउट खाता नहीं है (सभी डेटा सुरक्षित हैं)</td></tr>'}
                     </tbody>
                 </table>
             </div>
@@ -798,10 +814,60 @@ def get_admin_dashboard_html() -> str:
             }}
         }}
 
-        // Auto-refresh data every 15 seconds
+        async function deleteWorker(workerId, workerName) {{
+            if (!confirm('क्या आप सचमुच कारीगर "' + workerName + '" (ID: ' + workerId + ') का खाता डिजिटल काम से हमेशा के लिए डिलीट करना चाहते हैं?')) {{
+                return;
+            }}
+            try {{
+                const res = await fetch('/api/admin/workers/' + encodeURIComponent(workerId) + '/delete', {{
+                    method: 'POST'
+                }});
+                const data = await res.json();
+                if (data.status === 'success') {{
+                    const row = document.getElementById('worker-row-' + workerId);
+                    if (row) {{
+                        row.style.transition = 'opacity 0.3s';
+                        row.style.opacity = '0';
+                        setTimeout(function() {{ row.remove(); }}, 300);
+                    }}
+                    alert('✓ कारीगर "' + workerName + '" का खाता सफलतापूर्वक डिलीट कर दिया गया है।');
+                }} else {{
+                    alert('डिलीट करने में त्रुटि: ' + (data.message || 'Unknown error'));
+                }}
+            }} catch (err) {{
+                alert('सर्वर से संपर्क करने में त्रुटि: ' + err.message);
+            }}
+        }}
+
+        async function deleteAccount(accountId, accountName) {{
+            if (!confirm('क्या आप आर्काइव खाता "' + accountName + '" (ID: ' + accountId + ') हटाना चाहते हैं?')) {{
+                return;
+            }}
+            try {{
+                const res = await fetch('/api/admin/accounts/' + encodeURIComponent(accountId) + '/delete', {{
+                    method: 'POST'
+                }});
+                const data = await res.json();
+                if (data.status === 'success') {{
+                    const row = document.getElementById('account-row-' + accountId);
+                    if (row) {{
+                        row.style.transition = 'opacity 0.3s';
+                        row.style.opacity = '0';
+                        setTimeout(function() {{ row.remove(); }}, 300);
+                    }}
+                    alert('✓ आर्काइव खाता सफलतापूर्वक हटा दिया गया है।');
+                }} else {{
+                    alert('त्रुटि: ' + (data.message || 'Unknown error'));
+                }}
+            }} catch (err) {{
+                alert('सर्वर त्रुटि: ' + err.message);
+            }}
+        }}
+
+        // Auto-refresh data every 60 seconds
         setTimeout(function() {{
             location.reload();
-        }}, 15000);
+        }}, 60000);
     </script>
 </body>
 </html>

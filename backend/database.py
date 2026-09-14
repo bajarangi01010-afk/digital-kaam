@@ -526,6 +526,30 @@ def upsert_user_profile(data: Dict[str, Any]) -> Dict[str, Any]:
     return {"status": "success", "worker_id": worker_id}
 
 
+def delete_worker(worker_id: str) -> bool:
+    """Permanently deletes a worker from workers and logged_out_accounts tables."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM workers WHERE worker_id = ?", (worker_id,))
+    w_count = cursor.rowcount
+    cursor.execute("DELETE FROM logged_out_accounts WHERE account_id = ? OR user_id = ?", (worker_id, worker_id))
+    a_count = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return (w_count > 0 or a_count > 0)
+
+
+def delete_logged_out_account(account_id: str) -> bool:
+    """Deletes an entry permanently from logged_out_accounts archive."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM logged_out_accounts WHERE account_id = ? OR user_id = ?", (account_id, account_id))
+    count = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return count > 0
+
+
 def find_user_by_phone(phone: str) -> Optional[Dict[str, Any]]:
     """
     Lightweight, zero-overhead user lookup by 10-digit Indian phone number.

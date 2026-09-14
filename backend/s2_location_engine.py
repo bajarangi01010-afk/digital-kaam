@@ -138,6 +138,16 @@ class S2LocationEngine:
 
         return worker_data
 
+    def remove_worker(self, worker_id: str) -> bool:
+        """Removes a worker permanently from the in-memory spatial radar index."""
+        if worker_id in self.workers:
+            w = self.workers.pop(worker_id)
+            token = w.get("s2_token")
+            if token and token in self.cell_to_workers:
+                self.cell_to_workers[token].discard(worker_id)
+            return True
+        return False
+
     def set_worker_location_toggle(self, worker_id: str, is_location_on: bool) -> bool:
         """Toggles worker location radar. If OFF, removes from spatial index and search."""
         if worker_id not in self.workers:
