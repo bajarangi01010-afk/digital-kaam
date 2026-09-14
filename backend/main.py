@@ -99,10 +99,16 @@ def get_rapid_ocr():
 @app.get("/health")
 @app.get("/api/health")
 async def health():
+    cv2_file = getattr(cv2, "__file__", "none")
+    cv2_keys = [k for k in dir(cv2) if not k.startswith("_")]
+    has_cascade = hasattr(cv2, "CascadeClassifier")
     return {
         "status": "healthy",
         "service": "digital-kaam-verification-api",
-        "version": "1.0.0",
+        "version": "1.0.1",
+        "cv2_file": cv2_file,
+        "has_cascade": has_cascade,
+        "cv2_keys_sample": cv2_keys[:25],
         "face_recognition": _face_recognition is not None,
         "easyocr": _easyocr_reader is not None,
     }
