@@ -9,32 +9,25 @@ class ApiConfig {
   /// Server Port
   static const int port = 8000;
 
+  /// Production Deployed Cloud Backend
+  static const String cloudBackendUrl = "https://digital-kaam-bakend.onrender.com";
+
   /// Smart cross-platform base URL resolver
   static String get baseUrl {
     if (kIsWeb) {
-      return "http://localhost:$port";
+      return "https://digital-kaam-bakend.onrender.com";
     }
 
-    if (Platform.isAndroid) {
-      // If running on an Android emulator, 10.0.2.2 routes to the host machine
-      // Set useEmulator to false when debugging on physical hardware over Wi-Fi
-      const bool isEmulator = bool.fromEnvironment('IS_EMULATOR', defaultValue: true);
-      if (isEmulator) {
-        return "http://10.0.2.2:$port";
-      } else {
-        return "http://$physicalDeviceLanIp:$port";
-      }
+    if (Platform.isAndroid || Platform.isIOS) {
+      // Direct live cloud backend access anywhere via 4G/5G/WiFi
+      return cloudBackendUrl;
     }
 
     if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-      return "http://127.0.0.1:$port";
+      return cloudBackendUrl;
     }
 
-    if (Platform.isIOS) {
-      return "http://localhost:$port";
-    }
-
-    return "http://127.0.0.1:$port";
+    return cloudBackendUrl;
   }
 
   // Endpoints
