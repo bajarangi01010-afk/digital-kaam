@@ -9,6 +9,7 @@ import '../services/gps_location_service.dart';
 import '../widgets/live_face_verification_dialog.dart';
 import '../controllers/app_theme_controller.dart';
 import '../widgets/app_settings_dialog.dart';
+import '../models/worker_session.dart';
 import 'landing_screen.dart';
 
 class CustomerProfileScreen extends StatefulWidget {
@@ -682,6 +683,9 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                   "s2_token": "390ce2b4",
                 });
               } catch (_) {}
+
+              // Clear persistent session from disk
+              await WorkerSession.clearSession();
 
               if (!mounted) return;
               _showToast("सुरक्षित लॉगआउट संपन्न! आपका डेटा एडमिन आर्काइव में सुरक्षित है।", isSuccess: true);

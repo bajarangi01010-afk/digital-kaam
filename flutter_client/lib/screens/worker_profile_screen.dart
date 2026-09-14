@@ -843,6 +843,9 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                 await _apiService.archiveLogout(WorkerSession.toMap());
               } catch (_) {}
 
+              // Clear persistent session from disk
+              await WorkerSession.clearSession();
+
               if (!mounted) return;
               _showToast("सुरक्षित लॉगआउट संपन्न! आपका डेटा एडमिन आर्काइव में सुरक्षित है।", isSuccess: true);
 

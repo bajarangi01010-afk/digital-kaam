@@ -463,16 +463,33 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
         ),
         actions: [
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
+              final cName = _nameController.text.trim();
+              final cPhone = _phoneController.text.trim();
+              final cAddress = _addressController.text.trim();
+
+              WorkerSession.update(
+                newRole: "CUSTOMER",
+                newIsLoggedIn: true,
+                newName: cName,
+                newPhone: cPhone,
+                newAddress: cAddress,
+                newPhoto: _profilePhoto,
+                newBytes: _profilePhotoBytes,
+                newSkill: "सत्यापित ग्राहक (Customer)",
+              );
+              await WorkerSession.saveToDisk(userRole: "CUSTOMER");
+
+              if (!mounted) return;
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
                   builder: (context) => CustomerDashboardScreen(
-                    customerName: _nameController.text.trim(),
+                    customerName: cName,
                     profilePhoto: _profilePhoto,
                     profilePhotoBytes: _profilePhotoBytes,
-                    customerPhone: _phoneController.text.trim(),
-                    customerAddress: _addressController.text.trim(),
+                    customerPhone: cPhone,
+                    customerAddress: cAddress,
                   ),
                 ),
                 (route) => false,

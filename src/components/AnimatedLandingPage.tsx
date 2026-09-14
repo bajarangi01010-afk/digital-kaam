@@ -14,20 +14,36 @@ import {
   Lock,
   Globe
 } from 'lucide-react';
+import { PersistentSession } from '../utils/session';
 
 interface Props {
   lang: Language;
   onToggleLang: () => void;
   onChangeLang?: (lang: Language) => void;
   onSelectRole: (role: 'WORKER' | 'CUSTOMER') => void;
+  savedSession?: PersistentSession | null;
+  onResumeSession?: () => void;
+  onLogoutSession?: () => void;
 }
 
-export const AnimatedLandingPage: React.FC<Props> = ({ lang, onToggleLang, onChangeLang, onSelectRole }) => {
+export const AnimatedLandingPage: React.FC<Props> = ({
+  lang,
+  onToggleLang,
+  onChangeLang,
+  onSelectRole,
+  savedSession,
+  onResumeSession,
+  onLogoutSession,
+}) => {
   const t = translations[lang];
   const [selectedRolePreview, setSelectedRolePreview] = useState<'WORKER' | 'CUSTOMER' | null>(null);
 
   const handleRoleClick = (role: 'WORKER' | 'CUSTOMER') => {
     sound.playClick();
+    if (savedSession && savedSession.isLoggedIn && savedSession.role === role && onResumeSession) {
+      onResumeSession();
+      return;
+    }
     setSelectedRolePreview(role);
     setTimeout(() => {
       onSelectRole(role);
@@ -136,8 +152,60 @@ export const AnimatedLandingPage: React.FC<Props> = ({ lang, onToggleLang, onCha
 
         {/* User Confirmation Choice: Worker vs Customer Cards */}
         <div className="w-full max-w-2xl pt-4 space-y-4">
+          {/* Active Persistent Session Banner */}
+          {savedSession && savedSession.isLoggedIn && (
+            <div className="w-full bg-slate-900/90 border-2 border-emerald-500/60 rounded-2xl p-4 sm:p-5 text-left flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl backdrop-blur-md">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-6 h-6 text-emerald-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase text-emerald-400 tracking-wider">
+                      {lang === 'hi' ? 'सक्रिय खाता उपलब्ध' : 'Active Account'} ✓
+                    </span>
+                    <span className="text-[10px] bg-slate-800 border border-slate-700 px-2 py-0.5 rounded text-slate-300 font-mono">
+                      {savedSession.role === 'WORKER'
+                        ? (lang === 'hi' ? 'कारीगर' : 'Worker')
+                        : (lang === 'hi' ? 'ग्राहक' : 'Customer')}
+                    </span>
+                  </div>
+                  <h4 className="text-base font-bold text-white mt-0.5">
+                    {savedSession.role === 'WORKER' ? savedSession.workerData?.name : savedSession.customerData?.name}
+                  </h4>
+                  <p className="text-xs text-slate-400">
+                    {lang === 'hi'
+                      ? 'आपका खाता पहले से सत्यापित है। दोबारा पंजीकरण की जरूरत नहीं है।'
+                      : 'Your account is verified. Jump straight into your dashboard.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => onResumeSession && onResumeSession()}
+                  className="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-lg transition cursor-pointer"
+                >
+                  <span>{lang === 'hi' ? 'डैशबोर्ड खोलें' : 'Open Dashboard'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                {onLogoutSession && (
+                  <button
+                    onClick={onLogoutSession}
+                    className="bg-slate-800 hover:bg-red-950/60 border border-slate-700 hover:border-red-500/50 text-slate-400 hover:text-red-400 font-bold text-xs px-3 py-2.5 rounded-xl transition cursor-pointer"
+                    title={lang === 'hi' ? 'खाता बदलें' : 'Switch Account'}
+                  >
+                    {lang === 'hi' ? 'खाता बदलें' : 'Switch'}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="text-xs font-bold uppercase tracking-widest text-slate-400">
-            {t.selectRole}
+            {savedSession && savedSession.isLoggedIn
+              ? (lang === 'hi' ? 'या दूसरा प्रोफाइल चुनें:' : 'Or choose another profile:')
+              : t.selectRole}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

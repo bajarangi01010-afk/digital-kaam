@@ -142,17 +142,22 @@ class _WorkerSkillSetupScreenState extends State<WorkerSkillSetupScreen> {
         ),
         actions: [
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
+              WorkerSession.update(
+                newRole: "WORKER",
+                newIsLoggedIn: true,
+                newName: widget.workerName,
+                newSkill: selectedSkills.first["title"],
+                newPhoto: widget.profilePhoto,
+                newBytes: widget.profilePhotoBytes,
+              );
+              await WorkerSession.saveToDisk(userRole: "WORKER");
+
+              if (!mounted) return;
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
                   builder: (context) {
-                    WorkerSession.update(
-                      newName: widget.workerName,
-                      newSkill: selectedSkills.first["title"],
-                      newPhoto: widget.profilePhoto,
-                      newBytes: widget.profilePhotoBytes,
-                    );
                     return WorkerDashboardScreen(
                       workerName: widget.workerName,
                       primarySkill: selectedSkills.first["title"],

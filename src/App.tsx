@@ -50,6 +50,12 @@ import {
 import { translations, Language } from './utils/i18n';
 import { sound } from './utils/audio';
 import {
+  getSavedSession,
+  savePersistentSession,
+  updatePersistentSessionUser,
+  clearPersistentSession,
+} from './utils/session';
+import {
   Zap,
   Wrench,
   ShieldCheck,
@@ -64,19 +70,39 @@ import {
   Edit3,
   Store,
   CreditCard,
-  Scale
+  Scale,
+  LogOut,
 } from 'lucide-react';
 
 export default function App() {
   const [lang, setLang] = useState<Language>('hi');
-  const [activeSection, setActiveSection] = useState<NavSection>('CUSTOMER_PORTAL');
+
+  // Load persistent session if user previously registered
+  const savedSession = getSavedSession();
+
+  const [activeSection, setActiveSection] = useState<NavSection>(() => {
+    if (savedSession?.isLoggedIn) {
+      return savedSession.role === 'WORKER' ? 'WORKER_PORTAL' : 'CUSTOMER_PORTAL';
+    }
+    return 'CUSTOMER_PORTAL';
+  });
   const [previousSection, setPreviousSection] = useState<NavSection>('CUSTOMER_PORTAL');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Active models & data
   const [workers, setWorkers] = useState<WorkerProfile[]>(INITIAL_WORKERS);
-  const [activeWorker, setActiveWorker] = useState<WorkerProfile>(INITIAL_WORKERS[0]);
-  const [customer, setCustomer] = useState<CustomerProfile>(DEFAULT_CUSTOMER);
+  const [activeWorker, setActiveWorker] = useState<WorkerProfile>(() => {
+    if (savedSession?.isLoggedIn && savedSession.role === 'WORKER' && savedSession.workerData) {
+      return savedSession.workerData;
+    }
+    return INITIAL_WORKERS[0];
+  });
+  const [customer, setCustomer] = useState<CustomerProfile>(() => {
+    if (savedSession?.isLoggedIn && savedSession.role === 'CUSTOMER' && savedSession.customerData) {
+      return savedSession.customerData;
+    }
+    return DEFAULT_CUSTOMER;
+  });
   const [bookings, setBookings] = useState<Booking[]>(INITIAL_BOOKINGS);
   const [postedJobs, setPostedJobs] = useState<PostedJob[]>(INITIAL_POSTED_JOBS);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(INITIAL_AUDIT_LOGS);
@@ -117,11 +143,27 @@ export default function App() {
   const [isCornerProfileDrawerOpen, setIsCornerProfileDrawerOpen] = useState(false);
   const [isFeaturesGuideOpen, setIsFeaturesGuideOpen] = useState(false);
 
-  // Welcome Landing Page opens first by default
-  const [showLandingPreview, setShowLandingPreview] = useState(true);
+  // If user has a verified persistent session, bypass landing preview and go straight to dashboard
+  const [showLandingPreview, setShowLandingPreview] = useState<boolean>(() => {
+    return !savedSession?.isLoggedIn;
+  });
   const [registrationMode, setRegistrationMode] = useState<'WORKER' | 'CUSTOMER' | null>(null);
 
   const t = translations[lang];
+
+  // User Logout / Switch Account
+  const handleLogout = () => {
+    sound.playClick();
+    const confirmMsg =
+      lang === 'hi'
+        ? 'क्या आप वाकई लॉगआउट करना चाहते हैं? आपका डेटा सुरक्षित आर्काइव रहेगा।'
+        : 'Are you sure you want to log out? Your data remains securely archived.';
+    if (window.confirm(confirmMsg)) {
+      clearPersistentSession();
+      setShowLandingPreview(true);
+      setRegistrationMode(null);
+    }
+  };
 
   // Language Toggle & Direct Setter
   const handleToggleLang = () => {
@@ -156,12 +198,20 @@ export default function App() {
 
   // Customer updates profile (details, address, face photo)
   const handleUpdateCustomer = (updated: Partial<CustomerProfile>) => {
-    setCustomer((prev) => ({ ...prev, ...updated }));
+    setCustomer((prev) => {
+      const next = { ...prev, ...updated };
+      updatePersistentSessionUser(next);
+      return next;
+    });
   };
 
   // Worker updates profile (e.g. availability)
   const handleUpdateWorker = (updated: Partial<WorkerProfile>) => {
-    setActiveWorker((prev) => ({ ...prev, ...updated }));
+    setActiveWorker((prev) => {
+      const next = { ...prev, ...updated };
+      updatePersistentSessionUser(next);
+      return next;
+    });
     setWorkers((prev) =>
       prev.map((w) => (w.id === activeWorker.id ? { ...w, ...updated } : w))
     );
@@ -344,6 +394,19 @@ export default function App() {
           lang={lang}
           onToggleLang={handleToggleLang}
           onChangeLang={handleSetLang}
+          savedSession={savedSession}
+          onResumeSession={() => {
+            sound.playClick();
+            setShowLandingPreview(false);
+            if (savedSession?.role === 'WORKER') {
+              setActiveSection('WORKER_PORTAL');
+            } else {
+              setActiveSection('CUSTOMER_PORTAL');
+            }
+          }}
+          onLogoutSession={() => {
+            handleLogout();
+          }}
           onSelectRole={(role) => {
             sound.playClick();
             setShowLandingPreview(false);
@@ -368,6 +431,7 @@ export default function App() {
           onCompleteWorkerRegistration={(newWorker) => {
             setWorkers((prev) => [newWorker, ...prev]);
             setActiveWorker(newWorker);
+            savePersistentSession('WORKER', newWorker);
             setRegistrationMode(null);
             setShowLandingPreview(false);
             setActiveSection('WORKER_PORTAL');
@@ -390,6 +454,7 @@ export default function App() {
           }}
           onCompleteCustomerRegistration={(newCustomer) => {
             setCustomer(newCustomer);
+            savePersistentSession('CUSTOMER', newCustomer);
             setRegistrationMode(null);
             setShowLandingPreview(false);
             setActiveSection('CUSTOMER_PORTAL');
@@ -569,6 +634,16 @@ export default function App() {
             className="p-1.5 bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white rounded-lg transition cursor-pointer"
           >
             <Home className="w-4 h-4" />
+          </button>
+
+          {/* Logout / Switch Account Button */}
+          <button
+            onClick={handleLogout}
+            title={lang === 'hi' ? 'लॉगआउट / खाता बदलें' : 'Logout / Switch Account'}
+            className="flex items-center gap-1 text-xs font-semibold bg-red-950/40 hover:bg-red-900/60 border border-red-700/50 text-red-300 hover:text-white px-2.5 py-1.5 rounded-lg transition cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{lang === 'hi' ? 'लॉगआउट' : 'Logout'}</span>
           </button>
         </div>
       </header>

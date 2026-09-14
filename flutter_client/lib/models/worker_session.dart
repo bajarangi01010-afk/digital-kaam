@@ -1,7 +1,15 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 
 class WorkerSession {
+  // Session Identity & Role
+  static bool isLoggedIn = false;
+  static String role = "WORKER"; // "WORKER" or "CUSTOMER"
+
+  // User Profile Attributes
   static String name = "annu kumar";
   static String primarySkill = "इलेक्ट्रीशियन (Electrician)";
   static String phone = "+91 98765 43210";
@@ -19,6 +27,8 @@ class WorkerSession {
   static String s2Token = "39ed5843";
 
   static void update({
+    String? newRole,
+    bool? newIsLoggedIn,
     String? newName,
     String? newSkill,
     String? newPhone,
@@ -31,7 +41,10 @@ class WorkerSession {
     double? newLng,
     String? newS2Token,
     String? newAadhaarStatus,
+    String? newWorkerId,
   }) {
+    if (newRole != null && newRole.isNotEmpty) role = newRole;
+    if (newIsLoggedIn != null) isLoggedIn = newIsLoggedIn;
     if (newName != null && newName.isNotEmpty) name = newName;
     if (newSkill != null && newSkill.isNotEmpty) primarySkill = newSkill;
     if (newPhone != null && newPhone.isNotEmpty) phone = newPhone;
@@ -44,9 +57,12 @@ class WorkerSession {
     if (newLng != null) lng = newLng;
     if (newS2Token != null && newS2Token.isNotEmpty) s2Token = newS2Token;
     if (newAadhaarStatus != null && newAadhaarStatus.isNotEmpty) aadhaarStatus = newAadhaarStatus;
+    if (newWorkerId != null && newWorkerId.isNotEmpty) workerId = newWorkerId;
   }
 
   static void setSessionData({
+    String? newRole,
+    bool? newIsLoggedIn,
     String? newName,
     String? newSkill,
     String? newPhone,
@@ -59,8 +75,11 @@ class WorkerSession {
     double? newLng,
     String? newS2Token,
     String? newAadhaarStatus,
+    String? newWorkerId,
   }) {
     update(
+      newRole: newRole,
+      newIsLoggedIn: newIsLoggedIn,
       newName: newName,
       newSkill: newSkill,
       newPhone: newPhone,
@@ -73,14 +92,137 @@ class WorkerSession {
       newLng: newLng,
       newS2Token: newS2Token,
       newAadhaarStatus: newAadhaarStatus,
+      newWorkerId: newWorkerId,
     );
+  }
+
+  // --- PERSISTENT STORAGE ENGINE (Survives device restart / app close) ---
+
+  static Future<File> _getSessionFile() async {
+    final dir = await getApplicationDocumentsDirectory();
+    return File('${dir.path}/dk_user_session.json');
+  }
+
+  /// Saves the complete session to disk in JSON format
+  static Future<void> saveToDisk({String? userRole}) async {
+    try {
+      if (userRole != null && userRole.isNotEmpty) {
+        role = userRole;
+      }
+      isLoggedIn = true;
+      final file = await _getSessionFile();
+
+      // Encode bytes to base64 if photo file is memory-based
+      String? photoBase64;
+      if (profilePhotoBytes != null && profilePhotoBytes!.isNotEmpty) {
+        photoBase64 = base64Encode(profilePhotoBytes!);
+      }
+
+      final data = {
+        "isLoggedIn": true,
+        "role": role,
+        "name": name,
+        "primarySkill": primarySkill,
+        "phone": phone,
+        "address": address,
+        "workerId": workerId,
+        "aadhaarStatus": aadhaarStatus,
+        "rating": rating,
+        "completedJobs": completedJobs,
+        "customVisitPrice": customVisitPrice,
+        "isBookingEnabled": isBookingEnabled,
+        "lat": lat,
+        "lng": lng,
+        "s2Token": s2Token,
+        "photoPath": profilePhoto?.path,
+        "photoBase64": photoBase64,
+        "savedAt": DateTime.now().toIso8601String(),
+      };
+
+      await file.writeAsString(jsonEncode(data), flush: true);
+      debugPrint("[WorkerSession] Saved session to disk: $role ($name)");
+    } catch (e) {
+      debugPrint("[WorkerSession] Error saving session to disk: $e");
+    }
+  }
+
+  /// Loads saved session from disk. Returns true if active session exists.
+  static Future<bool> loadFromDisk() async {
+    try {
+      final file = await _getSessionFile();
+      if (!await file.exists()) {
+        isLoggedIn = false;
+        return false;
+      }
+
+      final raw = await file.readAsString();
+      if (raw.trim().isEmpty) {
+        isLoggedIn = false;
+        return false;
+      }
+
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+      if (data["isLoggedIn"] == true) {
+        isLoggedIn = true;
+        role = data["role"] ?? "WORKER";
+        name = data["name"] ?? name;
+        primarySkill = data["primarySkill"] ?? primarySkill;
+        phone = data["phone"] ?? phone;
+        address = data["address"] ?? address;
+        workerId = data["workerId"] ?? workerId;
+        aadhaarStatus = data["aadhaarStatus"] ?? aadhaarStatus;
+        rating = (data["rating"] as num?)?.toDouble() ?? rating;
+        completedJobs = (data["completedJobs"] as num?)?.toInt() ?? completedJobs;
+        customVisitPrice = (data["customVisitPrice"] as num?)?.toInt() ?? customVisitPrice;
+        isBookingEnabled = data["isBookingEnabled"] ?? true;
+        lat = (data["lat"] as num?)?.toDouble() ?? lat;
+        lng = (data["lng"] as num?)?.toDouble() ?? lng;
+        s2Token = data["s2Token"] ?? s2Token;
+
+        // Restore photo from path or base64
+        final path = data["photoPath"] as String?;
+        if (path != null && path.isNotEmpty) {
+          final f = File(path);
+          if (await f.exists()) {
+            profilePhoto = f;
+            profilePhotoBytes = await f.readAsBytes();
+          }
+        }
+        if (profilePhotoBytes == null && data["photoBase64"] != null) {
+          try {
+            profilePhotoBytes = base64Decode(data["photoBase64"]);
+          } catch (_) {}
+        }
+
+        debugPrint("[WorkerSession] Loaded active session from disk: $role ($name)");
+        return true;
+      }
+    } catch (e) {
+      debugPrint("[WorkerSession] Error loading session from disk: $e");
+    }
+    isLoggedIn = false;
+    return false;
+  }
+
+  /// Clears session upon explicit user logout
+  static Future<void> clearSession() async {
+    try {
+      isLoggedIn = false;
+      final file = await _getSessionFile();
+      if (await file.exists()) {
+        await file.delete();
+      }
+      debugPrint("[WorkerSession] Cleared persistent session from disk.");
+    } catch (e) {
+      debugPrint("[WorkerSession] Error clearing session from disk: $e");
+    }
   }
 
   static Map<String, dynamic> toMap() {
     return {
       "worker_id": workerId,
       "user_id": workerId,
-      "role": "WORKER",
+      "role": role,
       "name": name,
       "skill": primarySkill,
       "phone": phone,
