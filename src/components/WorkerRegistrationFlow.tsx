@@ -115,6 +115,7 @@ export const WorkerRegistrationFlow: React.FC<Props> = ({
   const [enteredOtp, setEnteredOtp] = useState('');
   const [otpVerified, setOtpVerified] = useState(false);
   const [generatedOtp, setGeneratedOtp] = useState('');
+  const [existingAccount, setExistingAccount] = useState<any>(null);
 
   // GPS Address
   const [address, setAddress] = useState('');
@@ -198,7 +199,10 @@ export const WorkerRegistrationFlow: React.FC<Props> = ({
       setIsSendingOtp(false);
       setOtpSent(true);
 
-      if (data.status === 'sent' || data.return === true) {
+      if (data.account_exists && data.user) {
+        setExistingAccount(data.user);
+        alert(`✓ स्वागत है, ${data.user.name || 'कारीगर'}!\nआपका सत्यापित डिजिटल काम खाता डेटाबेस में मिल गया है। OTP डालकर सीधा डैशबोर्ड खोलें (आधार/सेल्फी की जरूरत नहीं)!`);
+      } else if (data.status === 'sent' || data.return === true) {
         alert(`✓ आपके मोबाइल (${cleanPhone}) पर असली SMS OTP भेज दिया गया है!`);
       } else {
         // Fallback if local without backend
@@ -217,6 +221,34 @@ export const WorkerRegistrationFlow: React.FC<Props> = ({
     if (enteredOtp && (enteredOtp === generatedOtp || enteredOtp === '1234')) {
       sound.playSuccess();
       setOtpVerified(true);
+
+      if (existingAccount) {
+        sound.playSuccess();
+        alert(`✓ लॉगिन सफल! स्वागत है ${existingAccount.name}। आपका डैशबोर्ड खोला जा रहा है...`);
+        onCompleteWorkerRegistration({
+          id: existingAccount.id || existingAccount.worker_id || `WKR-${Date.now()}`,
+          kaamId: existingAccount.worker_id || 'DK-VERIFIED-9842',
+          name: existingAccount.name || fullName || 'कारीगर',
+          trade: existingAccount.skill || selectedTrade,
+          phone: existingAccount.phone || phone,
+          address: existingAccount.address || address || 'सेक्टर 18, ब्लॉक B, नोएडा',
+          visitingCharge: existingAccount.visiting_fee || visitFee,
+          rating: existingAccount.rating || 4.9,
+          totalReviews: 24,
+          jobsCompleted: existingAccount.completed_jobs || 14,
+          onTimeArrivalRate: 98,
+          experienceYears: 5,
+          skills: [existingAccount.skill || selectedTrade],
+          primarySkill: existingAccount.skill || selectedTrade,
+          avatar: existingAccount.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=160&auto=format&fit=crop&q=80',
+          verificationLevel: 3,
+          govtIdStatus: 'APPROVED',
+          isAvailable: true,
+          lat: 28.6139,
+          lng: 77.2090,
+          s2Token: existingAccount.s2_token || '390ce2b4',
+        });
+      }
     } else {
       sound.playError();
       alert('अमान्य OTP! कृपया SMS में आया सही कोड दर्ज करें।');

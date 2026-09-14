@@ -399,11 +399,29 @@ class SendOtpPayload(BaseModel):
     otp: str = Field(..., min_length=4, max_length=8)
     role: Optional[str] = "user"
 
+class LookupPhonePayload(BaseModel):
+    phone: str
+
+@app.post("/api/auth/lookup-phone", tags=["auth"])
+async def lookup_phone_account(body: LookupPhonePayload):
+    """Checks if a mobile phone number belongs to an existing verified user."""
+    user = database.find_user_by_phone(body.phone)
+    return {
+        "status": "success",
+        "exists": user is not None,
+        "account_exists": user is not None,
+        "user": user
+    }
+
 @app.post("/api/auth/send-registration-otp", tags=["auth"])
 async def send_registration_otp(body: SendOtpPayload):
     """Dispatches a real cellular OTP via Fast2SMS for worker/customer registration."""
     msg = f"Digital Kaam: Aapka verification OTP {body.otp} hai. Use this to complete your registration."
     res = sms_gateway.send_sms(phone=body.phone, message=msg)
+    # Check if user already has an existing account in the database
+    existing_user = database.find_user_by_phone(body.phone)
+    res["account_exists"] = existing_user is not None
+    res["user"] = existing_user
     return res
 
 @app.post("/api/notifications/send-sms", tags=["notifications"])

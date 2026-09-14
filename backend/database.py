@@ -556,3 +556,104 @@ def upsert_user_profile(data: Dict[str, Any]) -> Dict[str, Any]:
     conn.close()
     return {"status": "success", "worker_id": worker_id}
 
+
+def find_user_by_phone(phone: str) -> Optional[Dict[str, Any]]:
+    """
+    Lightweight, zero-overhead user lookup by 10-digit Indian phone number.
+    Checks workers table, logged_out_accounts table, and posted_jobs table.
+    """
+    clean_digits = "".join(c for c in phone if c.isdigit())
+    if len(clean_digits) >= 10:
+        clean_phone_10 = clean_digits[-10:]
+    else:
+        clean_phone_10 = clean_digits
+
+    if not clean_phone_10 or len(clean_phone_10) < 10:
+        return None
+
+    conn = get_db_connection()
+    try:
+        # 1. Search in workers table
+        row = conn.execute(
+            "SELECT * FROM workers WHERE phone LIKE ? OR phone LIKE ? ORDER BY created_at DESC LIMIT 1",
+            (f"%{clean_phone_10}%", f"%{clean_phone_10}")
+        ).fetchone()
+
+        if row:
+            w = dict(row)
+            return {
+                "role": "WORKER",
+                "id": w.get("worker_id"),
+                "worker_id": w.get("worker_id"),
+                "user_id": w.get("worker_id"),
+                "name": w.get("name"),
+                "skill": w.get("skill"),
+                "phone": w.get("phone"),
+                "address": w.get("address") or "सेक्टर 18, ब्लॉक B, नोएडा",
+                "visiting_fee": w.get("visiting_fee", 350),
+                "rating": w.get("rating", 4.9),
+                "completed_jobs": w.get("total_jobs", 14),
+                "avatar": w.get("photo_url") or "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=160&auto=format&fit=crop&q=80",
+                "photo_url": w.get("photo_url") or "",
+                "s2_token": w.get("s2_token", "390ce2b4"),
+                "is_verified": bool(w.get("is_verified", 1)),
+            }
+
+        # 2. Search in logged_out_accounts table (customers and workers)
+        row2 = conn.execute(
+            "SELECT * FROM logged_out_accounts WHERE phone LIKE ? OR phone LIKE ? ORDER BY created_at DESC LIMIT 1",
+            (f"%{clean_phone_10}%", f"%{clean_phone_10}")
+        ).fetchone()
+
+        if row2:
+            a = dict(row2)
+            role = a.get("role", "CUSTOMER")
+            return {
+                "role": role,
+                "id": a.get("user_id"),
+                "worker_id": a.get("user_id"),
+                "user_id": a.get("user_id"),
+                "name": a.get("name"),
+                "skill": a.get("skill"),
+                "phone": a.get("phone"),
+                "address": a.get("address") or "",
+                "visiting_fee": a.get("visiting_fee", 0),
+                "rating": a.get("rating", 5.0),
+                "completed_jobs": a.get("total_jobs", 4),
+                "avatar": a.get("photo_url") or "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&auto=format&fit=crop&q=80",
+                "photo_url": a.get("photo_url") or "",
+                "s2_token": a.get("s2_token", "390ce2b4"),
+                "is_verified": True,
+            }
+
+        # 3. Search in posted_jobs for customer phone
+        row3 = conn.execute(
+            "SELECT * FROM posted_jobs WHERE customer_phone LIKE ? ORDER BY created_at DESC LIMIT 1",
+            (f"%{clean_phone_10}%",)
+        ).fetchone()
+
+        if row3:
+            j = dict(row3)
+            return {
+                "role": "CUSTOMER",
+                "id": f"cust-{clean_phone_10}",
+                "user_id": f"cust-{clean_phone_10}",
+                "name": j.get("customer_name") or "सत्यापित ग्राहक",
+                "skill": "सत्यापित ग्राहक (Customer)",
+                "phone": j.get("customer_phone") or clean_phone_10,
+                "address": j.get("customer_address") or "",
+                "visiting_fee": 0,
+                "rating": 5.0,
+                "completed_jobs": 2,
+                "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&auto=format&fit=crop&q=80",
+                "photo_url": "",
+                "s2_token": "390ce2b4",
+                "is_verified": True,
+            }
+
+        return None
+    except Exception:
+        return None
+    finally:
+        conn.close()
+
