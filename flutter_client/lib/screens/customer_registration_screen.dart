@@ -415,9 +415,9 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
     try {
       final XFile? pickedFile = await _picker.pickImage(
         source: source,
-        maxWidth: 1800,
-        maxHeight: 1400,
-        imageQuality: 92,
+        maxWidth: 1400,
+        maxHeight: 1050,
+        imageQuality: 88,
       );
 
       if (pickedFile == null) return;

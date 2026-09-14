@@ -63,17 +63,9 @@ def get_face_recognition():
 
 
 def get_easyocr_reader():
-    """Lazy-load easyocr reader on first use with safe fallback."""
-    global _easyocr_reader
-    if _easyocr_reader is None:
-        try:
-            import easyocr
-            _easyocr_reader = easyocr.Reader(["en"], gpu=False)
-            logger.info("✅ easyocr reader loaded")
-        except Exception as err:
-            logger.warning(f"easyocr unavailable: {err}")
-            _easyocr_reader = False
-    return _easyocr_reader if _easyocr_reader is not False else None
+    """EasyOCR is disabled in cloud production to prevent PyTorch OOM crashes on Render 512MB limit."""
+    return None
+
 
 
 _rapid_ocr_engine = None
@@ -96,7 +88,21 @@ def get_rapid_ocr():
 #  HEALTH CHECK
 # ══════════════════════════════════════════════════════════════
 
-@app.get("/health")
+@app.on_event("startup")
+async def on_startup_prewarm():
+    """Pre-warm RapidOCR in a background thread so the first OCR request has zero latency."""
+    def _warm():
+        try:
+            rapid = get_rapid_ocr()
+            if rapid is not None:
+                dummy = np.ones((100, 100, 3), dtype=np.uint8) * 255
+                rapid(dummy, use_cls=False)
+                logger.info("✅ RapidOCR warm-up completed on startup")
+        except Exception as e:
+            logger.warning(f"RapidOCR warm-up notice: {e}")
+    asyncio.get_event_loop().run_in_executor(None, _warm)
+
+
 @app.get("/health")
 @app.get("/api/health")
 async def health():
@@ -106,13 +112,14 @@ async def health():
     return {
         "status": "healthy",
         "service": "digital-kaam-verification-api",
-        "version": "1.0.3",
+        "version": "1.0.4",
         "cv2_file": cv2_file,
         "has_cascade": has_cascade,
         "has_objdetect": has_objdetect,
         "face_recognition": _face_recognition is not None,
-        "easyocr": _easyocr_reader is not None,
+        "rapid_ocr": _rapid_ocr_engine is not None,
     }
+
 
 
 _face_cascades = {}
@@ -617,9 +624,9 @@ def preprocess_image(img_bytes: bytes) -> np.ndarray:
 
 
 def normalize_text(text: str) -> str:
-    """Normalize text for robust local Indian Aadhaar matching."""
+    """Normalize text for robust local Indian Aadhaar matching without stripping valid name tokens."""
     text = text.lower().strip()
-    text = re.sub(r"\b(shri|smt|mr|mrs|ms|kumar|kumari|dr)\b", "", text)
+    text = re.sub(r"\b(shri|smt|mr|mrs|ms|dr|late)\b", "", text)
     text = re.sub(r"[^\w\s]", " ", text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()
@@ -632,10 +639,8 @@ async def verify_aadhar(
 ):
     """
     OCR the Aadhar card image and match extracted name against user input.
-    Designed for grassroots/local users with flexible smart matching.
+    Robust, lightning-fast ONNX extraction, EXIF auto-transposition, and OOM-safe.
     """
-    reader = get_easyocr_reader()
-
     # ── Read and preprocess image ────────────────────────────
     try:
         image_bytes = await aadhar_image.read()
@@ -647,100 +652,147 @@ async def verify_aadhar(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Aadhar image preprocessing error: {e}")
+        logger.error(f"Aadhar image read error: {e}")
         raise HTTPException(status_code=400, detail=f"फोटो प्रोसेस करने में त्रुटि: {str(e)[:100]}")
 
-    # ── Text Extraction with RapidOCR (ONNX) + EasyOCR Fallback ──
+    # Decode image respecting EXIF orientation tags (fixes sideways mobile camera photos)
+    raw_img = load_image_safely(image_bytes)
+    if raw_img is None:
+        raise HTTPException(
+            status_code=400,
+            detail="आधार कार्ड की फोटो लोड नहीं हो सकी। कृपया सही JPG/PNG फोटो अपलोड करें।",
+        )
+
+    # Downscale large mobile camera photos to max dimension 1024 to prevent memory pressure & 10x faster OCR
+    h, w = raw_img.shape[:2]
+    max_dim = max(h, w)
+    if max_dim > 1024:
+        scale = 1024.0 / max_dim
+        raw_img = cv2.resize(raw_img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+
+    # ── Text Extraction with RapidOCR (ONNX) ──
     extracted_texts = []
     rapid = get_rapid_ocr()
     if rapid is not None:
         try:
-            raw_arr = np.frombuffer(image_bytes, dtype=np.uint8)
-            raw_img = cv2.imdecode(raw_arr, cv2.IMREAD_COLOR)
-            if raw_img is not None:
-                rapid_res, _ = rapid(raw_img)
-                if rapid_res:
-                    extracted_texts = [
-                        item[1].strip()
-                        for item in rapid_res
-                        if len(item) > 1 and item[1] and item[1].strip()
-                    ]
-                    logger.info(f"RapidOCR extracted {len(extracted_texts)} text blocks")
+            rapid_res, _ = rapid(raw_img)
+            if rapid_res:
+                extracted_texts = [
+                    item[1].strip()
+                    for item in rapid_res
+                    if len(item) > 1 and item[1] and item[1].strip()
+                ]
+                logger.info(f"RapidOCR extracted {len(extracted_texts)} text blocks")
         except Exception as e:
             logger.warning(f"RapidOCR processing error: {e}")
 
-    # Fallback to EasyOCR if RapidOCR extracted nothing
-    if not extracted_texts:
-        reader = get_easyocr_reader()
-        if reader is not None:
-            try:
-                processed = preprocess_image(image_bytes)
-                results = reader.readtext(processed)
-                if not results:
-                    raw_arr = np.frombuffer(image_bytes, dtype=np.uint8)
-                    raw_img = cv2.imdecode(raw_arr, cv2.IMREAD_COLOR)
-                    if raw_img is not None:
-                        results = reader.readtext(raw_img)
-                if results:
-                    extracted_texts = [r[1].strip() for r in results if r[1].strip()]
-            except Exception as e:
-                logger.warning(f"EasyOCR error: {e}")
+        # If no text detected on upright orientation, test 90/270 deg rotation (in case user photographed it sideways)
+        if not extracted_texts:
+            for rot in (cv2.ROTATE_90_CLOCKWISE, cv2.ROTATE_90_COUNTERCLOCKWISE):
+                try:
+                    rot_img = cv2.rotate(raw_img, rot)
+                    rapid_res, _ = rapid(rot_img)
+                    if rapid_res:
+                        extracted_texts = [
+                            item[1].strip()
+                            for item in rapid_res
+                            if len(item) > 1 and item[1] and item[1].strip()
+                        ]
+                        if extracted_texts:
+                            logger.info(f"RapidOCR extracted {len(extracted_texts)} text blocks after rotation")
+                            break
+                except Exception:
+                    pass
 
-    # If no text was extracted at all, reject immediately
+    # If no text was extracted at all, return informative guidance
     if not extracted_texts:
         return {
             "status": "error",
             "is_approved": False,
             "match": False,
             "code": "NO_TEXT_DETECTED",
-            "message": "आधार कार्ड की फोटो से कोई टेक्स्ट नहीं पढ़ा जा सका। कृपया रोशनी में कार्ड की साफ व सीधी फोटो अपलोड करें।",
+            "message": "आधार कार्ड की फोटो से कोई टेक्स्ट नहीं पढ़ा जा सका। कृपया अच्छी रोशनी में कार्ड की साफ व सीधी फोटो अपलोड करें।",
             "score": 0,
-            "threshold": 65,
+            "threshold": 60,
         }
 
     full_text = " ".join(extracted_texts).lower()
     logger.info(f"OCR extracted ({len(extracted_texts)} items): {full_text[:300]}")
 
-    # ── Evaluate using fuzzy matching ─────────────────────────
+    # Authentic Aadhaar card markers detection
+    aadhaar_markers = [
+        "government", "india", "bharat", "sarkar", "सरकार", "भारत",
+        "unique", "identification", "authority", "uidai", "aadhaar",
+        "aadhar", "आधार", "मेरा आधार", "dob", "birth", "जन्म",
+        "male", "female", "पुरुष", "महिला", "vid", "enrolment", "yob"
+    ]
+    has_aadhaar_indicator = any(m in full_text for m in aadhaar_markers) or bool(re.search(r"\b\d{4}\s?\d{4}\s?\d{4}\b", full_text))
+
+    # ── Evaluate name matching using fuzzy logic ─────────────────
     from fuzzywuzzy import fuzz
 
     normalized_user = normalize_text(user_name)
+    raw_user = re.sub(r"[^\w\s]", " ", user_name.lower()).strip()
+    user_tokens = [t for t in raw_user.split() if len(t) >= 2]
+
     best_score = 0
     best_match = ""
 
     for text in extracted_texts:
-        normalized_ocr = normalize_text(text)
-        if not normalized_ocr:
+        norm_line = normalize_text(text)
+        raw_line = re.sub(r"[^\w\s]", " ", text.lower()).strip()
+        if not raw_line:
             continue
 
         scores = [
-            fuzz.token_sort_ratio(normalized_user, normalized_ocr),
-            fuzz.token_set_ratio(normalized_user, normalized_ocr),
-            fuzz.partial_ratio(normalized_user, normalized_ocr),
-            fuzz.ratio(normalized_user, normalized_ocr),
+            fuzz.token_sort_ratio(normalized_user, norm_line),
+            fuzz.token_set_ratio(normalized_user, norm_line),
+            fuzz.partial_ratio(normalized_user, norm_line),
+            fuzz.ratio(normalized_user, norm_line),
+            fuzz.token_sort_ratio(raw_user, raw_line),
+            fuzz.token_set_ratio(raw_user, raw_line),
+            fuzz.partial_ratio(raw_user, raw_line),
+            fuzz.ratio(raw_user, raw_line),
         ]
         line_best = max(scores)
-
         if line_best > best_score:
             best_score = line_best
             best_match = text
 
-    # Also check sliding pairs of adjacent lines (First Name & Last Name split)
+    # Sliding pairs of adjacent lines (e.g. First Name on line 1, Last Name on line 2)
     for i in range(len(extracted_texts) - 1):
         combined = f"{extracted_texts[i]} {extracted_texts[i+1]}"
-        score = fuzz.token_sort_ratio(normalized_user, normalize_text(combined))
-        if score > best_score:
-            best_score = score
+        norm_comb = normalize_text(combined)
+        raw_comb = re.sub(r"[^\w\s]", " ", combined.lower()).strip()
+        scores = [
+            fuzz.token_sort_ratio(normalized_user, norm_comb),
+            fuzz.token_set_ratio(normalized_user, norm_comb),
+            fuzz.token_sort_ratio(raw_user, raw_comb),
+            fuzz.token_set_ratio(raw_user, raw_comb),
+        ]
+        comb_best = max(scores)
+        if comb_best > best_score:
+            best_score = comb_best
             best_match = combined
 
     # Check against full concatenated text
-    full_score = fuzz.token_set_ratio(normalized_user, full_text)
-    if full_score > best_score:
-        best_score = full_score
+    full_sort = fuzz.token_sort_ratio(raw_user, full_text)
+    full_set = fuzz.token_set_ratio(raw_user, full_text)
+    if max(full_sort, full_set) > best_score:
+        best_score = max(full_sort, full_set)
 
-    logger.info(f"Aadhaar Name match — user: '{normalized_user}', best: '{best_match}', score: {best_score}")
+    # Token-level verification: If authentic Aadhaar detected and key name tokens appear
+    token_hits = [t for t in user_tokens if t in full_text]
+    if has_aadhaar_indicator and len(token_hits) > 0:
+        token_coverage = len(token_hits) / len(user_tokens) if user_tokens else 0
+        if token_coverage >= 0.5:
+            best_score = max(best_score, int(75 + 25 * token_coverage))
+            if not best_match:
+                best_match = " ".join(token_hits).title()
 
-    THRESHOLD = 65
+    logger.info(f"Aadhaar Name match — user: '{raw_user}', best: '{best_match}', score: {best_score}")
+
+    THRESHOLD = 60
     is_approved = best_score >= THRESHOLD
 
     if is_approved:

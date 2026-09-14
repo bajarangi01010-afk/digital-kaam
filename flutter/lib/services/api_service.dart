@@ -70,7 +70,7 @@ class AadhaarOcrResult {
     required this.isSuccess,
     required this.isApproved,
     required this.score,
-    this.threshold = 85,
+    this.threshold = 60,
     required this.userName,
     this.matchedText = '',
     required this.message,
@@ -79,7 +79,7 @@ class AadhaarOcrResult {
   factory AadhaarOcrResult.fromJson(Map<String, dynamic> json, [String? fallbackUserName]) {
     final bool success = json['status'] == 'success';
     final int score = (json['score'] as num?)?.toInt() ?? 0;
-    final int threshold = (json['threshold'] as num?)?.toInt() ?? 65;
+    final int threshold = (json['threshold'] as num?)?.toInt() ?? 60;
     final bool approved = json['is_approved'] == true;
 
     final String msg = json['message'] ??
@@ -125,8 +125,9 @@ class ApiService {
     _dio = Dio(
       BaseOptions(
         baseUrl: ApiConfig.baseUrl,
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 40),
+        connectTimeout: const Duration(seconds: 45),
+        receiveTimeout: const Duration(seconds: 90),
+        sendTimeout: const Duration(seconds: 60),
         headers: {
           'Accept': 'application/json',
         },

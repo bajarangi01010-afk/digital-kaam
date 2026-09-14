@@ -426,9 +426,9 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
     try {
       final XFile? pickedFile = await _picker.pickImage(
         source: source,
-        maxWidth: 1800,
-        maxHeight: 1400,
-        imageQuality: 92,
+        maxWidth: 1400,
+        maxHeight: 1050,
+        imageQuality: 88,
       );
 
       if (pickedFile == null) return;
@@ -841,8 +841,8 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // 5. Mandatory Aadhaar Card Upload & EasyOCR Check
-                _buildLabel("5. आधार कार्ड अपलोड एवं नाम सत्यापन (EasyOCR Name Match ≥ 85%) *"),
+                // 5. Mandatory Aadhaar Card Upload & AI OCR Check
+                _buildLabel("5. आधार कार्ड अपलोड एवं नाम सत्यापन (AI OCR Name Match ≥ 60%) *"),
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(

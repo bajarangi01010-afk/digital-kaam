@@ -27,6 +27,24 @@ except Exception as _err:
     print(f"⚠️ Notice: Verification routes could not be auto-merged: {_err}")
 
 
+@app.on_event("startup")
+async def on_startup_prewarm():
+    """Pre-warm RapidOCR in a background worker thread so the very first user verification has zero delay."""
+    def _warm():
+        try:
+            import main as verification_main
+            rapid = verification_main.get_rapid_ocr()
+            if rapid is not None:
+                import numpy as np
+                dummy = np.ones((100, 100, 3), dtype=np.uint8) * 255
+                rapid(dummy, use_cls=False)
+                print("✅ RapidOCR pre-warmed successfully on smart_brain startup.")
+        except Exception as e:
+            print(f"⚠️ RapidOCR warm-up notice: {e}")
+    asyncio.get_event_loop().run_in_executor(None, _warm)
+
+
+
 # -----------------------------------------------------------------------------
 # 1. PRE-SEEDED SYSTEM WORKERS WITH COMPLETE PROFILES
 # -----------------------------------------------------------------------------
