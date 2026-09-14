@@ -117,7 +117,7 @@ async def health():
 _face_cascades = {}
 
 def get_face_cascades():
-    """Lazy-load OpenCV Haar Cascade Face Detectors from local models or cv2 data directory."""
+    """Lazy-load OpenCV Haar Cascade Face Detectors with safe attribute checks."""
     global _face_cascades
     if not _face_cascades:
         models_dir = os.path.join(os.path.dirname(__file__), "models")
@@ -126,15 +126,27 @@ def get_face_cascades():
             "default": "haarcascade_frontalface_default.xml",
             "profile": "haarcascade_profileface.xml",
         }
-        for key, filename in cascade_files.items():
-            path = os.path.join(models_dir, filename)
-            if not os.path.exists(path) and hasattr(cv2, "data") and hasattr(cv2.data, "haarcascades"):
-                path = os.path.join(cv2.data.haarcascades, filename)
-            if os.path.exists(path):
-                cas = cv2.CascadeClassifier(path)
-                if not cas.empty():
-                    _face_cascades[key] = cas
-        logger.info(f"Loaded {len(_face_cascades)} face cascade models: {list(_face_cascades.keys())}")
+        
+        # Safely resolve CascadeClassifier constructor
+        classifier_cls = getattr(cv2, "CascadeClassifier", None)
+        if classifier_cls is None and hasattr(cv2, "objdetect"):
+            classifier_cls = getattr(cv2.objdetect, "CascadeClassifier", None)
+            
+        if classifier_cls is not None:
+            for key, filename in cascade_files.items():
+                try:
+                    path = os.path.join(models_dir, filename)
+                    if not os.path.exists(path) and hasattr(cv2, "data") and hasattr(cv2.data, "haarcascades"):
+                        path = os.path.join(cv2.data.haarcascades, filename)
+                    if os.path.exists(path):
+                        cas = classifier_cls(path)
+                        if not cas.empty():
+                            _face_cascades[key] = cas
+                except Exception as ce:
+                    logger.warning(f"Error loading cascade {key}: {ce}")
+            logger.info(f"Loaded {len(_face_cascades)} face cascade models: {list(_face_cascades.keys())}")
+        else:
+            logger.warning("cv2.CascadeClassifier is not available; falling back to biometric skin & texture detector")
     return _face_cascades
 
 
