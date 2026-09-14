@@ -7,6 +7,7 @@ import '../controllers/app_theme_controller.dart';
 import '../widgets/app_settings_dialog.dart';
 import '../services/gps_location_service.dart';
 import '../services/telephony_service.dart';
+import '../services/location_service.dart';
 import 'worker_profile_screen.dart';
 
 class WorkerDashboardScreen extends StatefulWidget {
@@ -104,6 +105,8 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
     },
   ];
 
+  bool _isLoadingJobs = false;
+
   @override
   void initState() {
     super.initState();
@@ -112,6 +115,24 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
     _profilePhoto = widget.profilePhoto ?? WorkerSession.profilePhoto;
     _profileBytes = widget.profilePhotoBytes ?? WorkerSession.profilePhotoBytes;
     _accountHolderName = _workerName;
+    _loadLivePostedJobs();
+  }
+
+  Future<void> _loadLivePostedJobs() async {
+    if (_isLoadingJobs) return;
+    setState(() => _isLoadingJobs = true);
+    try {
+      final liveJobs = await LocationService.instance.fetchPostedJobs();
+      if (mounted && liveJobs.isNotEmpty) {
+        setState(() {
+          _nearbyJobs.clear();
+          _nearbyJobs.addAll(liveJobs);
+        });
+      }
+    } catch (_) {}
+    if (mounted) {
+      setState(() => _isLoadingJobs = false);
+    }
   }
 
   @override
@@ -513,10 +534,15 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
   // Tab 0: Home View (Airy, Uncongested & Theme-Responsive)
   Widget _buildHomeTab() {
     final theme = AppThemeController.instance;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return RefreshIndicator(
+      onRefresh: _loadLivePostedJobs,
+      color: theme.brandBlue,
+      backgroundColor: const Color(0xFF1E293B),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. Worker Status Card (Online Toggle & Attendance)
           Container(
@@ -905,10 +931,15 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                       ElevatedButton(
                         onPressed: requested
                             ? null
-                            : () {
+                            : () async {
                                 setState(() {
                                   job["requested"] = true;
                                 });
+                                final jobId = job["id"]?.toString() ?? "";
+                                final wid = WorkerSession.workerId.isNotEmpty ? WorkerSession.workerId : "w-101";
+                                try {
+                                  await LocationService.instance.applyToJob(jobId, wid);
+                                } catch (_) {}
                                 _showToast("ग्राहक को कार्य स्वीकार्यता अनुरोध भेज दिया गया!");
                               },
                         style: ElevatedButton.styleFrom(
@@ -932,7 +963,8 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
         ],
       ],
     ),
-  );
+  ),
+);
 }
 
   // Tab 1: Bookings & Handshake Verification Tab

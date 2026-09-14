@@ -45,72 +45,22 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   Map<String, dynamic>? _liveTrackingData;
   final ImagePicker _picker = ImagePicker();
 
-  // Active Booking & Escrow & Handshake OTP State
-  bool _hasActiveBooking = true;
-  String _activeBookingStatus = "WORKER_ARRIVED"; // "CONFIRMED", "WORKER_ARRIVED", "IN_PROGRESS", "COMPLETED", "REFUNDED"
+  // Active Booking & Escrow & Handshake OTP State (Fresh user starts with 0 active bookings)
+  bool _hasActiveBooking = false;
+  String _activeBookingStatus = "NONE"; // "CONFIRMED", "WORKER_ARRIVED", "IN_PROGRESS", "COMPLETED", "REFUNDED"
   final String _startOtp = "5182";
   final String _completionOtp = "9341";
 
-  // Payment Report & Escrow State
-  double _totalSpent = 2100.0;
-  double _escrowLocked = 350.0;
-  double _totalRefunded = 380.0;
+  // Payment Report & Escrow State (Fresh user starts with 0)
+  double _totalSpent = 0.0;
+  double _escrowLocked = 0.0;
+  double _totalRefunded = 0.0;
 
   // Active booked worker details
-  Map<String, dynamic> _activeWorker = {
-    "name": "annu kumar (अन्नू कुमार)",
-    "skill": "इलेक्ट्रीशियन (Electrician)",
-    "phone": "+91 98765 43210",
-    "amount": "₹350",
-    "bookingId": "DK-BK-7819",
-    "time": "आज, 4:15 PM",
-  };
+  Map<String, dynamic> _activeWorker = {};
 
-  // Mock list of nearby verified workers
-  final List<Map<String, dynamic>> _nearbyWorkers = [
-    {
-      "id": "W-1",
-      "name": "annu kumar (अन्नू कुमार)",
-      "skill": "इलेक्ट्रीशियन (Electrician)",
-      "rating": "4.9 ★",
-      "jobsCount": "14 काम संपन्न",
-      "distance": "0.8 किमी दूर",
-      "visitCharge": "₹350",
-      "badge": "आधार व लाइव फेस सत्यापित",
-      "phone": "+91 98765 43210",
-      "isBooked": true,
-      "bookingEnabled": true,
-      "workerId": "DK-VERIFIED-9842",
-    },
-    {
-      "id": "W-2",
-      "name": "महेश बढ़ई (Mahesh Sharma)",
-      "skill": "कारपेंटर (Carpenter)",
-      "rating": "4.8 ★",
-      "jobsCount": "94 काम संपन्न",
-      "distance": "1.5 किमी दूर",
-      "visitCharge": "₹400",
-      "badge": "आधार व लाइव फेस सत्यापित",
-      "phone": "+91 98111 22334",
-      "isBooked": false,
-      "bookingEnabled": true,
-      "workerId": "DK-VERIFIED-7102",
-    },
-    {
-      "id": "W-3",
-      "name": "दिनेश प्लंबर (Dinesh Kumar)",
-      "skill": "प्लंबर (Plumber)",
-      "rating": "5.0 ★",
-      "jobsCount": "215 काम संपन्न",
-      "distance": "2.1 किमी दूर",
-      "visitCharge": "₹300",
-      "badge": "आधार व लाइव फेस सत्यापित",
-      "phone": "+91 98999 88776",
-      "isBooked": false,
-      "bookingEnabled": true,
-      "workerId": "DK-VERIFIED-3981",
-    },
-  ];
+  // List of nearby verified workers (dynamically loaded)
+  final List<Map<String, dynamic>> _nearbyWorkers = [];
 
   // Post Work Modal controllers
   final TextEditingController _workDescriptionController = TextEditingController();
@@ -160,8 +110,21 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
     );
   }
 
-  // 1. Post a Work Flow (Text + Image)
+  // 1. Post a Work Flow (Text + Category + Budget + Image)
   void _openPostWorkModal() {
+    String selectedCategory = "इलेक्ट्रीशियन (Electrician)";
+    final TextEditingController budgetController = TextEditingController(text: "450");
+    final List<String> categories = [
+      "इलेक्ट्रीशियन (Electrician)",
+      "प्लंबर (Plumber)",
+      "कारपेंटर (Carpenter)",
+      "पेंटर (Painter)",
+      "राजमिस्त्री (Mason)",
+      "सफाई कर्मचारी (Cleaning)",
+      "होम अप्लायंस रिपेयर",
+      "अन्य दैनिक कार्य",
+    ];
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -193,6 +156,36 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 10),
+                const Text(
+                  "कार्य की श्रेणी चुनें (Select Category):",
+                  style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                SizedBox(
+                  height: 36,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: categories.length,
+                    itemBuilder: (context, idx) {
+                      final cat = categories[idx];
+                      final isSelected = cat == selectedCategory;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(cat, style: TextStyle(fontSize: 11, color: isSelected ? Colors.white : const Color(0xFF94A3B8))),
+                          selected: isSelected,
+                          onSelected: (val) {
+                            if (val) setModalState(() => selectedCategory = cat);
+                          },
+                          selectedColor: const Color(0xFF2563EB),
+                          backgroundColor: const Color(0xFF0F172A),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      );
+                    },
+                  ),
+                ),
                 const SizedBox(height: 12),
                 const Text(
                   "काम का विवरण लिखें (Explain the Work):",
@@ -210,6 +203,36 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                     fillColor: const Color(0xFF0F172A),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF334155))),
                   ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "अनुमानित बजट (Budget ₹):",
+                            style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: budgetController,
+                            keyboardType: TextInputType.number,
+                            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                            decoration: InputDecoration(
+                              prefixText: "₹ ",
+                              prefixStyle: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold),
+                              filled: true,
+                              fillColor: const Color(0xFF0F172A),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF334155))),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 14),
                 Row(
@@ -260,13 +283,31 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                 ],
                 const SizedBox(height: 20),
                 ElevatedButton(
-                  onPressed: () {
-                    if (_workDescriptionController.text.trim().isEmpty) {
+                  onPressed: () async {
+                    final desc = _workDescriptionController.text.trim();
+                    if (desc.isEmpty) {
                       _showToast("कृपया काम का विवरण लिखें!", isSuccess: false);
                       return;
                     }
+                    final int parsedBudget = int.tryParse(budgetController.text.trim()) ?? 450;
                     Navigator.of(ctx).pop();
-                    _showToast("आपका काम लाइव रडार पर पोस्ट हो चुका है! पास के कारीगरों को नोटिफिकेशन भेजा गया।", isSuccess: true);
+
+                    final String customerName = _currentCustomerName.isNotEmpty ? _currentCustomerName : "सत्यापित ग्राहक";
+                    final String customerPhone = _currentCustomerPhone ?? "+91 98765 43210";
+                    final String customerAddr = _currentCustomerAddress ?? (WorkerSession.address.isNotEmpty ? WorkerSession.address : "पटना, बिहार (GPS Live)");
+
+                    // Post to real-time backend so it reaches worker feed immediately
+                    await LocationService.instance.postJob(
+                      title: desc.length > 50 ? "${desc.substring(0, 47)}..." : desc,
+                      category: selectedCategory,
+                      description: desc,
+                      budget: parsedBudget,
+                      customerName: customerName,
+                      customerPhone: customerPhone,
+                      customerAddress: customerAddr,
+                    );
+
+                    _showToast("आपका काम लाइव रडार पर पोस्ट हो चुका है! पास के सभी कारीगरों के फीड में पहुंच गया।", isSuccess: true);
                     _workDescriptionController.clear();
                     _workImage = null;
                   },
@@ -1158,11 +1199,16 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   // Tab 0: Home Tab (Spacious & Clean, Zero Congestion)
   Widget _buildHomeTab() {
     final theme = AppThemeController.instance;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return RefreshIndicator(
+      onRefresh: _loadNearbyWorkers,
+      color: theme.brandBlue,
+      backgroundColor: const Color(0xFF1E293B),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           // Customer Welcome Header with Live Photo & Verified Pill
           Container(
             margin: const EdgeInsets.only(bottom: 14),
@@ -1390,9 +1436,29 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
           ),
           const SizedBox(height: 14),
 
-          ..._nearbyWorkers.map((worker) {
-            final bool isAnnu = worker["workerId"] == "DK-VERIFIED-9842";
-            final Uint8List? photoBytes = isAnnu ? WorkerSession.profilePhotoBytes : null;
+          if (_nearbyWorkers.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: theme.card,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: theme.border),
+                boxShadow: theme.cardShadow,
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.person_search_rounded, size: 52, color: theme.textMuted),
+                  const SizedBox(height: 12),
+                  Text("अभी आपके क्षेत्र में कोई कारीगर उपलब्ध नहीं है", textAlign: TextAlign.center, style: TextStyle(color: theme.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text("जैसे ही नए कारीगर रजिस्टर होंगे, वे यहाँ दिखाई देंगे", textAlign: TextAlign.center, style: TextStyle(color: theme.textSecondary, fontSize: 12)),
+                ],
+              ),
+            )
+          else
+            ..._nearbyWorkers.map((worker) {
+              final Uint8List? photoBytes = worker["photoBytes"] as Uint8List?;
 
             return Container(
               margin: const EdgeInsets.only(bottom: 14),
@@ -1461,6 +1527,23 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                                 ),
                               ],
                             ),
+                            if (worker["address"] != null && worker["address"].toString().isNotEmpty) ...[
+                              const SizedBox(height: 3),
+                              Row(
+                                children: [
+                                  Icon(Icons.location_pin, size: 11, color: theme.brandBlue),
+                                  const SizedBox(width: 2),
+                                  Expanded(
+                                    child: Text(
+                                      worker["address"].toString(),
+                                      style: TextStyle(color: theme.textMuted, fontSize: 10),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -1555,8 +1638,9 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
           }),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   // Tab 1: My Bookings Tab (Airy, Handshake Dual-OTP & Strict No-Show Refund)
   Widget _buildBookingsTab() {
@@ -1787,8 +1871,22 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
             style: TextStyle(color: theme.textPrimary, fontSize: 14, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          _buildPastCustomerJobCard("महेश बढ़ई", "दरवाजे की कुंडी व लॉक रिपेयर", "₹400", "सफल संपन्न (रेटिंग 5.0 ★)"),
-          _buildPastCustomerJobCard("दिनेश प्लंबर", "टंकी ओवरफ्लो पाइप फिटिंग", "₹380", "100% रिफंड (कारीगर अनुपस्थित)"),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: theme.card,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: theme.border),
+            ),
+            child: Column(
+              children: [
+                Icon(Icons.history_rounded, size: 36, color: theme.textMuted),
+                const SizedBox(height: 8),
+                Text("अभी तक कोई पिछली बुकिंग नहीं है", style: TextStyle(color: theme.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
         ],
       ),
     );

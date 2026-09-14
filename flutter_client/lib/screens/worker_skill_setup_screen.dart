@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import '../models/worker_session.dart';
+import '../services/location_service.dart';
 import 'package:flutter/material.dart';
 import 'worker_dashboard_screen.dart';
 
@@ -144,15 +145,35 @@ class _WorkerSkillSetupScreenState extends State<WorkerSkillSetupScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.of(ctx).pop();
+              final String skill = selectedSkills.first["title"];
+              final String wid = WorkerSession.workerId.isNotEmpty
+                  ? WorkerSession.workerId
+                  : "w-${DateTime.now().millisecondsSinceEpoch.toString().substring(6)}";
+
               WorkerSession.update(
                 newRole: "WORKER",
                 newIsLoggedIn: true,
                 newName: widget.workerName,
-                newSkill: selectedSkills.first["title"],
+                newSkill: skill,
+                newPhone: widget.phone,
+                newAddress: widget.address,
                 newPhoto: widget.profilePhoto,
                 newBytes: widget.profilePhotoBytes,
               );
               await WorkerSession.saveToDisk(userRole: "WORKER");
+
+              // Publish to backend real-time S2 radar & feed database
+              try {
+                await LocationService.instance.registerWorkerProfile(
+                  workerId: wid,
+                  name: widget.workerName,
+                  skill: skill,
+                  phone: widget.phone,
+                  address: widget.address,
+                  visitingFee: WorkerSession.customVisitPrice,
+                  photoUrl: "",
+                );
+              } catch (_) {}
 
               if (!mounted) return;
               Navigator.of(context).pushAndRemoveUntil(
@@ -160,7 +181,7 @@ class _WorkerSkillSetupScreenState extends State<WorkerSkillSetupScreen> {
                   builder: (context) {
                     return WorkerDashboardScreen(
                       workerName: widget.workerName,
-                      primarySkill: selectedSkills.first["title"],
+                      primarySkill: skill,
                       profilePhoto: widget.profilePhoto ?? WorkerSession.profilePhoto,
                       profilePhotoBytes: widget.profilePhotoBytes ?? WorkerSession.profilePhotoBytes,
                     );
