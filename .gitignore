@@ -35,4 +35,5 @@ coverage/
 !.env.example
 *.pem
 *.key
+*.apk
 
