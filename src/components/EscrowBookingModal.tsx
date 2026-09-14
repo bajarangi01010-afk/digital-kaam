@@ -188,13 +188,19 @@ export const EscrowBookingModal: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* 100% No-Show Refund Assurance */}
-        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-2 text-xs text-emerald-800">
-          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-          <p className="leading-relaxed text-[11px]">
-            <strong className="block">100% नो-शो ऑटो-रिफंड गारंटी:</strong>
-            यह राशि डिजिटल काम के सुरक्षित एस्क्रो वॉल्ट में रहेगी। जब तक काम संतोषजनक रूप से पूरा नहीं होता और आप समाप्ति OTP नहीं देते, कारीगर को भुगतान नहीं मिलेगा। यदि कारीगर नहीं आता, तो तुरंत पूरा रिफंड होगा।
-          </p>
+        {/* 100% No-Show Refund Assurance & Direct Call Unlock Notice */}
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2 text-xs text-emerald-900">
+          <div className="flex items-start gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <p className="leading-relaxed text-[11px]">
+              <strong className="block text-emerald-950">100% सुरक्षित एस्क्रो व नो-शो ऑटो-रिफंड गारंटी:</strong>
+              यह विज़िट राशि डिजिटल काम के सुरक्षित एस्क्रो वॉल्ट में रहेगी। कारीगर को भुगतान कार्य समाप्ति और आपके OTP के बाद ही मिलेगा। यदि कारीगर नहीं आता, तो तुरंत पूरा रिफंड!
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 text-[11px] text-indigo-700 bg-indigo-50/80 p-2 rounded-lg border border-indigo-100">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+            <span>भुगतान होते ही कारीगर को तत्काल नोटिफिकेशन जाएगा और <strong>डायरेक्ट कॉल अनलॉक</strong> हो जाएगी।</span>
+          </div>
         </div>
 
         {/* Pay Button */}

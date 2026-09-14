@@ -65,6 +65,8 @@ export const MarketplaceView: React.FC<Props> = ({ workers, onSelectWorkerForBoo
                 <img
                   src={worker.avatar}
                   alt={worker.name}
+                  loading="lazy"
+                  decoding="async"
                   className="w-16 h-16 rounded-xl object-cover border border-slate-200 shadow-xs shrink-0"
                 />
                 <div className="flex-1 min-w-0">

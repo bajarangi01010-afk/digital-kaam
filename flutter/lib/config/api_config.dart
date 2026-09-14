@@ -42,4 +42,13 @@ class ApiConfig {
   static String get verifyFaceUrl => "$baseUrl/api/verify-face";
   static String get verifyAadhaarUrl => "$baseUrl/api/verify-aadhar";
   static String get healthUrl => "$baseUrl/health";
+  static String get logoutUrl => "$baseUrl/api/user/logout";
+  static String get updateProfileUrl => "$baseUrl/api/user/update-profile";
+  static String get sendOtpUrl => "$baseUrl/api/auth/send-registration-otp";
+
+  /// Local network LAN IP for scannable QR Code that any phone can open
+  static String get lanHost => "10.72.72.227";
+  static String get publicProfileBaseUrl => "http://$lanHost:$port";
+  static String workerPublicUrl(String workerId) => "http://$lanHost:$port/w/$workerId";
+  static String customerPublicUrl(String customerId) => "http://$lanHost:$port/c/$customerId";
 }

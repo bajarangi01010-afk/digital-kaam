@@ -21,7 +21,8 @@ import {
   Lock,
   ArrowRight,
   BadgeCheck,
-  Volume2
+  Volume2,
+  CreditCard
 } from 'lucide-react';
 
 interface Props {
@@ -46,18 +47,70 @@ export const WorkerDashboardView: React.FC<Props> = ({
   const t = translations[lang];
 
   const [isAvailable, setIsAvailable] = useState(worker.isAvailable ?? true);
+  const [isLocationOn, setIsLocationOn] = useState(true);
   const [hasCheckedInToday, setHasCheckedInToday] = useState(true);
   const [radarActive, setRadarActive] = useState(true);
   const [maxDistanceKm, setMaxDistanceKm] = useState(5);
   const [requestedJobIds, setRequestedJobIds] = useState<string[]>([]);
   const [notificationToast, setNotificationToast] = useState<string | null>(null);
 
-  // Toggle availability
+  // Bank Account Modal State
+  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+  const [bankName, setBankName] = useState(worker.bankDetails?.bankName || 'State Bank of India');
+  const [accountNo, setAccountNo] = useState(worker.bankDetails?.accountNo || '');
+  const [ifsc, setIfsc] = useState(worker.bankDetails?.ifsc || '');
+  const [upiId, setUpiId] = useState(worker.bankDetails?.upiId || '');
+
+  // Check if bank details are submitted and verified
+  const isBankSubmitted = Boolean(worker.bankDetails?.isSubmitted && worker.bankDetails?.accountNo);
+
+  // Toggle availability (Guarded by Bank Details submission)
   const handleToggleAvailability = () => {
     sound.playClick();
+    if (!isAvailable) {
+      if (!isBankSubmitted) {
+        sound.playError();
+        setIsBankModalOpen(true);
+        setNotificationToast(t.bankRequiredNotice);
+        return;
+      }
+    }
     const nextState = !isAvailable;
     setIsAvailable(nextState);
-    onUpdateWorker({ isAvailable: nextState });
+    onUpdateWorker({ isAvailable: nextState, directBookingEnabled: nextState });
+    setNotificationToast(
+      nextState
+        ? (lang === 'hi' ? '✓ डायरेक्ट बुकिंग सक्रिय है! ग्राहक अब आपको सीधे बुक कर सकते हैं।' : lang === 'hinglish' ? '✓ Direct booking on ho gayi hai! Customers ab aapko direct book kar sakte hain.' : '✓ Direct booking is now active! Customers can book you directly.')
+        : (lang === 'hi' ? 'डायरेक्ट बुकिंग बंद कर दी गई है।' : lang === 'hinglish' ? 'Direct booking band kar di gayi hai.' : 'Direct booking turned off.')
+    );
+    setTimeout(() => setNotificationToast(null), 4000);
+  };
+
+  // Save bank details handler
+  const handleSaveBankDetails = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accountNo || !ifsc) {
+      sound.playError();
+      alert(lang === 'hi' ? 'कृपया खाता संख्या और IFSC कोड दर्ज करें' : 'Please enter Account Number and IFSC code');
+      return;
+    }
+    sound.playSuccess();
+    const updatedBank = {
+      bankName: bankName || 'State Bank of India',
+      accountNo,
+      ifsc: ifsc.toUpperCase(),
+      upiId,
+      isSubmitted: true,
+    };
+    onUpdateWorker({
+      bankDetails: updatedBank,
+      isAvailable: true,
+      directBookingEnabled: true,
+    });
+    setIsAvailable(true);
+    setIsBankModalOpen(false);
+    setNotificationToast(lang === 'hi' ? '✓ बैंक खाता सफलतापूर्वक जुड़ गया! डायरेक्ट बुकिंग सक्रिय हो गई।' : lang === 'hinglish' ? '✓ Bank details save ho gayi! Direct booking active ho gayi.' : '✓ Bank details saved! Direct booking enabled.');
+    setTimeout(() => setNotificationToast(null), 4000);
   };
 
   // Daily attendance check-in
@@ -78,9 +131,9 @@ export const WorkerDashboardView: React.FC<Props> = ({
   };
 
   // Filter nearby jobs
-  const relevantJobs = postedJobs.filter((j) => {
-    return j.distanceKm <= maxDistanceKm;
-  });
+  const relevantJobs = isLocationOn
+    ? postedJobs.filter((j) => j.distanceKm <= maxDistanceKm)
+    : [];
 
   // Active bookings where this worker is assigned
   const myActiveBookings = bookings.filter(
@@ -109,6 +162,8 @@ export const WorkerDashboardView: React.FC<Props> = ({
             <img
               src={worker.avatar}
               alt={worker.name}
+              loading="lazy"
+              decoding="async"
               className="w-16 h-16 rounded-2xl object-cover border-2 border-slate-200 shadow-xs"
             />
             <span
@@ -145,10 +200,33 @@ export const WorkerDashboardView: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Controls: Availability Switch + Daily Attendance */}
+        {/* Controls: Bank Setup + Availability Switch + Daily Attendance */}
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-start md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
-          {/* Availability Toggle */}
+          {/* Bank Account Details Button */}
           <button
+            id="worker-bank-setup-btn"
+            onClick={() => {
+              sound.playClick();
+              setIsBankModalOpen(true);
+            }}
+            className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
+              isBankSubmitted
+                ? 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
+                : 'bg-amber-50 text-amber-850 border border-amber-300 hover:bg-amber-100 ring-2 ring-amber-400/50'
+            }`}
+            title="बैंक खाता विवरण एवं पे-आउट सेटिंग्स"
+          >
+            <CreditCard className="w-3.5 h-3.5 text-blue-600" />
+            <span>
+              {isBankSubmitted
+                ? `${worker.bankDetails?.bankName?.split(' ')[0] || 'बैंक'} (••••${worker.bankDetails?.accountNo?.slice(-4) || '1234'})`
+                : (lang === 'hi' ? '⚠️ बैंक खाता जोड़ें' : lang === 'hinglish' ? '⚠️ Bank Details Dalein' : '⚠️ Add Bank Details')}
+            </span>
+          </button>
+
+          {/* Availability / Direct Booking Toggle */}
+          <button
+            id="worker-direct-booking-toggle-btn"
             onClick={handleToggleAvailability}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-xs ${
               isAvailable
@@ -244,135 +322,305 @@ export const WorkerDashboardView: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Radar Distance Slider */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-slate-600">दायरा (Radius): {maxDistanceKm} किमी</span>
-            <input
-              type="range"
-              min={1}
-              max={15}
-              value={maxDistanceKm}
-              onChange={(e) => setMaxDistanceKm(Number(e.target.value))}
-              className="accent-blue-600 cursor-pointer"
-            />
+          {/* Radar Distance Slider & Location Toggle Switch */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+              <span className="text-xs font-bold text-slate-700">
+                {isLocationOn
+                  ? (lang === 'hi' ? 'लोकेशन चालू' : lang === 'hinglish' ? 'Location ON' : 'Location ON')
+                  : (lang === 'hi' ? 'लोकेशन बंद' : lang === 'hinglish' ? 'Location OFF' : 'Location OFF')}
+              </span>
+              <button
+                id="worker-location-radar-toggle"
+                onClick={() => {
+                  sound.playClick();
+                  const next = !isLocationOn;
+                  setIsLocationOn(next);
+                  setRadarActive(next);
+                  setNotificationToast(
+                    next
+                      ? (lang === 'hi' ? '📡 लोकेशन चालू की गई! आस-पास के सभी काम लोड हो गए।' : lang === 'hinglish' ? '📡 Location ON ho gayi! Nearby kaam load ho gaye.' : '📡 Location turned ON! Nearby jobs loaded.')
+                      : (lang === 'hi' ? '📡 लोकेशन बंद की गई। आस-पास के काम छिपा दिए गए हैं।' : lang === 'hinglish' ? '📡 Location band ho gayi. Nearby kaam hide ho gaye.' : '📡 Location turned OFF. Nearby jobs hidden.')
+                  );
+                  setTimeout(() => setNotificationToast(null), 3500);
+                }}
+                className={`w-12 h-6 rounded-full transition-colors p-0.5 flex items-center cursor-pointer ${
+                  isLocationOn ? 'bg-blue-600 justify-end' : 'bg-slate-300 justify-start'
+                }`}
+                title="लोकेशन रडार चालू या बंद करें"
+              >
+                <div className="w-5 h-5 rounded-full bg-white shadow-md" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+              <span>दायरा: {maxDistanceKm} किमी</span>
+              <input
+                type="range"
+                min={1}
+                max={15}
+                value={maxDistanceKm}
+                onChange={(e) => setMaxDistanceKm(Number(e.target.value))}
+                className="accent-blue-600 cursor-pointer w-24 sm:w-28"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Nearby Jobs List */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>दिखाए जा रहे काम: {relevantJobs.length}</span>
-            <span className="text-emerald-700 font-bold flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              सभी ग्राहकों का भुगतान व ट्रस्ट स्कोर सत्यापित
-            </span>
+        {/* If location is OFF, render placeholder shield */}
+        {!isLocationOn ? (
+          <div className="p-8 bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl text-center space-y-3 animate-fade-in">
+            <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto shadow-xs">
+              <Radar className="w-7 h-7" />
+            </div>
+            <h4 className="text-base font-black text-slate-800">{t.locationOffTitle}</h4>
+            <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+              {t.locationOffDesc}
+            </p>
+            <button
+              id="worker-turn-on-location-btn"
+              onClick={() => {
+                sound.playClick();
+                setIsLocationOn(true);
+                setRadarActive(true);
+                setNotificationToast(lang === 'hi' ? '📡 लोकेशन चालू की गई!' : '📡 Location turned ON!');
+                setTimeout(() => setNotificationToast(null), 3500);
+              }}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition cursor-pointer"
+            >
+              {t.turnOnLocationBtn}
+            </button>
           </div>
+        ) : (
+          /* Nearby Jobs List */
+          <div className="space-y-4">
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span>दिखाए जा रहे काम: {relevantJobs.length}</span>
+              <span className="text-emerald-700 font-bold flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                सभी ग्राहकों का भुगतान व ट्रस्ट स्कोर सत्यापित
+              </span>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {relevantJobs.map((job) => {
-              const hasRequested = requestedJobIds.includes(job.id);
-              return (
-                <div
-                  key={job.id}
-                  className="p-5 rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-md transition bg-slate-50/50 flex flex-col justify-between space-y-4"
-                >
-                  <div className="space-y-3">
-                    {/* Top Row */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[10px] font-bold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded">
-                            {job.category}
-                          </span>
-                          {(job.postedAt?.includes('अभी') || job.postedAt?.includes('Just now') || job.postedAt?.includes('min') || job.postedAt?.includes('मिनट')) && (
-                            <span className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
-                              नया काम (Live Alert)
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {relevantJobs.map((job) => {
+                const hasRequested = requestedJobIds.includes(job.id);
+                return (
+                  <div
+                    key={job.id}
+                    className="p-5 rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-md transition bg-slate-50/50 flex flex-col justify-between space-y-4"
+                  >
+                    <div className="space-y-3">
+                      {/* Top Row */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] font-bold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded">
+                              {job.category}
                             </span>
-                          )}
+                            {(job.postedAt?.includes('अभी') || job.postedAt?.includes('Just now') || job.postedAt?.includes('min') || job.postedAt?.includes('मिनट')) && (
+                              <span className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+                                नया काम (Live Alert)
+                              </span>
+                            )}
+                          </div>
+                          <h4 className="text-sm font-bold text-slate-900 mt-1">{job.title}</h4>
                         </div>
-                        <h4 className="text-sm font-bold text-slate-900 mt-1">{job.title}</h4>
+                        <div className="text-right shrink-0">
+                          <span className="text-xs text-slate-400 block">अनुमानित बजट</span>
+                          <span className="text-base font-black text-slate-900">₹{job.budget}</span>
+                        </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <span className="text-xs text-slate-400 block">अनुमानित बजट</span>
-                        <span className="text-base font-black text-slate-900">₹{job.budget}</span>
-                      </div>
-                    </div>
 
-                    {/* Image Preview if provided */}
-                    {job.imageUrl && (
-                      <div className="w-full h-32 rounded-xl overflow-hidden border border-slate-200">
-                        <img src={job.imageUrl} alt={job.title} className="w-full h-full object-cover" />
-                      </div>
-                    )}
-
-                    {/* Description */}
-                    <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
-                      {job.description}
-                    </p>
-
-                    {/* Voice Note Badge */}
-                    {job.voiceNoteUrl && (
-                      <div className="flex items-center gap-1.5 text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg w-fit">
-                        <Volume2 className="w-3.5 h-3.5" />
-                        <span>ग्राहक की वॉइस रिकॉर्डिंग संलग्न है</span>
-                      </div>
-                    )}
-
-                    {/* Customer Trust Details */}
-                    <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1.5 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-800 flex items-center gap-1">
-                          <User className="w-3.5 h-3.5 text-slate-400" />
-                          {job.customerName}
-                        </span>
-                        <span className="text-emerald-700 font-bold text-[11px] bg-emerald-50 px-2 py-0.5 rounded">
-                          ट्रस्ट स्कोर: {job.customerTrustScore}%
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-[11px] text-slate-500">
-                        <span className="flex items-center gap-1 truncate max-w-[200px]">
-                          <MapPin className="w-3 h-3 text-rose-500 shrink-0" />
-                          {job.customerAddress}
-                        </span>
-                        <span className="text-blue-600 font-bold shrink-0">{job.distanceKm} किमी दूर</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Apply / Request Button */}
-                  <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between">
-                    <span className="text-[10px] text-slate-400">पोस्ट किया गया: {job.postedAt}</span>
-
-                    <button
-                      id={`apply-job-${job.id}-btn`}
-                      disabled={hasRequested}
-                      onClick={() => handleApply(job)}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
-                        hasRequested
-                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
-                          : 'bg-blue-600 hover:bg-blue-700 text-white'
-                      }`}
-                    >
-                      {hasRequested ? (
-                        <>
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          रिक्वेस्ट भेजी गई ✓
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-3.5 h-3.5" />
-                          {t.applyJob}
-                        </>
+                      {/* Image Preview if provided */}
+                      {job.imageUrl && (
+                        <div className="w-full h-32 rounded-xl overflow-hidden border border-slate-200">
+                          <img
+                            src={job.imageUrl}
+                            alt={job.title}
+                            loading="lazy"
+                            decoding="async"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
                       )}
-                    </button>
+
+                      {/* Description */}
+                      <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
+                        {job.description}
+                      </p>
+
+                      {/* Voice Note Badge */}
+                      {job.voiceNoteUrl && (
+                        <div className="flex items-center gap-1.5 text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg w-fit">
+                          <Volume2 className="w-3.5 h-3.5" />
+                          <span>ग्राहक की वॉइस रिकॉर्डिंग संलग्न है</span>
+                        </div>
+                      )}
+
+                      {/* Customer Trust Details */}
+                      <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-800 flex items-center gap-1">
+                            <User className="w-3.5 h-3.5 text-slate-400" />
+                            {job.customerName}
+                          </span>
+                          <span className="text-emerald-700 font-bold text-[11px] bg-emerald-50 px-2 py-0.5 rounded">
+                            ट्रस्ट स्कोर: {job.customerTrustScore}%
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] text-slate-500">
+                          <span className="flex items-center gap-1 truncate max-w-[200px]">
+                            <MapPin className="w-3 h-3 text-rose-500 shrink-0" />
+                            {job.customerAddress}
+                          </span>
+                          <span className="text-blue-600 font-bold shrink-0">{job.distanceKm} किमी दूर</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Apply / Request Button */}
+                    <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between">
+                      <span className="text-[10px] text-slate-400">पोस्ट किया गया: {job.postedAt}</span>
+
+                      <button
+                        id={`apply-job-${job.id}-btn`}
+                        disabled={hasRequested}
+                        onClick={() => handleApply(job)}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                          hasRequested
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        }`}
+                      >
+                        {hasRequested ? (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            रिक्वेस्ट भेजी गई ✓
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-3.5 h-3.5" />
+                            {t.applyJob}
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Worker Bank Details & Payout Account Setup Modal */}
+      {isBankModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white max-w-md w-full rounded-2xl shadow-2xl border border-slate-200 p-6 space-y-5">
+            <div className="flex items-center justify-between border-b pb-3 border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
+                  <CreditCard className="w-5 h-5" />
                 </div>
-              );
-            })}
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">{t.bankModalTitle}</h3>
+                  <p className="text-[11px] text-slate-500">एस्क्रो से प्रत्यक्ष बैंक ट्रांसफर (IMPS / NEFT)</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsBankModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveBankDetails} className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">बैंक का नाम (Bank Name):</label>
+                <select
+                  value={bankName}
+                  onChange={(e) => setBankName(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 font-medium"
+                >
+                  <option value="State Bank of India">State Bank of India (SBI)</option>
+                  <option value="Punjab National Bank">Punjab National Bank (PNB)</option>
+                  <option value="HDFC Bank">HDFC Bank</option>
+                  <option value="ICICI Bank">ICICI Bank</option>
+                  <option value="Bank of Baroda">Bank of Baroda</option>
+                  <option value="Canara Bank">Canara Bank</option>
+                  <option value="Union Bank of India">Union Bank of India</option>
+                  <option value="Axis Bank">Axis Bank</option>
+                  <option value="Paytm Payments Bank">Paytm Payments Bank</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">खाता संख्या (Account Number):</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="उदा. 38472910482"
+                  value={accountNo}
+                  onChange={(e) => setAccountNo(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 font-mono font-bold text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">IFSC कोड (11-अंकीय):</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="उदा. SBIN0001234"
+                  value={ifsc}
+                  onChange={(e) => setIfsc(e.target.value.toUpperCase())}
+                  maxLength={11}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 font-mono font-bold uppercase text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">UPI ID (वैकल्पिक):</label>
+                <input
+                  type="text"
+                  placeholder="उदा. 9876543210@upi"
+                  value={upiId}
+                  onChange={(e) => setUpiId(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 font-medium text-slate-800"
+                />
+              </div>
+
+              <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl text-[11px] text-blue-900 flex items-start gap-2">
+                <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                <span>
+                  बैंक विवरण सुरक्षित एंक्रिप्टेड वॉल्ट में सेव होते हैं। ग्राहक के कंप्लीशन OTP देते ही एस्क्रो राशि तुरंत इसी खाते में ट्रांसफर होगी।
+                </span>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  id="save-worker-bank-submit-btn"
+                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md transition cursor-pointer"
+                >
+                  {t.saveBankBtn}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsBankModalOpen(false)}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition cursor-pointer"
+                >
+                  रद्द करें
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
+

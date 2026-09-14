@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'worker_registration_screen.dart';
 import 'customer_registration_screen.dart';
 import '../controllers/app_theme_controller.dart';
-import '../widgets/app_settings_dialog.dart';
 
 class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
@@ -91,17 +90,13 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
                               ),
                               Row(
                                 children: [
-                                  // Theme & Settings Dialog Button
-                                  IconButton(
-                                    icon: Icon(Icons.settings_suggest_rounded, color: theme.brandBlue, size: 22),
-                                    tooltip: 'सेटिंग्स (Settings)',
-                                    onPressed: () => AppSettingsDialog.show(context),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  // Quick Language Toggle
+                                  // Quick Language Toggle (Cycles: hi -> hinglish -> en -> hi)
                                   InkWell(
                                     onTap: () {
-                                      theme.setLanguage(isHindi ? 'en' : 'hi');
+                                      final next = theme.currentLanguage == 'hi'
+                                          ? 'hinglish'
+                                          : (theme.currentLanguage == 'hinglish' ? 'en' : 'hi');
+                                      theme.setLanguage(next);
                                     },
                                     borderRadius: BorderRadius.circular(20),
                                     child: Container(
@@ -113,10 +108,12 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
                                       ),
                                       child: Row(
                                         children: [
-                                          Icon(Icons.language, color: theme.brandBlue, size: 15),
+                                          Icon(Icons.language_rounded, color: theme.brandBlue, size: 16),
                                           const SizedBox(width: 6),
                                           Text(
-                                            isHindi ? 'English' : 'हिंदी',
+                                            theme.currentLanguage == 'hi'
+                                                ? 'हिन्दी'
+                                                : (theme.currentLanguage == 'hinglish' ? 'Hinglish' : 'English'),
                                             style: TextStyle(
                                               color: theme.textPrimary,
                                               fontSize: 12,
@@ -375,6 +372,17 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
               },
             ),
           ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => _showFeaturesGuideDialog(context, theme.currentLanguage),
+            backgroundColor: const Color(0xFF2563EB),
+            icon: const Icon(Icons.auto_awesome, color: Color(0xFFFDE047), size: 18),
+            label: Text(
+              theme.currentLanguage == 'hi'
+                  ? "ऐप फीचर्स"
+                  : (theme.currentLanguage == 'hinglish' ? "App Features" : "Features Guide"),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+          ),
         );
       },
     );
@@ -403,6 +411,252 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showFeaturesGuideDialog(BuildContext context, String initialLang) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        String selectedLang = initialLang;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final isHi = selectedLang == 'hi';
+            final isHinglish = selectedLang == 'hinglish';
+
+            final features = [
+              {
+                "title": isHi
+                    ? "100% एस्क्रो सुरक्षा (Escrow Vault)"
+                    : (isHinglish ? "100% Escrow Security" : "100% Escrow Vault Security"),
+                "desc": isHi
+                    ? "विजिटिंग फीस सुरक्षित एस्क्रो में रहती है। जब तक आप संतुष्ट होकर End OTP नहीं देते, भुगतान रिलीज नहीं होता।"
+                    : (isHinglish
+                        ? "Visiting fee safe escrow mein hold rehti hai. End OTP dene ke baad hi payment release hota hai."
+                        : "Visiting fee remains locked in escrow and is only released after you inspect work and share End OTP."),
+                "icon": Icons.lock_outline_rounded,
+                "color": const Color(0xFFF59E0B),
+              },
+              {
+                "title": isHi
+                    ? "डबल-ओटीपी सुरक्षा (Dual-OTP)"
+                    : (isHinglish ? "Dual-OTP Handshake" : "Dual-OTP Security Handshake"),
+                "desc": isHi
+                    ? "1. Start OTP: कारीगर के घर पहुंचने पर। 2. End OTP: कार्य संतोषजनक पूरा होने पर। शून्य फर्जीवाड़ा।"
+                    : (isHinglish
+                        ? "1. Start OTP: Ghar aane par. 2. End OTP: Kaam pura hone par. Zero fake bookings."
+                        : "Start OTP upon arrival, End OTP upon work completion. Prevents premature payouts."),
+                "icon": Icons.security_rounded,
+                "color": const Color(0xFF10B981),
+              },
+              {
+                "title": isHi
+                    ? "लाइव फेस व आधार OCR सत्यापन"
+                    : (isHinglish ? "Live Face & Aadhaar KYC" : "Biometric Face & Aadhaar KYC"),
+                "desc": isHi
+                    ? "प्रत्येक कारीगर और ग्राहक का असली आधार कार्ड OCR और लाइव सेल्फी द्वारा 100% सत्यापन।"
+                    : (isHinglish
+                        ? "Har karigar aur customer ka real Aadhaar OCR aur live camera selfie verify hota hai."
+                        : "Mandatory optical recognition on Aadhaar and live camera selfie liveness validation."),
+                "icon": Icons.verified_user_rounded,
+                "color": const Color(0xFF6366F1),
+              },
+              {
+                "title": isHi
+                    ? "Google S2 5km रडार"
+                    : (isHinglish ? "Google S2 5km Radar" : "Google S2 5km Radar"),
+                "desc": isHi
+                    ? "सटीक GPS द्वारा 5 किमी के भीतर उपलब्ध कारीगरों की तत्काल खोज व मैप डिस्प्ले।"
+                    : (isHinglish
+                        ? "Real GPS se 5km radius ke verified workers instant radar par show hote hain."
+                        : "Level 13 spatial cell indexing finds closest skilled technicians within 5km in under 0.5ms."),
+                "icon": Icons.radar_rounded,
+                "color": const Color(0xFF0284C7),
+              },
+              {
+                "title": isHi
+                    ? "100% तुरंत रिफंड गारंटी"
+                    : (isHinglish ? "Instant 100% Refund" : "100% Instant Source Refund"),
+                "desc": isHi
+                    ? "कारीगर न आने या कैंसल होने पर पूरी राशि तुरंत आपके मूल बैंक / UPI खाते में रिफंड।"
+                    : (isHinglish
+                        ? "Cancel hone par 1-click mein pura paisa seedhe UPI ya bank mein refund."
+                        : "Instant source-route refunds directly to customer bank account if booking is cancelled."),
+                "icon": Icons.replay_rounded,
+                "color": const Color(0xFFEF4444),
+              },
+              {
+                "title": isHi
+                    ? "पारदर्शी 90/10 स्प्लिट मैथ"
+                    : (isHinglish ? "90/10 Split Math" : "Fair 90/10 Earnings Split"),
+                "desc": isHi
+                    ? "कारीगर को 90% सीधे बैंक में, 10% न्यूनतम प्लेटफॉर्म संचालन शुल्क। शून्य छिपा शुल्क।"
+                    : (isHinglish
+                        ? "Worker ko 90% payout, platform ko 10% maintenance charge. Zero hidden fees."
+                        : "Technicians receive 90% direct payout, platform retains minimal 10% maintenance fee."),
+                "icon": Icons.payments_rounded,
+                "color": const Color(0xFF8B5CF6),
+              },
+            ];
+
+            return Dialog(
+              backgroundColor: const Color(0xFF0F172A),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: Color(0xFF334155))),
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 480, maxHeight: 600),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1E293B),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.3)),
+                          ),
+                          child: const Icon(Icons.auto_awesome, color: Color(0xFFFDE047), size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isHi
+                                    ? "प्लेटफॉर्म फीचर्स व सुरक्षा गाइड"
+                                    : (isHinglish ? "App Features & Safety Guide" : "App Features & Safety Guide"),
+                                style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                isHi
+                                    ? "डिजिटल काम की सभी प्रमुख खूबियाँ"
+                                    : "All key features & trust safeguards",
+                                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Color(0xFF94A3B8), size: 20),
+                          onPressed: () => Navigator.of(ctx).pop(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    // Language Switcher Chips
+                    Row(
+                      children: [
+                        const Text("भाषा / Lang: ", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.bold)),
+                        const Spacer(),
+                        _buildLangChip("हिंदी", "hi", selectedLang, (l) => setDialogState(() => selectedLang = l)),
+                        const SizedBox(width: 6),
+                        _buildLangChip("Hinglish", "hinglish", selectedLang, (l) => setDialogState(() => selectedLang = l)),
+                        const SizedBox(width: 6),
+                        _buildLangChip("English", "en", selectedLang, (l) => setDialogState(() => selectedLang = l)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(color: Color(0xFF334155), height: 1),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: features.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (context, index) {
+                          final f = features[index];
+                          final color = f["color"] as Color;
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E293B),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: const Color(0xFF334155)),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: color.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(f["icon"] as IconData, color: color, size: 18),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        f["title"] as String,
+                                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        f["desc"] as String,
+                                        style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, height: 1.35),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text(
+                          isHi ? "समझ गया (Got it)" : "Close Guide",
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  static Widget _buildLangChip(String label, String code, String current, Function(String) onSelect) {
+    final active = code == current;
+    return InkWell(
+      onTap: () => onSelect(code),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFF2563EB) : const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: active ? const Color(0xFF38BDF8) : const Color(0xFF334155)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? Colors.white : const Color(0xFF94A3B8),
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }

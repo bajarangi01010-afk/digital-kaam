@@ -81,7 +81,7 @@ class Settings:
     RATE_LIMIT_BURST_SECONDS: int = 2
     RATE_LIMIT_BURST_MAX: int = 25
     RATE_LIMIT_BAN_SECONDS: int = 300
-    MAX_PAYLOAD_BYTES: int = 64 * 1024
+    MAX_PAYLOAD_BYTES: int = int(os.getenv("SB_MAX_PAYLOAD_BYTES", str(15 * 1024 * 1024)))  # 15 MB for KYC photos & camera frames
 
     GPS_SPOOF_MAX_COMPLETION_DISTANCE_M: float = 250.0
     GPS_SPOOF_MAX_SPEED_KMH: float = 180.0

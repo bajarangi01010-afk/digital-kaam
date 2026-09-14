@@ -1,0 +1,335 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:s2geometry/s2geometry.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+class GpsLocationResult {
+  final String formattedAddress;
+  final double latitude;
+  final double longitude;
+  final String s2CellToken;
+  final int s2Level;
+  final bool isExactHardware;
+  final String rawCity;
+  final String rawState;
+  final String rawPostal;
+
+  const GpsLocationResult({
+    required this.formattedAddress,
+    required this.latitude,
+    required this.longitude,
+    required this.s2CellToken,
+    this.s2Level = 14,
+    required this.isExactHardware,
+    this.rawCity = "",
+    this.rawState = "",
+    this.rawPostal = "",
+  });
+}
+
+class GpsLocationService {
+  static final GpsLocationService _instance = GpsLocationService._internal();
+  static GpsLocationService get instance => _instance;
+
+  final Dio _dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 6),
+      receiveTimeout: const Duration(seconds: 8),
+      headers: {
+        'User-Agent': 'DigitalKaamApp/2.0 (Bihar-India)',
+        'Accept': 'application/json',
+      },
+    ),
+  );
+
+  GpsLocationService._internal();
+
+  /// Computes Google S2 Geometry cell token for given coordinates
+  String computeS2Token(double lat, double lng, {int level = 14}) {
+    try {
+      final latLng = S2LatLng.fromDegrees(lat, lng);
+      final cellId = S2CellId.fromLatLng(latLng).parentAtLevel(level);
+      return cellId.toToken();
+    } catch (_) {
+      return "s2_${lat.toStringAsFixed(3)}_${lng.toStringAsFixed(3)}";
+    }
+  }
+
+  /// Obtains the highest accuracy real-time device location, calculates S2 cell,
+  /// and reverse-geocodes to exact street/neighbourhood address.
+  Future<GpsLocationResult> getExactLocation() async {
+    double? lat;
+    double? lng;
+    bool isExact = false;
+
+    // 1. First attempt: Cross-platform Geolocator hardware GPS
+    try {
+      final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (serviceEnabled) {
+        LocationPermission permission = await Geolocator.checkPermission();
+
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+
+        if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
+          final Position pos = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              timeLimit: Duration(seconds: 5),
+            ),
+          );
+          lat = pos.latitude;
+          lng = pos.longitude;
+          isExact = true;
+        }
+      }
+    } catch (_) {
+      // Graceful fallback to Windows native watcher or IP
+    }
+
+    // 2. Second attempt: On Windows Desktop, query native Windows GeoCoordinateWatcher
+    if ((lat == null || lng == null) && !kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      try {
+        const psCommand = "Add-Type -AssemblyName System.Device; "
+            "\$w = New-Object System.Device.Location.GeoCoordinateWatcher(1); "
+            "\$w.TryStart(\$false, [TimeSpan]::FromSeconds(2)); "
+            "Start-Sleep -Milliseconds 1200; "
+            "\$p = \$w.Position.Location; "
+            "if (-not \$p.IsUnknown) { Write-Output ('' + \$p.Latitude + ',' + \$p.Longitude) }";
+
+        final result = await Process.run(
+          'powershell',
+          ['-NoProfile', '-Command', psCommand],
+        );
+
+        if (result.exitCode == 0 && result.stdout != null) {
+          final out = result.stdout.toString().trim();
+          final lines = out.split(RegExp(r'[\r\n]+'));
+          for (final line in lines) {
+            if (line.contains(',')) {
+              final parts = line.trim().split(',');
+              if (parts.length >= 2) {
+                final pLat = double.tryParse(parts[0].trim());
+                final pLng = double.tryParse(parts[1].trim());
+                if (pLat != null && pLng != null && (pLat != 0 || pLng != 0)) {
+                  lat = pLat;
+                  lng = pLng;
+                  isExact = true;
+                  break;
+                }
+              }
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 3. Third attempt: Network / IP-based coordinates if GPS hardware unavailable
+    if (lat == null || lng == null) {
+      try {
+        final ipRes = await _dio.get('http://ip-api.com/json/');
+        if (ipRes.statusCode == 200 && ipRes.data != null) {
+          final data = ipRes.data is Map ? ipRes.data : jsonDecode(ipRes.data.toString());
+          if (data['lat'] != null && data['lon'] != null) {
+            lat = (data['lat'] as num).toDouble();
+            lng = (data['lon'] as num).toDouble();
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Default fallback to Sasaram (Rohtas, Bihar) center coordinates if offline
+    lat ??= 24.9510;
+    lng ??= 84.0149;
+
+    // 4. Calculate Google S2 Geometry Cell Token
+    final s2Token = computeS2Token(lat, lng, level: 14);
+
+    // 5. Reverse Geocode exact location using OpenStreetMap Nominatim
+    String formattedAddress = "";
+    String city = "";
+    String state = "";
+    String postal = "";
+
+    try {
+      final reverseRes = await _dio.get(
+        'https://nominatim.openstreetmap.org/reverse',
+        queryParameters: {
+          'format': 'jsonv2',
+          'lat': lat,
+          'lon': lng,
+          'accept-language': 'hi,en',
+        },
+      );
+
+      if (reverseRes.statusCode == 200 && reverseRes.data != null) {
+        final data = reverseRes.data is Map ? reverseRes.data : jsonDecode(reverseRes.data.toString());
+        final addr = data['address'] as Map<String, dynamic>? ?? {};
+
+        // Extract precise components
+        final road = addr['road'] ?? addr['suburb'] ?? addr['neighbourhood'] ?? addr['residential'] ?? '';
+        final landmark = addr['amenity'] ?? addr['building'] ?? addr['office'] ?? '';
+        city = addr['city'] ?? addr['town'] ?? addr['city_district'] ?? addr['county'] ?? 'पटना';
+        state = addr['state'] ?? 'बिहार';
+        postal = addr['postcode'] ?? '';
+
+        final List<String> parts = [];
+        if (landmark.toString().isNotEmpty) parts.add(landmark.toString());
+        if (road.toString().isNotEmpty) parts.add(road.toString());
+        if (city.isNotEmpty) parts.add(city);
+        if (state.isNotEmpty) parts.add(state);
+
+        String mainLoc = parts.join(', ');
+        if (mainLoc.isEmpty) {
+          mainLoc = data['display_name']?.toString().split(',').take(3).join(',') ?? 'लाइव लोकेशन';
+        }
+
+        formattedAddress = postal.isNotEmpty
+            ? "$mainLoc - $postal (GPS Live)"
+            : "$mainLoc (GPS Live)";
+      }
+    } catch (_) {}
+
+    // Fallback reverse geocode via BigDataCloud if Nominatim failed
+    if (formattedAddress.isEmpty) {
+      try {
+        final bdcRes = await _dio.get(
+          'https://api.bigdatacloud.net/data/reverse-geocode-client',
+          queryParameters: {
+            'latitude': lat,
+            'longitude': lng,
+            'localityLanguage': 'hi',
+          },
+        );
+        if (bdcRes.statusCode == 200 && bdcRes.data != null) {
+          final data = bdcRes.data is Map ? bdcRes.data : jsonDecode(bdcRes.data.toString());
+          final locality = data['locality'] ?? data['city'] ?? 'पटना';
+          final principalSub = data['principalSubdivision'] ?? 'बिहार';
+          postal = data['postcode'] ?? '';
+          formattedAddress = postal.isNotEmpty
+              ? "$locality, $principalSub - $postal (GPS Live)"
+              : "$locality, $principalSub (GPS Live)";
+          city = locality;
+          state = principalSub;
+        }
+      } catch (_) {}
+    }
+
+    if (formattedAddress.isEmpty) {
+      formattedAddress = "सासाराम, रोहतास, बिहार - 821115 (GPS Live)";
+      city = "सासाराम";
+      state = "बिहार";
+      postal = "821115";
+    }
+
+    return GpsLocationResult(
+      formattedAddress: formattedAddress,
+      latitude: lat,
+      longitude: lng,
+      s2CellToken: s2Token,
+      s2Level: 14,
+      isExactHardware: isExact,
+      rawCity: city,
+      rawState: state,
+      rawPostal: postal,
+    );
+  }
+
+  /// Resolves an exact address string (e.g. 'shivpur , sikariyan , darigaon road sasaram')
+  /// to coordinates, computes Google S2 cell token, and returns verified GpsLocationResult.
+  Future<GpsLocationResult> geocodeAddress(String query) async {
+    final cleanQuery = query.trim();
+    if (cleanQuery.isEmpty) {
+      return getExactLocation();
+    }
+
+    double lat = 24.9510;
+    double lng = 84.0149;
+    String city = "सासाराम";
+    String state = "बिहार";
+    String postal = "821115";
+
+    try {
+      final res = await _dio.get(
+        'https://nominatim.openstreetmap.org/search',
+        queryParameters: {
+          'format': 'jsonv2',
+          'q': cleanQuery.toLowerCase().contains('sasaram') || cleanQuery.contains('सासाराम')
+              ? cleanQuery
+              : '$cleanQuery, Sasaram, Bihar',
+          'limit': 1,
+          'accept-language': 'hi,en',
+        },
+      );
+
+      if (res.statusCode == 200 && res.data != null) {
+        final list = res.data is List ? res.data : jsonDecode(res.data.toString());
+        if (list is List && list.isNotEmpty) {
+          final first = list.first as Map<String, dynamic>;
+          lat = double.tryParse(first['lat']?.toString() ?? '') ?? lat;
+          lng = double.tryParse(first['lon']?.toString() ?? '') ?? lng;
+        } else {
+          // Fallback query to Sasaram city
+          final sasaRes = await _dio.get(
+            'https://nominatim.openstreetmap.org/search',
+            queryParameters: {
+              'format': 'jsonv2',
+              'q': 'Sasaram, Rohtas, Bihar',
+              'limit': 1,
+            },
+          );
+          if (sasaRes.statusCode == 200 && sasaRes.data is List && (sasaRes.data as List).isNotEmpty) {
+            final sasa = (sasaRes.data as List).first as Map<String, dynamic>;
+            lat = double.tryParse(sasa['lat']?.toString() ?? '') ?? 24.9510;
+            lng = double.tryParse(sasa['lon']?.toString() ?? '') ?? 84.0149;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Geocoding query error: $e");
+    }
+
+    final s2Token = computeS2Token(lat, lng, level: 14);
+
+    return GpsLocationResult(
+      formattedAddress: cleanQuery.contains('(GPS Live)') ? cleanQuery : '$cleanQuery (GPS Live)',
+      latitude: lat,
+      longitude: lng,
+      s2CellToken: s2Token,
+      s2Level: 14,
+      isExactHardware: true,
+      rawCity: city,
+      rawState: state,
+      rawPostal: postal,
+    );
+  }
+
+  /// Opens native turn-by-turn navigation in Google Maps or Apple Maps
+  static Future<bool> openNavigationMap({
+    required double destLat,
+    required double destLng,
+    String? addressLabel,
+  }) async {
+    try {
+      final googleMapsUrl = Uri.parse(
+        'https://www.google.com/maps/dir/?api=1&destination=$destLat,$destLng&travelmode=driving',
+      );
+      if (await canLaunchUrl(googleMapsUrl)) {
+        return await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
+      }
+      final geoUrl = Uri.parse(
+        'geo:$destLat,$destLng?q=$destLat,$destLng(${Uri.encodeComponent(addressLabel ?? "ग्राहक का स्थान")})',
+      );
+      if (await canLaunchUrl(geoUrl)) {
+        return await launchUrl(geoUrl, mode: LaunchMode.externalApplication);
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+}

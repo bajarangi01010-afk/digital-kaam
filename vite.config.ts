@@ -36,6 +36,22 @@ export default defineConfig(() => {
             if (id.includes('FlutterMobileSimulator')) {
               return 'chunk-flutter-simulator';
             }
+            if (
+              id.includes('EscrowBookingModal') ||
+              id.includes('HandshakeOtpModal') ||
+              id.includes('PostJobModal') ||
+              id.includes('LiveFaceCaptureModal') ||
+              id.includes('WorkerDetailModal')
+            ) {
+              return 'chunk-modals';
+            }
+            if (
+              id.includes('VerificationQueue') ||
+              id.includes('DisputesAuditView') ||
+              id.includes('PaymentsEscrowView')
+            ) {
+              return 'chunk-admin-flow';
+            }
           },
         },
       },

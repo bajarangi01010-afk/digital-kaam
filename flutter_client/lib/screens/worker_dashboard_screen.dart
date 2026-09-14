@@ -3,9 +3,11 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../models/worker_session.dart';
 import '../widgets/safe_image.dart';
-import '../widgets/live_face_verification_dialog.dart';
 import '../controllers/app_theme_controller.dart';
 import '../widgets/app_settings_dialog.dart';
+import '../services/gps_location_service.dart';
+import '../services/telephony_service.dart';
+import 'worker_profile_screen.dart';
 
 class WorkerDashboardScreen extends StatefulWidget {
   final String? workerName;
@@ -168,43 +170,11 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
     );
   }
 
-  // Update Live Face Profile Photo
-  void _updateLiveFacePhoto() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => LiveFaceVerificationDialog(
-        uploadedProfilePhoto: null,
-        onVerificationComplete: (snapshot, result) async {
-          Uint8List? bytes;
-          try {
-            bytes = await snapshot.readAsBytes();
-          } catch (_) {}
-
-          setState(() {
-            _profilePhoto = snapshot;
-            _profileBytes = bytes;
-          });
-
-          WorkerSession.update(newPhoto: snapshot, newBytes: bytes);
-          _showToast("बायोमेट्रिक लाइव फेस फोटो 100% सत्यापित व प्रोफाइल में अपडेट हो गई!", isSuccess: true);
-        },
-      ),
-    );
-  }
-
   void _markAttendance() {
     setState(() {
       _attendanceMarkedToday = true;
     });
     _showToast("आज की हाजिरी (Daily Attendance) दर्ज हो गई! आप आज के काम के लिए एक्टिव हैं।", isSuccess: true);
-  }
-
-  void _requestWork(Map<String, dynamic> job) {
-    setState(() {
-      job["requested"] = true;
-    });
-    _showToast("आवेदन ग्राहक ${job["customerName"]} को भेजा गया! उन्हें नोटिफिकेशन प्राप्त हुआ।", isSuccess: true);
   }
 
   void _verifyStartOtp() {
@@ -751,29 +721,81 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
           ),
           const SizedBox(height: 20),
 
-          // 4. Nearby Jobs Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text("पास के उपलब्ध काम", style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.bold)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: theme.brandBlue.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  "${_nearbyJobs.length} काम उपलब्ध",
-                  style: TextStyle(color: theme.brandBlue, fontSize: 12, fontWeight: FontWeight.bold),
-                ),
+          // 4. Nearby Jobs Header & List (Gated by Location Radar Toggle)
+          if (!_isLocationOn) ...[
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.card,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: theme.amberGold.withValues(alpha: 0.4)),
+                boxShadow: theme.cardShadow,
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
+              child: Column(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: theme.amberGold.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.location_off_rounded, color: theme.amberGold, size: 30),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    "लोकेशन रडार बंद है (Location OFF)",
+                    style: TextStyle(color: theme.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "आपने अपनी लोकेशन साझा करना बंद किया हुआ है। आस-पास के 5 किमी के काम देखने के लिए रडार चालू करें।",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: theme.textSecondary, fontSize: 12, height: 1.4),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _isLocationOn = true;
+                      });
+                      _showToast("लोकेशन रडार सक्रिय हो गया है!");
+                    },
+                    icon: const Icon(Icons.radar_rounded, size: 18),
+                    label: const Text("लोकेशन रडार चालू करें (Turn ON)"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.brandBlue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("पास के उपलब्ध काम", style: TextStyle(color: theme.textPrimary, fontSize: 15, fontWeight: FontWeight.bold)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: theme.brandBlue.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    "${_nearbyJobs.length} काम उपलब्ध",
+                    style: TextStyle(color: theme.brandBlue, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
 
-          // Nearby Jobs List
-          ..._nearbyJobs.map((job) {
-            final bool requested = job["requested"] as bool;
+            // Nearby Jobs List
+            ..._nearbyJobs.map((job) {
+              final bool requested = job["requested"] as bool;
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(16),
@@ -832,9 +854,42 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                     style: TextStyle(color: theme.textPrimary, fontSize: 14, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    "${job["locality"]} • ${job["distance"]} • ${job["timeAgo"]}",
-                    style: TextStyle(color: theme.textSecondary, fontSize: 11),
+                  Row(
+                    children: [
+                      Icon(Icons.location_on_outlined, size: 14, color: theme.brandBlue),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          "${job["locality"]} • ${job["distance"]} • ${job["timeAgo"]}",
+                          style: TextStyle(color: theme.textSecondary, fontSize: 11),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () async {
+                          _showToast("${job["locality"]} का मैप खोला जा रहा है...");
+                          await GpsLocationService.openNavigationMap(
+                            destLat: 28.5708,
+                            destLng: 77.3271,
+                            addressLabel: job["locality"].toString(),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: theme.brandBlue.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.map_outlined, size: 12, color: theme.brandBlue),
+                              const SizedBox(width: 3),
+                              Text("मैप", style: TextStyle(fontSize: 10, color: theme.brandBlue, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -875,9 +930,10 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
             );
           }),
         ],
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
 
   // Tab 1: Bookings & Handshake Verification Tab
   Widget _buildBookingsTab() {
@@ -931,8 +987,112 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                   ),
                   const SizedBox(height: 14),
                   Text("स्विचबोर्ड रिपेयर व शॉर्ट सर्किट चेकिंग", style: TextStyle(color: theme.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text("ग्राहक: अमित शर्मा • फ्लैट 402, सेक्टर 18", style: TextStyle(color: theme.textSecondary, fontSize: 12)),
+                  const SizedBox(height: 10),
+
+                  // Destination Customer Location & Navigation Card
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: theme.cardSub,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: theme.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.location_on_rounded, color: theme.brandBlue, size: 22),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "ग्राहक: अमित शर्मा (Customer)",
+                                        style: TextStyle(color: theme.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: theme.brandBlue.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          "1.2 km • 5 मिनट",
+                                          style: TextStyle(color: theme.brandBlue, fontSize: 10, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    "फ्लैट 402, शांति अपार्टमेंट, ब्लॉक B, सेक्टर 18",
+                                    style: TextStyle(color: theme.textSecondary, fontSize: 11, height: 1.3),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    "लैंडमार्क: मेन गेट के पास, सुरक्षा गार्ड के बगल वाली लिफ्ट",
+                                    style: TextStyle(color: theme.amberGold, fontSize: 10, fontStyle: FontStyle.italic),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            // 1. Google Maps Navigation Button
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  _showToast("गूगल मैप्स नेविगेशन खुल रहा है...");
+                                  await GpsLocationService.openNavigationMap(
+                                    destLat: 28.5708,
+                                    destLng: 77.3271,
+                                    addressLabel: "फ्लैट 402, शांति अपार्टमेंट, ब्लॉक B, सेक्टर 18",
+                                  );
+                                },
+                                icon: const Icon(Icons.navigation_rounded, size: 16),
+                                label: const Text("रास्ता देखें (Maps)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF0284C7),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 11),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  elevation: 0,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // 2. Direct Phone Call Button
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  TelephonyService.makePhoneCall("+919876543210");
+                                  _showToast("ग्राहक को कॉल डायल हो रहा है...");
+                                },
+                                icon: const Icon(Icons.phone_in_talk_rounded, size: 16),
+                                label: const Text("कॉल करें", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF059669),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 11),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  elevation: 0,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 14),
 
                   // Escrow Security Notice
@@ -1274,119 +1434,6 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
     );
   }
 
-  // Tab 3: Profile View & ID Card
-  Widget _buildProfileTab() {
-    final theme = AppThemeController.instance;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          // 1. Digital Kaam Official Worker ID Card
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: theme.card,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: theme.border),
-              boxShadow: theme.cardShadow,
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Stack(
-                      alignment: Alignment.bottomRight,
-                      children: [
-                        _buildWorkerAvatar(radius: 36),
-                        Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: BoxDecoration(color: theme.emeraldGreen, shape: BoxShape.circle),
-                          child: const Icon(Icons.verified, color: Colors.white, size: 16),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(_workerName, style: TextStyle(color: theme.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 2),
-                          Text(_primarySkill, style: TextStyle(color: theme.brandBlue, fontSize: 13, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 2),
-                          Text(WorkerSession.workerId, style: TextStyle(color: theme.textSecondary, fontSize: 11)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                // QR Code
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 4)),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      const Icon(Icons.qr_code_2_rounded, size: 90, color: Colors.black87),
-                      const SizedBox(height: 2),
-                      Text(WorkerSession.workerId, style: const TextStyle(color: Colors.black54, fontSize: 10, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  "सत्यापित डिजिटल काम ID • ग्राहक QR स्कैन कर प्रोफाइल देख सकते हैं",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: theme.textSecondary, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Settings & Help Actions
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.card,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: theme.border),
-              boxShadow: theme.cardShadow,
-            ),
-            child: Column(
-              children: [
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.settings_suggest_rounded, color: theme.brandBlue),
-                  title: Text("ऐप सेटिंग्स एवं थीम (Settings)", style: TextStyle(color: theme.textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
-                  subtitle: Text("थीम, भाषा, ध्वनि व प्राथमिकताएं बदलें", style: TextStyle(color: theme.textSecondary, fontSize: 11)),
-                  trailing: Icon(Icons.arrow_forward_ios_rounded, color: theme.textMuted, size: 16),
-                  onTap: () => AppSettingsDialog.show(context),
-                ),
-                Divider(color: theme.border, height: 16),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.help_outline_rounded, color: theme.amberGold),
-                  title: Text("24x7 कारीगर हेल्पलाइन", style: TextStyle(color: theme.textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
-                  subtitle: Text("1800-DKAAM-99 (टोल फ्री सहायता)", style: TextStyle(color: theme.textSecondary, fontSize: 11)),
-                  trailing: Icon(Icons.arrow_forward_ios_rounded, color: theme.textMuted, size: 16),
-                  onTap: () {
-                    _showToast("कारीगर सहायता हेल्पलाइन: 1800-DKAAM-99");
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1437,8 +1484,16 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                 icon: _buildWorkerAvatar(radius: 14),
                 tooltip: "प्रोफाइल देखें / बदलें",
                 onPressed: () {
-                  setState(() {
-                    _selectedTabIndex = 3; // Switch to Profile tab
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const WorkerProfileScreen()),
+                  ).then((_) {
+                    setState(() {
+                      _workerName = WorkerSession.name;
+                      _primarySkill = WorkerSession.primarySkill;
+                      _profilePhoto = WorkerSession.profilePhoto;
+                      _profileBytes = WorkerSession.profilePhotoBytes;
+                      _customVisitPrice = WorkerSession.customVisitPrice;
+                    });
                   });
                 },
               ),
@@ -1446,12 +1501,11 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
             ],
           ),
           body: IndexedStack(
-            index: _selectedTabIndex,
+            index: _selectedTabIndex > 2 ? 0 : _selectedTabIndex,
             children: [
               _buildHomeTab(),
               _buildBookingsTab(),
               _buildEarningsTab(),
-              _buildProfileTab(),
             ],
           ),
           bottomNavigationBar: Container(
@@ -1459,7 +1513,7 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
               border: Border(top: BorderSide(color: theme.bottomNavBorder, width: 1)),
             ),
             child: BottomNavigationBar(
-              currentIndex: _selectedTabIndex,
+              currentIndex: _selectedTabIndex > 2 ? 0 : _selectedTabIndex,
               onTap: (index) {
                 setState(() {
                   _selectedTabIndex = index;
@@ -1483,10 +1537,6 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                 BottomNavigationBarItem(
                   icon: Icon(Icons.account_balance_wallet_rounded),
                   label: "कमाई रिपोर्ट",
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.person_rounded),
-                  label: "प्रोफाइल",
                 ),
               ],
             ),

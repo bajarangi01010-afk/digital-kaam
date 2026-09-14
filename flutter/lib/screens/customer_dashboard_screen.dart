@@ -7,13 +7,23 @@ import '../widgets/safe_image.dart';
 import '../services/location_service.dart';
 import '../controllers/app_theme_controller.dart';
 import '../widgets/app_settings_dialog.dart';
+import '../services/telephony_service.dart';
+import 'customer_profile_screen.dart';
 
 class CustomerDashboardScreen extends StatefulWidget {
   final String customerName;
+  final File? profilePhoto;
+  final Uint8List? profilePhotoBytes;
+  final String? customerPhone;
+  final String? customerAddress;
 
   const CustomerDashboardScreen({
     super.key,
     required this.customerName,
+    this.profilePhoto,
+    this.profilePhotoBytes,
+    this.customerPhone,
+    this.customerAddress,
   });
 
   @override
@@ -21,7 +31,13 @@ class CustomerDashboardScreen extends StatefulWidget {
 }
 
 class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
-  int _selectedTabIndex = 0; // 0: Home, 1: My Bookings, 2: Payment Report, 3: Profile
+  int _selectedTabIndex = 0; // 0: Home, 1: My Bookings, 2: Payment Report
+
+  late String _currentCustomerName;
+  String? _currentCustomerPhone;
+  String? _currentCustomerAddress;
+  File? _customerPhoto;
+  Uint8List? _customerPhotoBytes;
 
   bool _isLocationOn = true;
   double _selectedRadiusKm = 5.0;
@@ -34,8 +50,6 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   String _activeBookingStatus = "WORKER_ARRIVED"; // "CONFIRMED", "WORKER_ARRIVED", "IN_PROGRESS", "COMPLETED", "REFUNDED"
   final String _startOtp = "5182";
   final String _completionOtp = "9341";
-  bool _showRatingDialog = false;
-  double _workerRating = 5.0;
 
   // Payment Report & Escrow State
   double _totalSpent = 2100.0;
@@ -105,6 +119,11 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    _currentCustomerName = widget.customerName;
+    _currentCustomerPhone = widget.customerPhone;
+    _currentCustomerAddress = widget.customerAddress;
+    _customerPhoto = widget.profilePhoto ?? WorkerSession.profilePhoto;
+    _customerPhotoBytes = widget.profilePhotoBytes ?? WorkerSession.profilePhotoBytes;
     _loadNearbyWorkers();
   }
 
@@ -267,8 +286,72 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
     );
   }
 
-  // 2. Direct Call Worker
+  // 2. Direct Call Worker (Master Idea: Gated by Active Escrow Booking)
   void _directCallWorker(Map<String, dynamic> worker) {
+    final bool isBooked = worker["isBooked"] == true;
+    if (!isBooked) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: const [
+              Icon(Icons.lock_rounded, color: Color(0xFFF59E0B)),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text("कॉल अनलॉक करने के लिए विज़िट बुक करें", style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "कारीगर: ${worker["name"]}\nनंबर: +91 98112 ••••• (सुरक्षित लॉक)",
+                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F172A),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+                ),
+                child: const Text(
+                  "कारीगर का समय और आपका पैसा सुरक्षित रखने के लिए, डायरेक्ट कॉल से पहले विज़िट शुल्क प्लेटफ़ॉर्म के सुरक्षित एस्क्रो में जमा होना अनिवार्य है। बुकिंग होते ही कॉल तुरंत अनलॉक हो जाएगी!",
+                  style: TextStyle(color: Color(0xFFFEF3C7), fontSize: 12, height: 1.4),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text("रद्द करें", style: TextStyle(color: Color(0xFF94A3B8))),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _bookWorker(worker);
+              },
+              icon: const Icon(Icons.payment_rounded, size: 16),
+              label: Text("${worker["visitCharge"] ?? "विज़िट"} एस्क्रो जमा कर बुक करें"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // If booked, proceed with unlocked call
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -278,18 +361,56 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
           children: const [
             Icon(Icons.phone_in_talk_rounded, color: Color(0xFF10B981)),
             SizedBox(width: 8),
-            Text("कारीगर से डायरेक्ट कॉल", style: TextStyle(color: Colors.white, fontSize: 16)),
+            Text("कारीगर से डायरेक्ट कॉल (सक्रिय)", style: TextStyle(color: Colors.white, fontSize: 16)),
           ],
         ),
-        content: Text(
-          "${worker["name"]} को डायल किया जा रहा है:\n${worker["phone"]}\n\n(डिजिटल काम सुरक्षित कॉलिंग मास्क प्रोटोकॉल)",
-          style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 13, height: 1.5),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "${worker["name"]} को डायल किया जा रहा है:\n${worker["phone"] ?? "+91 98765 43210"}\n\n✓ एस्क्रो सुरक्षित बुकिंग सक्रिय है।",
+              style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 13, height: 1.5),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF065F46).withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF10B981)),
+              ),
+              child: Row(
+                children: const [
+                  Icon(Icons.lock_open_rounded, color: Color(0xFF34D399), size: 16),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "डायरेक्ट कॉल ब्रिज अनलॉक! आप कारीगर से सीधे बात कर सकते हैं।",
+                      style: TextStyle(color: Color(0xFF6EE7B7), fontSize: 11),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         actions: [
-          ElevatedButton(
+          TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669), foregroundColor: Colors.white),
-            child: const Text("कॉल संपन्न", style: TextStyle(color: Colors.white)),
+            child: const Text("बंद करें", style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              TelephonyService.makePhoneCall(worker["phone"] ?? "+91 98765 43210");
+            },
+            icon: const Icon(Icons.call, size: 16),
+            label: const Text("फ़ोन डायलर में खोलें"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF059669),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
           ),
         ],
       ),
@@ -1034,18 +1155,6 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
       ),
     );
   }
-
-  void _submitReview() {
-    setState(() {
-      _showRatingDialog = false;
-      _activeBookingStatus = "COMPLETED";
-      _hasActiveBooking = false;
-      _totalSpent += _escrowLocked;
-      _escrowLocked = 0.0;
-    });
-    _showToast("रेटिंग सबमिट की गई! कारीगर का भुगतान प्लेटफॉर्म एस्क्रो द्वारा रिलीज कर दिया गया।", isSuccess: true);
-  }
-
   // Tab 0: Home Tab (Spacious & Clean, Zero Congestion)
   Widget _buildHomeTab() {
     final theme = AppThemeController.instance;
@@ -1054,6 +1163,63 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Customer Welcome Header with Live Photo & Verified Pill
+          Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: theme.card,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: theme.border),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: const Color(0xFF2563EB),
+                  backgroundImage: (_customerPhotoBytes != null && _customerPhotoBytes!.isNotEmpty)
+                      ? MemoryImage(_customerPhotoBytes!)
+                      : (_customerPhoto != null ? FileImage(_customerPhoto!) : null) as ImageProvider?,
+                  child: (_customerPhotoBytes == null && _customerPhoto == null)
+                      ? const Icon(Icons.person, color: Colors.white, size: 24)
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              "नमस्ते, ${widget.customerName.isNotEmpty ? widget.customerName : 'ग्राहक'}!",
+                              style: TextStyle(color: theme.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: const Color(0xFF065F46), borderRadius: BorderRadius.circular(6)),
+                            child: const Text("✓ सत्यापित", style: TextStyle(color: Color(0xFF6EE7B7), fontSize: 9, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        widget.customerAddress ?? (WorkerSession.address.isNotEmpty ? WorkerSession.address : "पटना, बिहार (GPS Live)"),
+                        style: TextStyle(color: theme.textSecondary, fontSize: 11),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // 1. Post a Work Hero Card (Spacious, Uncluttered)
           Container(
             padding: const EdgeInsets.all(20),
@@ -1807,139 +1973,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
     );
   }
 
-  // Tab 3: Customer Profile View
-  Widget _buildProfileTab() {
-    final theme = AppThemeController.instance;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              color: theme.card,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: theme.border),
-              boxShadow: theme.cardShadow,
-            ),
-            child: Column(
-              children: [
-                Stack(
-                  alignment: Alignment.bottomRight,
-                  children: [
-                    const CircleAvatar(
-                      radius: 46,
-                      backgroundColor: Color(0xFF2563EB),
-                      child: Icon(Icons.person, color: Colors.white, size: 52),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(color: theme.emeraldGreen, shape: BoxShape.circle),
-                      child: const Icon(Icons.verified, color: Colors.white, size: 18),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Text(widget.customerName, style: TextStyle(color: theme.textPrimary, fontSize: 19, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text("+91 98102 34567 • ग्राहक खाता", style: TextStyle(color: theme.brandBlue, fontSize: 13)),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: theme.emeraldGreen.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text("✓ आधार व मोबाइल 100% सत्यापित", style: TextStyle(color: theme.emeraldGreen, fontSize: 11, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
 
-          // Saved Addresses
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.card,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: theme.border),
-              boxShadow: theme.cardShadow,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text("सहेजे गए पते (Saved Locations)", style: TextStyle(color: theme.textPrimary, fontWeight: FontWeight.bold, fontSize: 13)),
-                    IconButton(
-                      icon: Icon(Icons.add_location_alt_rounded, color: theme.brandBlue, size: 20),
-                      onPressed: () {
-                        _showToast("नया पता जोड़ने का विकल्प शीघ्र उपलब्ध होगा।");
-                      },
-                    ),
-                  ],
-                ),
-                Divider(color: theme.border, height: 12),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.home_rounded, color: theme.brandBlue),
-                  title: Text("घर (Home Address)", style: TextStyle(color: theme.textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
-                  subtitle: Text("फ्लैट 402, गैलेक्सी हाइट्स, सेक्टर 18", style: TextStyle(color: theme.textSecondary, fontSize: 11)),
-                  trailing: Icon(Icons.check_circle, color: theme.emeraldGreen, size: 18),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Security & Settings
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.card,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: theme.border),
-              boxShadow: theme.cardShadow,
-            ),
-            child: Column(
-              children: [
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.settings_suggest_rounded, color: theme.brandBlue),
-                  title: Text("ऐप सेटिंग्स एवं थीम (Settings)", style: TextStyle(color: theme.textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
-                  subtitle: Text("थीम, भाषा, ध्वनि व GPS प्राथमिकताएं बदलें", style: TextStyle(color: theme.textSecondary, fontSize: 11)),
-                  trailing: Icon(Icons.arrow_forward_ios_rounded, color: theme.textMuted, size: 16),
-                  onTap: () => AppSettingsDialog.show(context),
-                ),
-                Divider(color: theme.border, height: 16),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.qr_code_scanner_rounded, color: theme.brandBlue),
-                  title: Text("कारीगर QR स्कैनर (Live Scanner)", style: TextStyle(color: theme.textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
-                  subtitle: Text("कारीगर पहचान पत्र की सत्यता जांचें", style: TextStyle(color: theme.textSecondary, fontSize: 11)),
-                  trailing: Icon(Icons.arrow_forward_ios_rounded, color: theme.textMuted, size: 16),
-                  onTap: _openWorkerIdScanner,
-                ),
-                Divider(color: theme.border, height: 16),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.help_outline_rounded, color: theme.amberGold),
-                  title: Text("24x7 हेल्पलाइन व सहायता", style: TextStyle(color: theme.textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
-                  subtitle: Text("1800-DKAAM-99 (टोल फ्री)", style: TextStyle(color: theme.textSecondary, fontSize: 11)),
-                  trailing: Icon(Icons.arrow_forward_ios_rounded, color: theme.textMuted, size: 16),
-                  onTap: () {
-                    _showToast("डिजिटल काम 24x7 हेल्पलाइन: 1800-DKAAM-99");
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1955,7 +1989,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "नमस्ते, ${widget.customerName}",
+                  "नमस्ते, $_currentCustomerName",
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: theme.appBarText),
                 ),
                 Row(
@@ -1987,28 +2021,49 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
               ),
               // Top Corner Profile Button
               IconButton(
-                icon: const CircleAvatar(
+                icon: CircleAvatar(
                   radius: 14,
-                  backgroundColor: Color(0xFF2563EB),
-                  child: Icon(Icons.person, color: Colors.white, size: 16),
+                  backgroundColor: const Color(0xFF2563EB),
+                  backgroundImage: (_customerPhotoBytes != null && _customerPhotoBytes!.isNotEmpty)
+                      ? MemoryImage(_customerPhotoBytes!)
+                      : (_customerPhoto != null ? FileImage(_customerPhoto!) : null) as ImageProvider?,
+                  child: (_customerPhotoBytes == null && _customerPhoto == null)
+                      ? const Icon(Icons.person, color: Colors.white, size: 16)
+                      : null,
                 ),
                 tooltip: "प्रोफाइल देखें / बदलें",
                 onPressed: () {
-                  setState(() {
-                    _selectedTabIndex = 3; // Jump to Profile
-                  });
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => CustomerProfileScreen(
+                        customerName: _currentCustomerName,
+                        customerPhoto: _customerPhoto,
+                        customerBytes: _customerPhotoBytes,
+                        customerPhone: _currentCustomerPhone,
+                        customerAddress: _currentCustomerAddress,
+                        onProfileUpdated: (newName, newPhone, newAddress, newPhoto, newBytes) {
+                          setState(() {
+                            _currentCustomerName = newName;
+                            _currentCustomerPhone = newPhone;
+                            _currentCustomerAddress = newAddress;
+                            _customerPhoto = newPhoto;
+                            _customerPhotoBytes = newBytes;
+                          });
+                        },
+                      ),
+                    ),
+                  );
                 },
               ),
               const SizedBox(width: 4),
             ],
           ),
           body: IndexedStack(
-            index: _selectedTabIndex,
+            index: _selectedTabIndex > 2 ? 0 : _selectedTabIndex,
             children: [
               _buildHomeTab(),
               _buildBookingsTab(),
               _buildPaymentReportTab(),
-              _buildProfileTab(),
             ],
           ),
           bottomNavigationBar: Container(
@@ -2016,7 +2071,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
               border: Border(top: BorderSide(color: theme.bottomNavBorder, width: 1)),
             ),
             child: BottomNavigationBar(
-              currentIndex: _selectedTabIndex,
+              currentIndex: _selectedTabIndex > 2 ? 0 : _selectedTabIndex,
               onTap: (index) {
                 setState(() {
                   _selectedTabIndex = index;
@@ -2040,10 +2095,6 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                 BottomNavigationBarItem(
                   icon: Icon(Icons.receipt_long_rounded),
                   label: "भुगतान रिपोर्ट",
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.person_rounded),
-                  label: "प्रोफाइल",
                 ),
               ],
             ),

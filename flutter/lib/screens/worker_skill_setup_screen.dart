@@ -36,6 +36,69 @@ class _WorkerSkillSetupScreenState extends State<WorkerSkillSetupScreen> {
     {"id": "welder", "title": "वेल्डर (Welder)", "icon": Icons.construction_rounded, "selected": false},
   ];
 
+  final Map<String, List<String>> _tradeProblems = {
+    "electrician": [
+      "एमसीबी ट्रिपिंग व शॉर्ट सर्किट (MCB Tripping)",
+      "सीलिंग व एग्जॉस्ट पंखा रिपेयर (Ceiling Fan)",
+      "स्विचबोर्ड व सॉकेट वायरिंग (Switchboard)",
+      "इन्वर्टर व बैटरी कनेक्शन (Inverter Wiring)",
+      "कंसील्ड हाउस वायरिंग फॉल्ट (House Wiring)",
+      "एलईडी लाइट व झूमर फिटिंग (LED & Chandelier)",
+    ],
+    "plumber": [
+      "कंसील्ड पाइप लीकेज व सीलन (Concealed Leakage)",
+      "नल जाम / नया नल फिटिंग (Tap Repair)",
+      "टॉयलेट फ्लश टैंक रिपेयर (Flush Tank Cistern)",
+      "बेसिन व सिंक ड्रेनेज चोक (Drain Unclog)",
+      "सबमर्सिबल व वाटर मोटर (Water Pump & Motor)",
+      "गीजर इंस्टालेशन व वाटर पाइप (Geyser Fitting)",
+    ],
+    "carpenter": [
+      "दरवाजा लॉक व कुंडी ठीक करना (Door Locks & Latches)",
+      "बेड, सोफा व अलमारी रिपेयर (Bed & Wardrobe)",
+      "मॉड्यूलर किचन हिंज व चैनल (Kitchen Hinges)",
+      "खिड़की की जाली व स्लाइडिंग पल्ले (Window Mesh)",
+      "नई लकड़ी का फर्नीचर निर्माण (Custom Woodwork)",
+    ],
+    "painter": [
+      "सीलन व पुट्टी उपचार (Dampness & Wall Putty)",
+      "अंदरूनी व बाहरी दीवार पेंटिंग (Interior / Exterior)",
+      "वॉटरप्रूफिंग कोटिंग (Waterproofing Primer)",
+      "दरवाजे-फर्नीचर पर पॉलिश (Wood Polish & Melamine)",
+      "रॉयल टेक्सचर डिजाइन (Texture & Stencils)",
+    ],
+    "mason": [
+      "टाइल्स व मार्बल फिटिंग (Tiles & Marble)",
+      "प्लास्टर क्रैक व नई दीवार चिनाई (Plaster & Brickwork)",
+      "छत ढलान व फर्श मरम्मत (Roof Slope Repair)",
+      "सीवर चेंबर व नाली निर्माण (Drain & Concrete)",
+    ],
+    "cleaner": [
+      "पूरे घर की डीप क्लीनिंग (Full Home Deep Clean)",
+      "बाथरूम व टॉयलेट एसिड वॉश (Bathroom Scale Wash)",
+      "किचन चिमनी व टाइल डीग्रीजिंग (Kitchen Degrease)",
+      "सोफा व गद्दे शैम्पू वॉश (Sofa & Carpet Clean)",
+      "पानी की टंकी हाई-प्रेशर सफाई (Water Tank Wash)",
+    ],
+    "appliance": [
+      "वॉशिंग मशीन ड्रम व मोटर (Washing Machine)",
+      "फ्रिज गैस चार्जिंग व कंप्रेसर (Refrigerator Gas)",
+      "माइक्रोवेव हीटिंग व टच पैनल (Microwave Oven)",
+      "आरओ वाटर सर्विस व मेम्ब्रेन (RO Filter Service)",
+    ],
+    "welder": [
+      "मेन गेट, ग्रिल व ताला वेल्डिंग (Gate & Grill)",
+      "आयरन शेड व एंगल वेल्डिंग (Iron Shed Truss)",
+      "सीढ़ी व बालकनी रेलिंग (Balcony Railing)",
+      "ऑन-साइट स्पॉट वेल्डिंग (Spot Welding)",
+    ],
+  };
+
+  final Set<String> _selectedProblems = {
+    "एमसीबी ट्रिपिंग व शॉर्ट सर्किट (MCB Tripping)",
+    "सीलिंग व एग्जॉस्ट पंखा रिपेयर (Ceiling Fan)",
+  };
+
   String _experienceLevel = "experienced"; // beginner, certified, experienced
   final TextEditingController _rateController = TextEditingController(text: "350");
 
@@ -197,6 +260,54 @@ class _WorkerSkillSetupScreenState extends State<WorkerSkillSetupScreen> {
                           ],
                         ),
                       ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 18),
+
+                // Specific Problem Varieties & Types of Work
+                const Text(
+                  "विशिष्ट समस्याएं व कार्य के प्रकार (Select Problems & Specialties):",
+                  style: TextStyle(color: Color(0xFF38BDF8), fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: _categories
+                      .where((c) => c["selected"] == true)
+                      .expand((c) => _tradeProblems[c["id"]] ?? <String>[])
+                      .toSet()
+                      .map((prob) {
+                    final bool isProbSelected = _selectedProblems.contains(prob);
+                    return FilterChip(
+                      selected: isProbSelected,
+                      label: Text(
+                        prob,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isProbSelected ? Colors.white : const Color(0xFFCBD5E1),
+                          fontWeight: isProbSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                      backgroundColor: const Color(0xFF0F172A),
+                      selectedColor: const Color(0xFF2563EB),
+                      checkmarkColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        side: BorderSide(
+                          color: isProbSelected ? const Color(0xFF60A5FA) : const Color(0xFF334155),
+                        ),
+                      ),
+                      onSelected: (val) {
+                        setState(() {
+                          if (val) {
+                            _selectedProblems.add(prob);
+                          } else {
+                            _selectedProblems.remove(prob);
+                          }
+                        });
+                      },
                     );
                   }).toList(),
                 ),

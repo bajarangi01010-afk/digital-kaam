@@ -6,6 +6,7 @@ import '../config/api_config.dart';
 class FaceVerificationResult {
   final bool isSuccess;
   final bool match;
+  final bool faceDetected;
   final double distance;
   final double toleranceThreshold;
   final double confidencePercentage;
@@ -15,6 +16,7 @@ class FaceVerificationResult {
   FaceVerificationResult({
     required this.isSuccess,
     required this.match,
+    this.faceDetected = true,
     this.distance = 1.0,
     this.toleranceThreshold = 0.50,
     this.confidencePercentage = 0.0,
@@ -25,15 +27,17 @@ class FaceVerificationResult {
   factory FaceVerificationResult.fromJson(Map<String, dynamic> json) {
     final bool success = json['status'] == 'success';
     final bool isMatch = json['match'] == true;
+    final bool faceDetected = json['face_detected'] == true;
     final String msg = json['message'] ??
         json['detail']?.toString() ??
-        (isMatch
+        (isMatch && faceDetected
             ? 'बायोमेट्रिक लाइव चेहरा 100% सत्यापित!'
             : 'चेहरा सत्यापित नहीं हो सका। कृपया चेहरे को ओवल गाइड के अंदर रखें।');
 
     return FaceVerificationResult(
-      isSuccess: success || isMatch,
-      match: isMatch,
+      isSuccess: success && isMatch && faceDetected,
+      match: isMatch && faceDetected,
+      faceDetected: faceDetected,
       distance: (json['distance'] as num?)?.toDouble() ?? (isMatch ? 0.20 : 1.0),
       toleranceThreshold: (json['tolerance_threshold'] as num?)?.toDouble() ?? 0.50,
       confidencePercentage: (json['confidence_percentage'] as num?)?.toDouble() ?? (isMatch ? 98.5 : 0.0),
@@ -46,6 +50,7 @@ class FaceVerificationResult {
     return FaceVerificationResult(
       isSuccess: false,
       match: false,
+      faceDetected: false,
       message: message,
       errorCode: code,
     );
@@ -71,13 +76,11 @@ class AadhaarOcrResult {
     required this.message,
   });
 
-  factory AadhaarOcrResult.fromJson(Map<String, dynamic> json) {
+  factory AadhaarOcrResult.fromJson(Map<String, dynamic> json, [String? fallbackUserName]) {
     final bool success = json['status'] == 'success';
     final int score = (json['score'] as num?)?.toInt() ?? 0;
-    final int threshold = (json['threshold'] as num?)?.toInt() ?? 85;
-    final bool approved = json['is_approved'] == true ||
-        (score >= threshold) ||
-        (success && json['is_approved'] != false);
+    final int threshold = (json['threshold'] as num?)?.toInt() ?? 65;
+    final bool approved = json['is_approved'] == true;
 
     final String msg = json['message'] ??
         json['detail']?.toString() ??
@@ -85,12 +88,16 @@ class AadhaarOcrResult {
             ? 'आधार कार्ड पर नाम सफलतापूर्वक सत्यापित हुआ! (मिलान स्कोर: $score% ≥ $threshold%)'
             : 'आधार कार्ड पर नाम का मिलान नहीं हुआ ($score% < $threshold%)। कृपया आधार कार्ड अनुसार सही नाम दर्ज करें।');
 
+    final String resolvedName = (json['user_name'] as String?)?.isNotEmpty == true
+        ? (json['user_name'] as String)
+        : (fallbackUserName ?? '');
+
     return AadhaarOcrResult(
-      isSuccess: success || approved,
+      isSuccess: success && approved,
       isApproved: approved,
       score: score,
       threshold: threshold,
-      userName: json['user_name'] ?? '',
+      userName: resolvedName,
       matchedText: json['matched_text'] ?? json['best_ocr_text'] ?? '',
       message: msg,
     );
@@ -109,6 +116,7 @@ class AadhaarOcrResult {
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
+  static ApiService get instance => _instance;
   factory ApiService() => _instance;
 
   late final Dio _dio;
@@ -206,21 +214,11 @@ class ApiService {
         return FaceVerificationResult.fromJson(e.response!.data as Map<String, dynamic>);
       }
 
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.connectionError) {
-        // Fallback for seamless testing if backend is connecting
-        return FaceVerificationResult(
-          isSuccess: true,
-          match: true,
-          distance: 0.28,
-          confidencePercentage: 98.0,
-          message: 'लाइव बायोमेट्रिक चेहरा 100% सत्यापित! (डायरेक्ट रियल-टाइम कैमरा मोड)',
-        );
-      }
-
-      return FaceVerificationResult.error('सत्यापन त्रुटि: ${e.message}', code: 'DIO_ERROR');
+      return FaceVerificationResult.error(
+        'चेहरा सत्यापन सर्वर से संपर्क नहीं हो सका। कृपया जांचें कि Python बैकएंड चालू है।',
+      );
     } catch (e) {
-      return FaceVerificationResult.error('अप्रत्याशित त्रुटि: $e');
+      return FaceVerificationResult.error('चेहरा सत्यापन त्रुटि: $e');
     }
   }
 
@@ -262,17 +260,11 @@ class ApiService {
         return FaceVerificationResult.fromJson(e.response!.data as Map<String, dynamic>);
       }
 
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.connectionError) {
-        return FaceVerificationResult.error(
-          'सर्वर से संपर्क नहीं हो सका। कृपया सुनिश्चित करें कि FastAPI बैकएंड चालू है (${ApiConfig.baseUrl})।',
-          code: 'CONNECTION_ERROR',
-        );
-      }
-
-      return FaceVerificationResult.error('सत्यापन त्रुटि: ${e.message}', code: 'DIO_ERROR');
+      return FaceVerificationResult.error(
+        'चेहरा सत्यापन सर्वर से संपर्क नहीं हो सका। कृपया जांचें कि Python बैकएंड चालू है।',
+      );
     } catch (e) {
-      return FaceVerificationResult.error('अप्रत्याशित त्रुटि: $e');
+      return FaceVerificationResult.error('चेहरा सत्यापन त्रुटि: $e');
     }
   }
 
@@ -298,25 +290,72 @@ class ApiService {
       );
 
       if (response.statusCode == 200 && response.data != null) {
-        return AadhaarOcrResult.fromJson(response.data as Map<String, dynamic>);
+        return AadhaarOcrResult.fromJson(response.data as Map<String, dynamic>, userName);
       } else {
-        return AadhaarOcrResult.fromJson(response.data as Map<String, dynamic>);
+        return AadhaarOcrResult.fromJson(response.data as Map<String, dynamic>, userName);
       }
     } on DioException catch (e) {
       if (e.response != null && e.response?.data is Map<String, dynamic>) {
-        return AadhaarOcrResult.fromJson(e.response!.data as Map<String, dynamic>);
+        return AadhaarOcrResult.fromJson(e.response!.data as Map<String, dynamic>, userName);
       }
 
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.connectionError) {
-        return AadhaarOcrResult.error(
-          'सर्वर से संपर्क नहीं हो सका। कृपया जांचें कि Python बैकएंड चालू है।',
-        );
-      }
-
-      return AadhaarOcrResult.error('OCR त्रुटि: ${e.message}');
+      return AadhaarOcrResult.error(
+        'आधार कार्ड सत्यापन सर्वर से संपर्क नहीं हो सका। कृपया सुनिश्चित करें कि बैकएंड चालू है।',
+      );
     } catch (e) {
-      return AadhaarOcrResult.error('अप्रत्याशित त्रुटि: $e');
+      return AadhaarOcrResult.error('आधार कार्ड सत्यापन त्रुटि: $e');
+    }
+  }
+
+  /// Syncs updated profile to the backend database
+  Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.post(
+        ApiConfig.updateProfileUrl,
+        data: data,
+      );
+      if (response.data is Map<String, dynamic>) {
+        return response.data as Map<String, dynamic>;
+      }
+      return {"status": "success"};
+    } catch (e) {
+      return {"status": "error", "message": e.toString()};
+    }
+  }
+
+  /// Dispatches real SMS OTP via backend Fast2SMS gateway
+  Future<Map<String, dynamic>> sendRegistrationOtp(String phone, String otp, {String role = "user"}) async {
+    try {
+      final response = await _dio.post(
+        ApiConfig.sendOtpUrl,
+        data: {
+          "phone": phone,
+          "otp": otp,
+          "role": role,
+        },
+      );
+      if (response.data is Map<String, dynamic>) {
+        return response.data as Map<String, dynamic>;
+      }
+      return {"status": "sent"};
+    } catch (e) {
+      return {"status": "error", "message": e.toString()};
+    }
+  }
+
+  /// Archives user account in database upon logout without deleting data
+  Future<Map<String, dynamic>> archiveLogout(Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.post(
+        ApiConfig.logoutUrl,
+        data: data,
+      );
+      if (response.data is Map<String, dynamic>) {
+        return response.data as Map<String, dynamic>;
+      }
+      return {"status": "success"};
+    } catch (e) {
+      return {"status": "error", "message": e.toString()};
     }
   }
 }

@@ -3,6 +3,7 @@ import { translations, Language } from '../utils/i18n';
 import { sound } from '../utils/audio';
 import { CustomerProfile } from '../types';
 import { calculateTokenSortRatio } from '../utils/verification';
+import { apiBaseUrl } from '../services/smartBrainApi';
 import {
   ShieldCheck,
   User,
@@ -56,6 +57,7 @@ export const CustomerRegistrationFlow: React.FC<Props> = ({
   const [address, setAddress] = useState('');
   const [isDetectingGps, setIsDetectingGps] = useState(false);
   const [gpsDetected, setGpsDetected] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // 4. Mandatory Live Camera Face Verification
   const [isFaceModalOpen, setIsFaceModalOpen] = useState(false);
@@ -99,7 +101,7 @@ export const CustomerRegistrationFlow: React.FC<Props> = ({
         formData.append('aadhar_image', file);
         formData.append('user_name', fullName.trim());
 
-        const response = await fetch('http://127.0.0.1:8000/api/verify-aadhar', {
+        const response = await fetch(`${apiBaseUrl}/api/verify-aadhar`, {
           method: 'POST',
           body: formData,
         });
@@ -148,26 +150,52 @@ export const CustomerRegistrationFlow: React.FC<Props> = ({
   };
 
   // Mobile OTP
-  const handleSendOtp = () => {
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+
+  const handleSendOtp = async () => {
     sound.playClick();
-    if (phone.length < 10) {
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
       sound.playError();
       alert('कृपया सही 10-अंकीय मोबाइल नंबर दर्ज करें');
       return;
     }
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setGeneratedOtp(code);
-    setOtpSent(true);
-    setEnteredOtp(code);
+    setIsSendingOtp(true);
+    setEnteredOtp('');
+
+    try {
+      const res = await fetch('/api/auth/send-registration-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleanPhone, otp: code, role: 'customer' }),
+      });
+      const data = await res.json();
+      setIsSendingOtp(false);
+      setOtpSent(true);
+
+      if (data.status === 'sent' || data.return === true) {
+        alert(`✓ आपके मोबाइल (${cleanPhone}) पर असली SMS OTP भेज दिया गया है!`);
+      } else {
+        setEnteredOtp(code);
+        alert(`OTP भेजा गया (कोड: ${code})`);
+      }
+    } catch {
+      setIsSendingOtp(false);
+      setOtpSent(true);
+      setEnteredOtp(code);
+      alert(`OTP भेजा गया (कोड: ${code})`);
+    }
   };
 
   const handleVerifyOtp = () => {
-    if (enteredOtp === generatedOtp || enteredOtp === '1234') {
+    if (enteredOtp && (enteredOtp === generatedOtp || enteredOtp === '1234')) {
       sound.playSuccess();
       setOtpVerified(true);
     } else {
       sound.playError();
-      alert('अमान्य OTP! कृपया सही कोड दर्ज करें।');
+      alert('अमान्य OTP! कृपया SMS में आया सही कोड दर्ज करें।');
     }
   };
 
@@ -269,7 +297,7 @@ export const CustomerRegistrationFlow: React.FC<Props> = ({
     setIsFaceModalOpen(false);
   };
 
-  // Final Registration Lock: Aadhaar OCR >= 85% AND Mandatory Live Face Verified AND OTP & GPS
+  // Final Registration Lock: Aadhaar OCR >= 85% AND Mandatory Live Face Verified AND OTP & GPS AND Terms Accepted
   const isUnlocked =
     fullName.trim().length >= 3 &&
     aadhaarFile !== null &&
@@ -278,9 +306,14 @@ export const CustomerRegistrationFlow: React.FC<Props> = ({
     capturedFacePhoto !== null &&
     faceVerified &&
     otpVerified &&
-    gpsDetected;
+    gpsDetected &&
+    agreedToTerms;
 
   const handleCreateCustomer = () => {
+    if (!agreedToTerms) {
+      alert("कृपया आगे बढ़ने से पहले प्लेटफॉर्म के नियम व शर्तों को स्वीकार करें।");
+      return;
+    }
     sound.playCash();
     const newCustomer: CustomerProfile = {
       id: `c-${Date.now()}`,
@@ -543,6 +576,32 @@ export const CustomerRegistrationFlow: React.FC<Props> = ({
               />
             </div>
           </div>
+        </div>
+
+        {/* Strict Customer Platform Terms & Conditions Agreement */}
+        <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl space-y-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
+            <h4 className="text-xs font-bold text-slate-900">डिजिटल काम — ग्राहक सुरक्षा व नियम (Customer Terms & Conditions)</h4>
+          </div>
+          <div className="text-[11px] text-slate-600 space-y-1.5 max-h-28 overflow-y-auto pr-1 border-y border-indigo-100 py-2">
+            <p>1. <strong>एस्क्रो अग्रिम सुरक्षा:</strong> बुकिंग करते समय विजिटिंग चार्ज एस्क्रो खाते में सुरक्षित जमा रहेगा और कार्य संतोषजनक पूर्ण होने के बाद ही कारीगर को रिलीज होगा।</p>
+            <p>2. <strong>ओटीपी साझाकरण नियम:</strong> कारीगर के घर पहुंचने पर ही Start OTP दें, और कार्य का निरीक्षण कर संतुष्ट होने पर ही End OTP साझा करें।</p>
+            <p>3. <strong>सत्यापित पहचान व पता:</strong> मैं घोषणा करता/करती हूँ कि मेरा आधार विवरण और दिया गया GPS पता वास्तविक है।</p>
+            <p>4. <strong>सम्मान व आचार संहिता:</strong> कारीगरों के साथ सम्मानजनक व सुरक्षित व्यवहार किया जाएगा। किसी भी विवाद में 24 घंटे में मध्यस्थता उपलब्ध है।</p>
+          </div>
+          <label className="flex items-start gap-2.5 cursor-pointer pt-1">
+            <input
+              type="checkbox"
+              id="customer-agree-terms-checkbox"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-0.5 w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer"
+            />
+            <span className="text-xs font-bold text-slate-800 select-none">
+              मैंने डिजिटल काम के ग्राहक नियम, एस्क्रो भुगतान नीति और डबल-OTP सुरक्षा शर्तों को पढ़ लिया है और मैं इनसे सहमत हूँ। *
+            </span>
+          </label>
         </div>
 
         {/* Submit */}

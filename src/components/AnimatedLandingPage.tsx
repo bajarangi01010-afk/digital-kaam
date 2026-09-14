@@ -18,10 +18,11 @@ import {
 interface Props {
   lang: Language;
   onToggleLang: () => void;
+  onChangeLang?: (lang: Language) => void;
   onSelectRole: (role: 'WORKER' | 'CUSTOMER') => void;
 }
 
-export const AnimatedLandingPage: React.FC<Props> = ({ lang, onToggleLang, onSelectRole }) => {
+export const AnimatedLandingPage: React.FC<Props> = ({ lang, onToggleLang, onChangeLang, onSelectRole }) => {
   const t = translations[lang];
   const [selectedRolePreview, setSelectedRolePreview] = useState<'WORKER' | 'CUSTOMER' | null>(null);
 
@@ -39,23 +40,43 @@ export const AnimatedLandingPage: React.FC<Props> = ({ lang, onToggleLang, onSel
       <div className="absolute -top-32 -left-32 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Top Bar with Language Toggle & Trust Indicator */}
-      <div className="w-full max-w-6xl mx-auto flex items-center justify-between z-10">
+      {/* Top Bar with 3-Way Language Selector & Trust Indicator */}
+      <div className="w-full max-w-6xl mx-auto flex items-center justify-between z-10 flex-wrap gap-2">
         <div className="flex items-center gap-2 text-xs font-mono text-blue-400 bg-blue-950/70 border border-blue-800/60 px-3 py-1.5 rounded-full">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
           <span>Dual-Trust Verified Network</span>
         </div>
 
-        <button
-          onClick={() => {
-            sound.playClick();
-            onToggleLang();
-          }}
-          className="flex items-center gap-2 text-xs font-semibold bg-white/10 hover:bg-white/20 border border-white/20 px-3.5 py-1.5 rounded-full transition cursor-pointer"
-        >
-          <Globe className="w-3.5 h-3.5 text-blue-300" />
-          <span>{lang === 'hi' ? 'English' : 'हिंदी'}</span>
-        </button>
+        {/* Language Selector: Hindi / Hinglish / English */}
+        <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700 p-1 rounded-full text-xs shadow-md">
+          <Globe className="w-3.5 h-3.5 text-blue-400 ml-2 mr-0.5" />
+          {(
+            [
+              { code: 'hi' as Language, label: 'हिन्दी' },
+              { code: 'hinglish' as Language, label: 'Hinglish' },
+              { code: 'en' as Language, label: 'English' },
+            ]
+          ).map((item) => (
+            <button
+              key={item.code}
+              onClick={() => {
+                sound.playClick();
+                if (onChangeLang) {
+                  onChangeLang(item.code);
+                } else {
+                  onToggleLang();
+                }
+              }}
+              className={`px-3 py-1 rounded-full font-bold transition cursor-pointer ${
+                lang === item.code
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Center Animated Hero Section */}

@@ -9,6 +9,8 @@ import os
 import sqlite3
 import json
 import time
+import hashlib
+import secrets
 from typing import List, Dict, Any, Optional
 
 DB_FILE = os.path.join(os.path.dirname(__file__), "digital_kaam.db")
@@ -44,6 +46,9 @@ def init_db():
         photo_url TEXT DEFAULT '',
         is_verified INTEGER DEFAULT 1,
         is_available INTEGER DEFAULT 1,
+        direct_booking_enabled INTEGER DEFAULT 1,
+        is_location_on INTEGER DEFAULT 1,
+        local_specialties TEXT DEFAULT '[]',
         created_at REAL
     )
     """)
@@ -104,6 +109,40 @@ def init_db():
         created_at REAL
     )
     """)
+
+    # 5. Logged Out Accounts Archive Table (Persistent Store for All Registered Users)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS logged_out_accounts (
+        account_id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        role TEXT DEFAULT 'WORKER',
+        name TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        skill TEXT DEFAULT '',
+        address TEXT DEFAULT '',
+        visiting_fee INTEGER DEFAULT 350,
+        rating REAL DEFAULT 4.9,
+        total_jobs INTEGER DEFAULT 14,
+        photo_url TEXT DEFAULT '',
+        aadhaar_status TEXT DEFAULT '✓ सत्यापित',
+        s2_token TEXT DEFAULT '',
+        registration_time TEXT DEFAULT '',
+        logout_time TEXT DEFAULT '',
+        status TEXT DEFAULT 'LOGGED_OUT',
+        created_at REAL
+    )
+    """)
+
+    # Safe migrations for existing SQLite database
+    for col, col_def in [
+        ("direct_booking_enabled", "INTEGER DEFAULT 1"),
+        ("is_location_on", "INTEGER DEFAULT 1"),
+        ("local_specialties", "TEXT DEFAULT '[]'"),
+    ]:
+        try:
+            cursor.execute(f"ALTER TABLE workers ADD COLUMN {col} {col_def}")
+        except sqlite3.OperationalError:
+            pass
 
     conn.commit()
 
@@ -210,6 +249,111 @@ def get_platform_kpis() -> Dict[str, Any]:
         "platform_commission_earned": round(completed_revenue * 0.10, 2),  # 10% platform fee
     }
 
+def record_escrow_transaction(booking_id: str, tx_type: str, amount: float, fee: float = 0.0) -> Dict[str, Any]:
+    """
+    Appends a cryptographically hash-chained transaction into the immutable escrow ledger.
+    Every entry is signed with SHA-256 linked to the previous entry hash.
+    """
+    conn = get_db_connection()
+    last_tx = conn.execute("SELECT curr_hash FROM escrow_transactions ORDER BY created_at DESC LIMIT 1").fetchone()
+    prev_hash = last_tx["curr_hash"] if last_tx and last_tx["curr_hash"] else "GENESIS"
+    now_ts = time.time()
+    tx_id = f"TX-{int(now_ts * 1000)}-{secrets.token_hex(3).upper()}"
+    raw = f"{tx_id}|{now_ts}|{booking_id}|{tx_type}|{amount}|{fee}|{prev_hash}"
+    curr_hash = hashlib.sha256(raw.encode('utf-8')).hexdigest()
+
+    conn.execute("""
+    INSERT INTO escrow_transactions (
+        tx_id, booking_id, tx_type, amount, fee, prev_hash, curr_hash, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (tx_id, booking_id, tx_type, amount, fee, prev_hash, curr_hash, now_ts))
+    conn.commit()
+    conn.close()
+    return {"tx_id": tx_id, "prev_hash": prev_hash, "curr_hash": curr_hash}
+
+def release_booking_escrow(booking_id: str) -> bool:
+    """
+    Releases locked escrow funds upon customer Handshake Completion OTP.
+    Splits 90% payout to the worker and 10% platform commission, then appends to SHA-256 ledger.
+    """
+    conn = get_db_connection()
+    booking = conn.execute("SELECT * FROM bookings WHERE booking_id = ?", (booking_id,)).fetchone()
+    if not booking:
+        conn.close()
+        return False
+    fee = round(booking["visiting_fee"] * 0.10, 2)
+    payout = round(booking["visiting_fee"] - fee, 2)
+
+    conn.execute("""
+    UPDATE bookings SET
+        escrow_status = 'RELEASED',
+        tracking_status = 'COMPLETED',
+        updated_at = ?
+    WHERE booking_id = ?
+    """, (time.time(), booking_id))
+    conn.commit()
+    conn.close()
+
+    record_escrow_transaction(booking_id, "RELEASE_PAYOUT", payout, fee)
+    return True
+
+def refund_booking_escrow(booking_id: str, reason: str = "Worker Did Not Arrive") -> bool:
+    """Issues 100% full refund to customer with zero platform deduction."""
+    conn = get_db_connection()
+    booking = conn.execute("SELECT * FROM bookings WHERE booking_id = ?", (booking_id,)).fetchone()
+    if not booking:
+        conn.close()
+        return False
+
+    conn.execute("""
+    UPDATE bookings SET
+        escrow_status = 'REFUNDED',
+        tracking_status = 'REFUNDED',
+        updated_at = ?
+    WHERE booking_id = ?
+    """, (time.time(), booking_id))
+    conn.commit()
+    conn.close()
+
+    record_escrow_transaction(booking_id, f"REFUND_100%:{reason[:30]}", float(booking["visiting_fee"]), 0.0)
+    return True
+
+def get_all_escrow_transactions() -> List[Dict[str, Any]]:
+    """Retrieves all immutable escrow ledger transactions for audit & founder dashboard."""
+    conn = get_db_connection()
+    rows = conn.execute("SELECT * FROM escrow_transactions ORDER BY created_at DESC").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def update_worker_location_toggle(worker_id: str, is_location_on: bool) -> bool:
+    """Updates worker location toggle in the database."""
+    conn = get_db_connection()
+    conn.execute(
+        "UPDATE workers SET is_location_on = ? WHERE worker_id = ?",
+        (1 if is_location_on else 0, worker_id)
+    )
+    conn.commit()
+    conn.close()
+    return True
+
+def update_worker_bank_details(
+    worker_id: str,
+    bank_name: str,
+    account_no: str,
+    ifsc: str,
+    direct_booking_enabled: bool = True
+) -> bool:
+    """Updates bank account details and activates direct booking toggle."""
+    conn = get_db_connection()
+    conn.execute("""
+        UPDATE workers
+        SET bank_name = ?, account_no = ?, ifsc = ?, direct_booking_enabled = ?
+        WHERE worker_id = ?
+    """, (bank_name, account_no, ifsc, 1 if direct_booking_enabled else 0, worker_id))
+    conn.commit()
+    conn.close()
+    return True
+
 # Initialize tables immediately on module import
 init_db()
 
@@ -305,3 +449,110 @@ def apply_to_posted_job(job_id: str, bid: Dict[str, Any]) -> Optional[Dict[str, 
     d["interestedWorkers"] = workers
     d["id"] = d["job_id"]
     return d
+
+def get_worker_by_id(worker_id: str) -> Optional[Dict[str, Any]]:
+    """Retrieves a single worker by ID with full details."""
+    conn = get_db_connection()
+    row = conn.execute("SELECT * FROM workers WHERE worker_id = ?", (worker_id,)).fetchone()
+    conn.close()
+    if row:
+        return dict(row)
+    return None
+
+def archive_logged_out_account(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Safely stores logged-out user data into the persistent logged_out_accounts archive.
+    Data is never deleted; rather, it is archived with audit timestamps for the platform admin.
+    """
+    conn = get_db_connection()
+    now_ts = time.time()
+    now_str = time.strftime("%d %b %Y, %I:%M %p")
+    user_id = data.get("user_id") or data.get("worker_id") or data.get("customerId") or "DK-USER-01"
+    account_id = f"ARCH-{user_id}-{int(now_ts)}"
+    
+    conn.execute("""
+    INSERT OR REPLACE INTO logged_out_accounts (
+        account_id, user_id, role, name, phone, skill, address,
+        visiting_fee, rating, total_jobs, photo_url, aadhaar_status,
+        s2_token, registration_time, logout_time, status, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        account_id,
+        user_id,
+        data.get("role", "WORKER"),
+        data.get("name") or data.get("customerName") or "User",
+        data.get("phone") or data.get("customerPhone") or "",
+        data.get("skill") or data.get("primarySkill") or ("ग्राहक" if data.get("role") == "CUSTOMER" else "कुशल कारीगर"),
+        data.get("address") or data.get("customerAddress") or "",
+        int(data.get("visiting_fee") or data.get("customVisitPrice") or 350),
+        float(data.get("rating", 4.9)),
+        int(data.get("total_jobs") or data.get("completedJobs") or 14),
+        data.get("photo_url") or "",
+        data.get("aadhaar_status") or "✓ 100% आधार व फेस सत्यापित",
+        data.get("s2_token") or "390ce2b4",
+        data.get("registration_time") or now_str,
+        now_str,
+        "LOGGED_OUT",
+        now_ts
+    ))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "account_id": account_id, "logout_time": now_str}
+
+def get_all_logged_out_accounts() -> List[Dict[str, Any]]:
+    """Retrieves all archived logged-out user accounts for Admin Panel."""
+    conn = get_db_connection()
+    rows = conn.execute("SELECT * FROM logged_out_accounts ORDER BY created_at DESC").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def upsert_user_profile(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Updates or inserts worker profile information in the SQLite database."""
+    conn = get_db_connection()
+    worker_id = data.get("worker_id") or data.get("user_id") or "DK-VERIFIED-9842"
+    
+    row = conn.execute("SELECT * FROM workers WHERE worker_id = ?", (worker_id,)).fetchone()
+    if row:
+        conn.execute("""
+        UPDATE workers SET
+            name = COALESCE(?, name),
+            skill = COALESCE(?, skill),
+            phone = COALESCE(?, phone),
+            address = COALESCE(?, address),
+            visiting_fee = COALESCE(?, visiting_fee),
+            s2_token = COALESCE(?, s2_token),
+            photo_url = COALESCE(?, photo_url)
+        WHERE worker_id = ?
+        """, (
+            data.get("name"),
+            data.get("skill"),
+            data.get("phone"),
+            data.get("address"),
+            data.get("visiting_fee"),
+            data.get("s2_token"),
+            data.get("photo_url"),
+            worker_id
+        ))
+    else:
+        conn.execute("""
+        INSERT INTO workers (
+            worker_id, name, skill, phone, address, visiting_fee, rating, total_jobs,
+            photo_url, is_verified, is_available, s2_token, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ?)
+        """, (
+            worker_id,
+            data.get("name", "Unknown Worker"),
+            data.get("skill", "कुशल कारीगर"),
+            data.get("phone", ""),
+            data.get("address", ""),
+            data.get("visiting_fee", 350),
+            4.9,
+            14,
+            data.get("photo_url", ""),
+            data.get("s2_token", "390ce2b4"),
+            time.time()
+        ))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "worker_id": worker_id}
+

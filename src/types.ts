@@ -58,6 +58,16 @@ export interface WorkerProfile {
   bio: string;
   isAvailable: boolean;
   govtIdStatus: 'APPROVED' | 'IN_REVIEW' | 'REJECTED';
+  phone?: string;
+  directBookingEnabled?: boolean;
+  localSpecialties?: string[];
+  bankDetails?: {
+    bankName: string;
+    accountNo: string;
+    ifsc: string;
+    isSubmitted: boolean;
+    upiId?: string;
+  };
 }
 
 export interface PriceBreakdown {

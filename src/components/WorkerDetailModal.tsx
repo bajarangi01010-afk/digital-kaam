@@ -13,7 +13,8 @@ import {
   Award,
   Zap,
   UserCheck,
-  Languages
+  Languages,
+  Lock
 } from 'lucide-react';
 
 interface Props {
@@ -21,6 +22,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   lang: Language;
+  isBooked?: boolean;
   onBookWorker: (worker: WorkerProfile) => void;
   onDirectCall: (worker: WorkerProfile) => void;
 }
@@ -30,6 +32,7 @@ export const WorkerDetailModal: React.FC<Props> = ({
   isOpen,
   onClose,
   lang,
+  isBooked = false,
   onBookWorker,
   onDirectCall,
 }) => {
@@ -81,6 +84,23 @@ export const WorkerDetailModal: React.FC<Props> = ({
                 <span className="text-emerald-400 font-bold">{worker.jobsCompleted} काम पूरे किए</span>
                 <span className="text-slate-300">•</span>
                 <span className="text-cyan-300 font-bold">{worker.onTimeRate}% समयबद्धता</span>
+              </div>
+
+              {/* Direct Call & Phone Status */}
+              <div className="mt-2 flex items-center gap-2">
+                {isBooked ? (
+                  <span className="inline-flex items-center gap-1.5 bg-emerald-900/60 border border-emerald-500 text-emerald-300 text-xs px-2.5 py-1 rounded-lg font-mono">
+                    <Phone className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{worker.phone || '+91 98765 43210'}</span>
+                    <span className="text-[10px] bg-emerald-700 text-white font-sans font-bold px-1.5 py-0.5 rounded">कॉल अनलॉक</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 bg-slate-800 border border-slate-700 text-slate-300 text-xs px-2.5 py-1 rounded-lg">
+                    <Lock className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="font-mono text-slate-400">+91 98112 •••••</span>
+                    <span className="text-[10px] text-amber-300 font-bold">बुकिंग के बाद कॉल अनलॉक होगा</span>
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -221,14 +241,25 @@ export const WorkerDetailModal: React.FC<Props> = ({
         </div>
 
         {/* Modal Bottom Actions */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
-          <button
-            onClick={() => onDirectCall(worker)}
-            className="flex-1 sm:flex-initial px-5 py-2.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-          >
-            <Phone className="w-4 h-4 text-emerald-600" />
-            <span>सीधा कॉल करें</span>
-          </button>
+        <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+          {isBooked ? (
+            <button
+              onClick={() => onDirectCall(worker)}
+              className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+            >
+              <Phone className="w-4 h-4 animate-bounce" />
+              <span>सीधा कॉल करें (सक्रिय)</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => onDirectCall(worker)}
+              className="w-full sm:w-auto px-4 py-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+              title="सीधे बात करने के लिए पहले विज़िट बुक करें"
+            >
+              <Lock className="w-4 h-4 text-amber-600" />
+              <span>🔒 कॉल अनलॉक करें (बुकिंग आवश्यक)</span>
+            </button>
+          )}
 
           <button
             onClick={() => {
@@ -236,10 +267,10 @@ export const WorkerDetailModal: React.FC<Props> = ({
               onClose();
               onBookWorker(worker);
             }}
-            className="flex-1 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full sm:flex-1 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <CreditCard className="w-4 h-4" />
-            <span>एस्क्रो सुरक्षा के साथ तुरंत बुक करें (₹{worker.pricing.visitCharge})</span>
+            <span>₹{worker.pricing.visitCharge} एस्क्रो में जमा कर बुक करें</span>
           </button>
         </div>
       </div>

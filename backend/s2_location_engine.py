@@ -10,6 +10,7 @@ import time
 import random
 from typing import Dict, List, Optional, Any
 import s2sphere
+import database
 
 EARTH_RADIUS_KM = 6371.0
 DEFAULT_SPEED_KMH = 22.0  # Average urban two-wheeler speed in Indian cities
@@ -91,7 +92,11 @@ class S2LocationEngine:
         phone: str = "9876543210",
         photo_url: str = "",
         is_verified: bool = True,
-        is_available: bool = True
+        is_available: bool = True,
+        is_location_on: bool = True,
+        direct_booking_enabled: bool = True,
+        bank_details_submitted: bool = True,
+        local_specialties: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """Registers or updates a worker's live location with S2 cell indexing."""
         cell_token = self.lat_lng_to_token(lat, lng, level=13)
@@ -116,15 +121,44 @@ class S2LocationEngine:
             "photo_url": photo_url,
             "is_verified": is_verified,
             "is_available": is_available,
+            "is_location_on": is_location_on,
+            "direct_booking_enabled": direct_booking_enabled and bank_details_submitted,
+            "bank_details_submitted": bank_details_submitted,
+            "local_specialties": local_specialties or [],
             "last_updated": time.time(),
         }
 
         self.workers[worker_id] = worker_data
-        if cell_token not in self.cell_to_workers:
-            self.cell_to_workers[cell_token] = set()
-        self.cell_to_workers[cell_token].add(worker_id)
+        if is_location_on:
+            if cell_token not in self.cell_to_workers:
+                self.cell_to_workers[cell_token] = set()
+            self.cell_to_workers[cell_token].add(worker_id)
 
         return worker_data
+
+    def set_worker_location_toggle(self, worker_id: str, is_location_on: bool) -> bool:
+        """Toggles worker location radar. If OFF, removes from spatial index and search."""
+        if worker_id not in self.workers:
+            return False
+        self.workers[worker_id]["is_location_on"] = is_location_on
+        cell_token = self.workers[worker_id].get("s2_token")
+        if not is_location_on and cell_token and cell_token in self.cell_to_workers:
+            self.cell_to_workers[cell_token].discard(worker_id)
+        elif is_location_on and cell_token:
+            if cell_token not in self.cell_to_workers:
+                self.cell_to_workers[cell_token] = set()
+            self.cell_to_workers[cell_token].add(worker_id)
+        return True
+
+    def set_worker_direct_booking(self, worker_id: str, is_enabled: bool, has_bank: bool = False) -> bool:
+        """Enables direct booking only if worker has submitted valid bank details."""
+        if worker_id not in self.workers:
+            return False
+        if is_enabled and not has_bank:
+            return False  # Strict requirement: Bank details must be submitted
+        self.workers[worker_id]["direct_booking_enabled"] = is_enabled
+        self.workers[worker_id]["bank_details_submitted"] = has_bank
+        return True
 
     def find_nearby_workers(
         self,
@@ -136,13 +170,24 @@ class S2LocationEngine:
         """
         S2 Radial Radar Search: Finds workers within radius_km,
         sorts them by physical distance, and calculates arrival ETA.
+        Hides workers who turned off location radar.
         """
         results = []
         for worker in self.workers.values():
             if not worker.get("is_available", True):
                 continue
-            if skill and skill.lower() not in worker["skill"].lower() and worker["skill"].lower() not in skill.lower():
+            # Gated by location toggle: If worker turned OFF location, hide from search
+            if not worker.get("is_location_on", True):
                 continue
+
+            if skill:
+                skill_l = skill.lower()
+                worker_skill_l = worker["skill"].lower()
+                specialties = [s.lower() for s in worker.get("local_specialties", [])]
+                matches_skill = (skill_l in worker_skill_l or worker_skill_l in skill_l or
+                                any(skill_l in spec for spec in specialties))
+                if not matches_skill:
+                    continue
 
             dist = self.haversine_distance_km(customer_lat, customer_lng, worker["lat"], worker["lng"])
             if dist <= radius_km:
@@ -220,6 +265,30 @@ class S2LocationEngine:
         }
 
         self.active_bookings[booking_id] = booking_state
+
+        # Persist to SQLite and hold escrow in immutable ledger
+        try:
+            database.save_booking({
+                "booking_id": booking_id,
+                "customer_name": customer_name,
+                "customer_phone": customer_phone,
+                "customer_address": customer_address,
+                "worker_id": worker_id,
+                "service_name": service_name,
+                "visiting_fee": visiting_fee,
+                "escrow_status": "LOCKED",
+                "start_otp": start_otp,
+                "end_otp": end_otp,
+                "tracking_status": "ON_THE_WAY",
+                "distance_km": start_dist,
+                "eta_minutes": eta_mins,
+                "created_at": time.time(),
+                "updated_at": time.time(),
+            })
+            database.record_escrow_transaction(booking_id, "HOLD", float(visiting_fee), 0.0)
+        except Exception as e:
+            print(f"Error persisting booking/escrow: {e}")
+
         return booking_state
 
     def update_live_tracking_step(self, booking_id: str, worker_lat: Optional[float] = None, worker_lng: Optional[float] = None) -> Dict[str, Any]:
@@ -276,11 +345,22 @@ class S2LocationEngine:
                 booking["status"] = "STARTED"
                 booking["status_text"] = "काम शुरू हो चुका है (Work In Progress)"
                 booking["step_progress"] = 0.9
+                try:
+                    conn = database.get_db_connection()
+                    conn.execute("UPDATE bookings SET tracking_status = 'STARTED', updated_at = ? WHERE booking_id = ?", (time.time(), booking_id))
+                    conn.commit()
+                    conn.close()
+                except Exception:
+                    pass
             else:
                 booking["status"] = "COMPLETED"
                 booking["status_text"] = "काम सफलतापूर्वक पूरा हुआ (Completed)"
                 booking["step_progress"] = 1.0
-            return {"success": True, "status": booking["status"], "message": "OTP सत्यापित हुआ!"}
+                try:
+                    database.release_booking_escrow(booking_id)
+                except Exception:
+                    pass
+            return {"success": True, "status": booking["status"], "message": "OTP सत्यापित हुआ! एस्क्रो राशि सफलतापूर्वक कारीगर के खाते में रिलीज़ हो गई।"}
         else:
             return {"success": False, "message": "अमान्य OTP! कृपया ग्राहक के फोन से सही 4-अंकों का OTP देखें।"}
 

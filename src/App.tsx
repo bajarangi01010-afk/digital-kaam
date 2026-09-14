@@ -27,6 +27,7 @@ const HandshakeOtpModal = lazy(() => import('./components/HandshakeOtpModal').th
 const AnimatedLandingPage = lazy(() => import('./components/AnimatedLandingPage').then(m => ({ default: m.AnimatedLandingPage })));
 const WorkerRegistrationFlow = lazy(() => import('./components/WorkerRegistrationFlow').then(m => ({ default: m.WorkerRegistrationFlow })));
 const CustomerRegistrationFlow = lazy(() => import('./components/CustomerRegistrationFlow').then(m => ({ default: m.CustomerRegistrationFlow })));
+const AppFeaturesGuideModal = lazy(() => import('./components/AppFeaturesGuideModal').then(m => ({ default: m.AppFeaturesGuideModal })));
 
 import {
   INITIAL_WORKERS,
@@ -114,6 +115,7 @@ export default function App() {
   const [bookingWorkerModalTarget, setBookingWorkerModalTarget] = useState<WorkerProfile | null>(null);
   const [handshakeBookingTarget, setHandshakeBookingTarget] = useState<Booking | null>(null);
   const [isCornerProfileDrawerOpen, setIsCornerProfileDrawerOpen] = useState(false);
+  const [isFeaturesGuideOpen, setIsFeaturesGuideOpen] = useState(false);
 
   // Welcome Landing Page opens first by default
   const [showLandingPreview, setShowLandingPreview] = useState(true);
@@ -121,10 +123,15 @@ export default function App() {
 
   const t = translations[lang];
 
-  // Language Toggle
+  // Language Toggle & Direct Setter
   const handleToggleLang = () => {
     sound.playClick();
-    setLang((prev) => (prev === 'hi' ? 'en' : 'hi'));
+    setLang((prev) => (prev === 'hi' ? 'hinglish' : prev === 'hinglish' ? 'en' : 'hi'));
+  };
+
+  const handleSetLang = (newLang: Language) => {
+    sound.playClick();
+    setLang(newLang);
   };
 
   // Section Selector
@@ -336,6 +343,7 @@ export default function App() {
         <AnimatedLandingPage
           lang={lang}
           onToggleLang={handleToggleLang}
+          onChangeLang={handleSetLang}
           onSelectRole={(role) => {
             sound.playClick();
             setShowLandingPreview(false);
@@ -548,9 +556,10 @@ export default function App() {
           <button
             onClick={handleToggleLang}
             className="flex items-center gap-1 text-xs font-semibold bg-white/10 hover:bg-white/20 border border-white/20 px-2.5 py-1.5 rounded-lg transition cursor-pointer"
+            title="Switch language (हिन्दी / Hinglish / English)"
           >
             <Globe className="w-3.5 h-3.5 text-blue-300" />
-            <span>{lang === 'hi' ? 'EN' : 'हिं'}</span>
+            <span>{lang === 'hi' ? 'हिन्दी' : lang === 'hinglish' ? 'Hinglish' : 'EN'}</span>
           </button>
 
           {/* Landing preview trigger */}
@@ -574,6 +583,7 @@ export default function App() {
             customer={customer}
             onOpenProfileDrawer={handleOpenProfilePage}
             lang={lang}
+            onChangeLang={handleSetLang}
           />
         </div>
 
@@ -601,6 +611,7 @@ export default function App() {
                   customer={customer}
                   onOpenProfileDrawer={handleOpenProfilePage}
                   lang={lang}
+                  onChangeLang={handleSetLang}
                 />
               </div>
             </div>
@@ -770,16 +781,28 @@ export default function App() {
           />
         )}
 
-        {/* 4. Real Handshake OTP & ID Badge Scanner Modal */}
-        {handshakeBookingTarget !== null && (
-          <HandshakeOtpModal
-            booking={handshakeBookingTarget}
-            onClose={() => setHandshakeBookingTarget(null)}
-            lang={lang}
-            onUpdateBookingStatus={handleUpdateBookingStatus}
+        {/* 5. Complete App Features & Trust Architecture Guide Modal */}
+        {isFeaturesGuideOpen && (
+          <AppFeaturesGuideModal
+            isOpen={isFeaturesGuideOpen}
+            onClose={() => setIsFeaturesGuideOpen(false)}
+            defaultLang={lang}
           />
         )}
       </Suspense>
+
+      {/* Floating Mini Feature Guide Corner Button */}
+      <button
+        id="app-features-guide-corner-btn"
+        onClick={() => setIsFeaturesGuideOpen(true)}
+        title="ऐप के सभी मुख्य फीचर्स देखें (Platform Features Guide)"
+        className="fixed bottom-5 right-5 z-40 bg-gradient-to-r from-amber-500 via-indigo-600 to-blue-600 hover:from-amber-600 hover:to-blue-700 text-white p-3 sm:px-4 sm:py-3 rounded-full shadow-2xl hover:shadow-indigo-500/50 hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-2 border-2 border-white/20 backdrop-blur-md cursor-pointer group"
+      >
+        <Sparkles className="w-5 h-5 text-amber-200 group-hover:rotate-45 transition-transform duration-300" />
+        <span className="hidden sm:inline text-xs font-black tracking-wide">
+          {lang === 'hi' ? 'ऐप फीचर्स गाइड' : lang === 'hinglish' ? 'App Features Guide' : 'Features Guide'}
+        </span>
+      </button>
     </div>
   );
 }

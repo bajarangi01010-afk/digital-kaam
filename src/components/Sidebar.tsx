@@ -14,6 +14,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import { CustomerProfile } from '../types';
+import { Language } from '../utils/i18n';
 
 export type NavSection =
   | 'CUSTOMER_PORTAL'
@@ -33,77 +34,123 @@ interface Props {
   onSelectSection: (section: NavSection) => void;
   customer?: CustomerProfile;
   onOpenProfileDrawer?: () => void;
-  lang?: 'hi' | 'en';
+  lang?: Language;
+  onChangeLang?: (lang: Language) => void;
 }
+
+// Predictive dynamic pre-fetching for instant 0ms tab transitions
+const prefetchSection = (section: NavSection) => {
+  try {
+    switch (section) {
+      case 'CUSTOMER_PORTAL':
+        import('./CustomerDashboardView');
+        break;
+      case 'PROFILE_DETAILS':
+        import('./CustomerProfilePage');
+        break;
+      case 'WORKER_PORTAL':
+        import('./WorkerDashboardView');
+        break;
+      case 'DASHBOARD':
+        import('./DashboardView');
+        break;
+      case 'MARKETPLACE':
+        import('./MarketplaceView');
+        break;
+      case 'ACTIVE_GIGS':
+        import('./ActiveGigsView');
+        break;
+      case 'PAYMENTS':
+        import('./PaymentsEscrowView');
+        break;
+      case 'VERIFICATION':
+        import('./VerificationQueue');
+        break;
+      case 'DISPUTES':
+        import('./DisputesAuditView');
+        break;
+      case 'FLUTTER_SIMULATOR':
+        import('./FlutterMobileSimulator');
+        break;
+      case 'FLUTTER_CODE':
+        import('./FlutterCodeViewer');
+        break;
+    }
+  } catch {
+    // Ignore prefetch error
+  }
+};
 
 export const Sidebar: React.FC<Props> = ({
   activeSection,
   onSelectSection,
   customer,
   onOpenProfileDrawer,
-  lang = 'hi'
+  lang = 'hi',
+  onChangeLang
 }) => {
   const isHi = lang === 'hi';
+  const isHinglish = lang === 'hinglish';
 
   const navItems = [
     {
       id: 'CUSTOMER_PORTAL' as NavSection,
-      label: isHi ? 'ग्राहक पोर्टल' : 'Customer Portal',
+      label: isHi ? 'ग्राहक पोर्टल' : isHinglish ? 'Customer Portal' : 'Customer Portal',
       icon: Store,
       badge: 'Home'
     },
     {
       id: 'PROFILE_DETAILS' as NavSection,
-      label: isHi ? 'मेरी प्रोफाइल व KYC' : 'My Profile & KYC',
+      label: isHi ? 'मेरी प्रोफाइल व KYC' : isHinglish ? 'Meri Profile & KYC' : 'My Profile & KYC',
       icon: UserCheck,
       badge: isHi ? 'सत्यापित' : 'Verified'
     },
     {
       id: 'WORKER_PORTAL' as NavSection,
-      label: isHi ? 'कारीगर पोर्टल' : 'Worker Portal',
+      label: isHi ? 'कारीगर पोर्टल' : isHinglish ? 'Worker Portal' : 'Worker Portal',
       icon: Briefcase,
       badge: 'Level 4'
     },
     {
       id: 'DASHBOARD' as NavSection,
-      label: isHi ? 'सिस्टम ओवरव्यू' : 'System Overview',
+      label: isHi ? 'सिस्टम ओवरव्यू' : isHinglish ? 'System Overview' : 'System Overview',
       icon: LayoutDashboard
     },
     {
       id: 'MARKETPLACE' as NavSection,
-      label: isHi ? 'कारीगर मार्केटप्लेस' : 'Trades Marketplace',
+      label: isHi ? 'कारीगर मार्केटप्लेस' : isHinglish ? 'Karigar Marketplace' : 'Trades Marketplace',
       icon: Store
     },
     {
       id: 'ACTIVE_GIGS' as NavSection,
-      label: isHi ? 'सक्रिय काम व OTP' : 'Active Gigs & OTP',
+      label: isHi ? 'सक्रिय काम व OTP' : isHinglish ? 'Active Kaam & OTP' : 'Active Gigs & OTP',
       icon: Zap,
       badge: 'Live'
     },
     {
       id: 'PAYMENTS' as NavSection,
-      label: isHi ? 'एस्क्रो वॉलेट व लेज़र' : 'Escrow Vault & Ledger',
+      label: isHi ? 'एस्क्रो वॉलेट व लेज़र' : isHinglish ? 'Escrow Vault & Ledger' : 'Escrow Vault & Ledger',
       icon: CreditCard
     },
     {
       id: 'VERIFICATION' as NavSection,
-      label: isHi ? 'वेरिफिकेशन क्यू' : 'Verification Queue',
+      label: isHi ? 'वेरिफिकेशन क्यू' : isHinglish ? 'Verification Queue' : 'Verification Queue',
       icon: ShieldCheck
     },
     {
       id: 'DISPUTES' as NavSection,
-      label: isHi ? 'विवाद व ऑडिट जर्नल' : 'Disputes & Audit Logs',
+      label: isHi ? 'विवाद व ऑडिट जर्नल' : isHinglish ? 'Disputes & Audit Logs' : 'Disputes & Audit Logs',
       icon: Scale
     },
     {
       id: 'FLUTTER_SIMULATOR' as NavSection,
-      label: isHi ? 'फ्लटर मोबाइल ऐप' : 'Flutter Mobile App',
+      label: isHi ? 'फ्लटर मोबाइल ऐप' : isHinglish ? 'Flutter Mobile App' : 'Flutter Mobile App',
       icon: Smartphone,
       badge: 'App'
     },
     {
       id: 'FLUTTER_CODE' as NavSection,
-      label: isHi ? 'डार्ट & फ्लटर कोड' : 'Flutter & Dart Code',
+      label: isHi ? 'डार्ट & फ्लटर कोड' : isHinglish ? 'Flutter & Dart Code' : 'Flutter & Dart Code',
       icon: Code2
     },
   ];
@@ -136,6 +183,8 @@ export const Sidebar: React.FC<Props> = ({
                 key={item.id}
                 id={`nav-${item.id.toLowerCase()}-btn`}
                 onClick={() => onSelectSection(item.id)}
+                onMouseEnter={() => prefetchSection(item.id)}
+                onFocus={() => prefetchSection(item.id)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
                   isActive
                     ? 'bg-blue-600 text-white shadow-sm'
@@ -161,6 +210,28 @@ export const Sidebar: React.FC<Props> = ({
         </nav>
       </div>
 
+      {/* 3-Way Language Switcher */}
+      <div className="px-4 py-2.5 border-t border-slate-800 bg-slate-950/40">
+        <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1.5 font-semibold">
+          <span>{isHi ? 'भाषा (Language):' : isHinglish ? 'Language Chunein:' : 'Select Language:'}</span>
+        </div>
+        <div className="grid grid-cols-3 gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800">
+          {(['hi', 'hinglish', 'en'] as Language[]).map((l) => (
+            <button
+              key={l}
+              onClick={() => onChangeLang && onChangeLang(l)}
+              className={`py-1 text-[10px] font-bold rounded transition cursor-pointer text-center ${
+                lang === l
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              {l === 'hi' ? 'हिन्दी' : l === 'hinglish' ? 'Hinglish' : 'English'}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Customer Quick Profile Footer */}
       <div className="mt-auto p-4 border-t border-slate-800 bg-slate-950/60">
         <button
@@ -168,6 +239,8 @@ export const Sidebar: React.FC<Props> = ({
             if (onOpenProfileDrawer) onOpenProfileDrawer();
             onSelectSection('PROFILE_DETAILS');
           }}
+          onMouseEnter={() => prefetchSection('PROFILE_DETAILS')}
+          onFocus={() => prefetchSection('PROFILE_DETAILS')}
           className="w-full text-left flex items-center gap-3 p-1.5 rounded-lg hover:bg-slate-800/80 transition cursor-pointer group"
           title={isHi ? 'प्रोफाइल पेज खोलें' : 'Open profile page'}
         >
@@ -175,6 +248,8 @@ export const Sidebar: React.FC<Props> = ({
             <img
               src={customer?.avatar || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&auto=format&fit=crop&q=80'}
               alt={customer?.name || 'Customer'}
+              loading="lazy"
+              decoding="async"
               className="w-9 h-9 rounded-lg object-cover border border-emerald-400"
             />
             <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border border-slate-900" />

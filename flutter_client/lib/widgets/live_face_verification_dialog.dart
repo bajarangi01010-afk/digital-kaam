@@ -51,14 +51,10 @@ class _LiveFaceVerificationDialogState extends State<LiveFaceVerificationDialog>
 
   Future<void> _checkPermissionAndInitCamera() async {
     try {
-      bool isWindows = false;
-      bool isAndroid = false;
-      if (!kIsWeb) {
-        isWindows = Platform.isWindows;
-        isAndroid = Platform.isAndroid;
-      }
+      final bool isWindows = !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+      final bool isAndroid = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
-      // 1. Permission check (Safe on Web)
+      // 1. Permission check (Safe on Web & Windows)
       if (!isWindows && !kIsWeb) {
         final status = await Permission.camera.request();
         if (status.isDenied || status.isPermanentlyDenied) {
@@ -74,23 +70,28 @@ class _LiveFaceVerificationDialogState extends State<LiveFaceVerificationDialog>
       _cameras = await availableCameras();
       if (_cameras == null || _cameras!.isEmpty) {
         setState(() {
-          _isSimulatedCameraMode = true; // Laptop has no physical webcam
+          _isSimulatedCameraMode = true; // No physical webcam found
         });
         return;
       }
 
-      // Select front-facing camera, or fallback to first
-      final frontCamera = _cameras!.firstWhere(
+      // Select front-facing camera or desktop webcam
+      final selectedCamera = _cameras!.firstWhere(
         (cam) => cam.lensDirection == CameraLensDirection.front,
-        orElse: () => _cameras!.first,
+        orElse: () => _cameras!.firstWhere(
+          (cam) => cam.name.toLowerCase().contains('camera') ||
+                   cam.name.toLowerCase().contains('webcam') ||
+                   cam.name.toLowerCase().contains('truevision'),
+          orElse: () => _cameras!.first,
+        ),
       );
 
       // 3. Initialize CameraController
       _controller = CameraController(
-        frontCamera,
+        selectedCamera,
         ResolutionPreset.medium,
         enableAudio: false,
-        imageFormatGroup: isAndroid ? ImageFormatGroup.jpeg : ImageFormatGroup.bgra8888,
+        imageFormatGroup: isAndroid ? ImageFormatGroup.jpeg : null,
       );
 
       await _controller!.initialize();
@@ -98,11 +99,12 @@ class _LiveFaceVerificationDialogState extends State<LiveFaceVerificationDialog>
 
       setState(() {
         _isCameraInitialized = true;
+        _isSimulatedCameraMode = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _isSimulatedCameraMode = true; // Gracefully switch to simulated camera
+        _isSimulatedCameraMode = true; // Gracefully switch to simulated camera if hardware fails
       });
     }
   }
@@ -199,13 +201,15 @@ class _LiveFaceVerificationDialogState extends State<LiveFaceVerificationDialog>
 
       if (!mounted) return;
 
-      if (result.isSuccess && result.match) {
+      if (result.isSuccess && result.match && result.faceDetected) {
         widget.onVerificationComplete(snapshotFile, result);
         Navigator.of(context).pop();
       } else {
         setState(() {
           _isProcessing = false;
-          _errorMessage = result.message;
+          _errorMessage = result.message.isNotEmpty
+              ? result.message
+              : "कैमरा फ्रेम में कोई चेहरा नहीं मिला। कृपया अपने चेहरे को दिए गए ओवल गाइड के अंदर रखें।";
         });
       }
     } catch (e) {
@@ -277,8 +281,12 @@ class _LiveFaceVerificationDialogState extends State<LiveFaceVerificationDialog>
                           child: FittedBox(
                             fit: BoxFit.cover,
                             child: SizedBox(
-                              width: _controller!.value.previewSize?.height ?? 320,
-                              height: _controller!.value.previewSize?.width ?? 240,
+                              width: (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS))
+                                  ? (_controller!.value.previewSize?.height ?? 320)
+                                  : (_controller!.value.previewSize?.width ?? 320),
+                              height: (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS))
+                                  ? (_controller!.value.previewSize?.width ?? 240)
+                                  : (_controller!.value.previewSize?.height ?? 240),
                               child: CameraPreview(_controller!),
                             ),
                           ),

@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { CustomerProfile } from '../types';
 import { Language, translations } from '../utils/i18n';
 import { sound } from '../utils/audio';
-import { LiveFaceCaptureModal } from './LiveFaceCaptureModal';
+import { LazyLoadingFallback } from './LazyLoadingFallback';
+
+// Advanced Code Splitting - Lazy load camera & webcam modal on-demand
+const LiveFaceCaptureModal = lazy(() => import('./LiveFaceCaptureModal').then(m => ({ default: m.LiveFaceCaptureModal })));
 import {
   ShieldCheck,
   User,
@@ -565,13 +568,17 @@ export const CustomerProfileSection: React.FC<Props> = ({
         </form>
       </div>
 
-      {/* Live Camera Face Retake Modal */}
-      <LiveFaceCaptureModal
-        isOpen={isCameraModalOpen}
-        onClose={() => setIsCameraModalOpen(false)}
-        title="ग्राहक लाइव फेस फोटो अपडेट करें"
-        onFaceVerified={handleFaceVerified}
-      />
+      {/* Live Camera Face Retake Modal with on-demand Lazy Loading */}
+      <Suspense fallback={<LazyLoadingFallback isModal={true} message="कैमरा मॉड्यूल लोड हो रहा है..." />}>
+        {isCameraModalOpen && (
+          <LiveFaceCaptureModal
+            isOpen={isCameraModalOpen}
+            onClose={() => setIsCameraModalOpen(false)}
+            title="ग्राहक लाइव फेस फोटो अपडेट करें"
+            onFaceVerified={handleFaceVerified}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };

@@ -1,10 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, Suspense, lazy } from 'react';
 import { translations, Language } from '../utils/i18n';
 import { sound } from '../utils/audio';
 import { WorkerProfile, VerificationLevel, WorkerSkill } from '../types';
 import { calculateTokenSortRatio } from '../utils/verification';
-import { LiveFaceCaptureModal } from './LiveFaceCaptureModal';
+import { LazyLoadingFallback } from './LazyLoadingFallback';
+
+// Advanced Code Splitting - Lazy load camera & webcam modal on-demand
+const LiveFaceCaptureModal = lazy(() => import('./LiveFaceCaptureModal').then(m => ({ default: m.LiveFaceCaptureModal })));
 import { verifyAadhaarNameMatch, AadhaarOcrResult } from '../utils/kycVerification';
+import { apiBaseUrl } from '../services/smartBrainApi';
 import {
   ShieldCheck,
   User,
@@ -22,8 +26,71 @@ import {
   Zap,
   Wrench,
   FileText,
-  BadgeCheck
+  BadgeCheck,
+  Check
 } from 'lucide-react';
+
+export const TRADE_PROBLEMS_MAP: Record<string, { id: string; label: string; icon: string }[]> = {
+  'इलेक्ट्रिशियन (Electrician)': [
+    { id: 'mcb', label: 'एमसीबी ट्रिपिंग व शॉर्ट सर्किट (MCB Tripping)', icon: '⚡' },
+    { id: 'fan', label: 'सीलिंग व एग्जॉस्ट पंखा रिपेयर (Ceiling Fan)', icon: '🌀' },
+    { id: 'switchboard', label: 'स्विचबोर्ड व सॉकेट वायरिंग (Switchboard)', icon: '🔌' },
+    { id: 'inverter', label: 'इन्वर्टर व यूपीएस कनेक्शन (Inverter Wiring)', icon: '🔋' },
+    { id: 'wiring', label: 'कंसील्ड हाउस वायरिंग फॉल्ट (Concealed Wiring)', icon: '💡' },
+    { id: 'light', label: 'एलईडी लाइट व झूमर फिटिंग (LED & Chandelier)', icon: '✨' },
+    { id: 'starter', label: 'पानी की मोटर स्टार्टर (Motor Starter)', icon: '⚙️' },
+  ],
+  'प्लंबर (Plumber)': [
+    { id: 'concealed_leak', label: 'दीवार में कंसील्ड पाइप लीकेज (Concealed Leak)', icon: '💧' },
+    { id: 'tap_jam', label: 'नल जाम / नया नल फिटिंग (Tap Repair)', icon: '🚰' },
+    { id: 'flush_tank', label: 'टॉयलेट फ्लश टैंक रिपेयर (Flush Tank / Cistern)', icon: '🚽' },
+    { id: 'drain_choke', label: 'बेसिन व सिंक ड्रेनेज चोक (Drain Unclog)', icon: '🧹' },
+    { id: 'pump_pipe', label: 'सबमर्सिबल व मोटर पाइपलाइन (Motor Pipeline)', icon: '🔄' },
+    { id: 'geyser_fit', label: 'गीजर इंस्टालेशन व वाटर पाइप (Geyser Fitting)', icon: '🔥' },
+    { id: 'tank_overflow', label: 'पानी टंकी ओवरफ्लो व फ्लोट वाल्व (Tank Valve)', icon: '🛢️' },
+  ],
+  'कारपेंटर / बढ़ई (Carpenter)': [
+    { id: 'door_lock', label: 'दरवाजा लॉक व कुंडी ठीक करना (Door Locks & Latches)', icon: '🔐' },
+    { id: 'bed_repair', label: 'बेड, सोफा व अलमारी रिपेयर (Bed & Wardrobe)', icon: '🪑' },
+    { id: 'modular_hinge', label: 'मॉड्यूलर किचन हिंज व चैनल (Kitchen Hinges)', icon: '🚪' },
+    { id: 'window_mesh', label: 'खिड़की की जाली व स्लाइडिंग पल्ले (Window Mesh)', icon: '🪟' },
+    { id: 'custom_wood', label: 'नई लकड़ी कटिंग व फर्नीचर बनाना (Custom Furniture)', icon: '🪵' },
+    { id: 'door_plane', label: 'दरवाजा रगड़ना / जाम पल्ला (Door Planing)', icon: '📐' },
+  ],
+  'पेंटर (Painter)': [
+    { id: 'damp_putty', label: 'सीलन व पुट्टी उपचार (Dampness & Wall Putty)', icon: '🛡️' },
+    { id: 'interior_emulsion', label: 'अंदरूनी दीवार पेंटिंग (Interior Emulsion)', icon: '🎨' },
+    { id: 'exterior_apex', label: 'बाहरी दीवार वेदरप्रूफ पेंट (Apex Exterior)', icon: '🏠' },
+    { id: 'waterproof_coat', label: 'छत व बालकनी वॉटरप्रूफिंग (Waterproofing)', icon: '🌧️' },
+    { id: 'wood_polish', label: 'दरवाजे-फर्नीचर पर पॉलिश (Wood Polish & PU)', icon: '✨' },
+    { id: 'texture_wall', label: 'रॉयल टेक्सचर व स्टेंसिल डिजाइन (Texture Wall)', icon: '🖼️' },
+  ],
+  'राजमिस्त्री (Mason / Mistri)': [
+    { id: 'tiles_marble', label: 'फ्लोर व दीवार टाइल्स / मार्बल (Tiles & Marble)', icon: '🧱' },
+    { id: 'plaster_crack', label: 'प्लास्टर क्रैक व नई चिनाई (Plaster & Brickwork)', icon: '🏗️' },
+    { id: 'roof_slope', label: 'छत ढलान व फर्श मरम्मत (Roof Slope Repair)', icon: '🏠' },
+    { id: 'sewer_drain', label: 'सीवर चेंबर व नाली निर्माण (Drain & Concrete)', icon: '🕳️' },
+  ],
+  'सफाई कर्मचारी (Cleaning)': [
+    { id: 'deep_clean', label: 'पूरे घर की डीप क्लीनिंग (Full Home Deep Clean)', icon: '✨' },
+    { id: 'toilet_clean', label: 'बाथरूम व टॉयलेट एसिड / स्केल वॉश (Bathroom Wash)', icon: '🚽' },
+    { id: 'kitchen_degrease', label: 'किचन चिमनी व टाइल्स डीग्रीजिंग (Kitchen Degrease)', icon: '🍳' },
+    { id: 'sofa_dry', label: 'सोफा व गद्दे शैम्पू वॉश (Sofa & Carpet Wash)', icon: '🛋️' },
+    { id: 'tank_clean', label: 'पानी की टंकी हाई-प्रेशर सफाई (Water Tank Clean)', icon: '🛢️' },
+  ],
+  'होम अप्लायंस रिपेयर': [
+    { id: 'wm_repair', label: 'वॉशिंग मशीन ड्रेन, ड्रम व मोटर (Washing Machine)', icon: '🧺' },
+    { id: 'fridge_gas', label: 'फ्रिज गैस चार्जिंग व कंप्रेसर (Fridge Gas & Cooling)', icon: '❄️' },
+    { id: 'microwave_fix', label: 'माइक्रोवेव हीटिंग व टच पैनल (Microwave Oven)', icon: '🍲' },
+    { id: 'ro_service', label: 'आरओ सर्विस व मेम्ब्रेन चेंज (RO Water Filter)', icon: '💧' },
+  ],
+  'वेल्डर (Welder)': [
+    { id: 'gate_grill', label: 'मेन गेट, ग्रिल व ताला वेल्डिंग (Gate & Grill)', icon: '🚪' },
+    { id: 'shed_angle', label: 'आयरन शेड व एंगल वेल्डिंग (Iron Shed Truss)', icon: '🏗️' },
+    { id: 'railing_weld', label: 'सीढ़ी व बालकनी रेलिंग (Balcony Railing)', icon: '🪜' },
+    { id: 'spot_weld', label: 'ऑन-साइट पोर्टेबल वेल्डिंग (Spot Welding)', icon: '💥' },
+  ],
+};
 
 interface Props {
   lang: Language;
@@ -66,11 +133,31 @@ export const WorkerRegistrationFlow: React.FC<Props> = ({
   const [isFaceVerified, setIsFaceVerified] = useState(false);
 
   // Stage 2: Skill & Trade
-  const [selectedTrade, setSelectedTrade] = useState('इलेक्ट्रीशियन (Electrician)');
+  const [selectedTrade, setSelectedTrade] = useState('इलेक्ट्रिशियन (Electrician)');
+  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([
+    'एमसीबी ट्रिपिंग व शॉर्ट सर्किट (MCB Tripping)',
+    'सीलिंग व एग्जॉस्ट पंखा रिपेयर (Ceiling Fan)',
+    'स्विचबोर्ड व सॉकेट वायरिंग (Switchboard)'
+  ]);
   const [experienceLevel, setExperienceLevel] = useState<'Beginner' | 'Certified' | 'Experienced'>('Experienced');
   const [visitFee, setVisitFee] = useState<number>(199);
   const [hourlyRate, setHourlyRate] = useState<number>(299);
   const [bio, setBio] = useState('अनुभवी इलेक्ट्रीशियन, सभी प्रकार की वायरिंग, एमसीबी और पंखे की फिटिंग में 8 वर्षों का अनुभव।');
+  const [agreedToTerms, setAgreedToTerms] = useState<boolean>(false);
+
+  const handleSelectTrade = (tradeName: string) => {
+    sound.playClick();
+    setSelectedTrade(tradeName);
+    const problems = TRADE_PROBLEMS_MAP[tradeName] || [];
+    setSelectedSpecialties(problems.slice(0, 3).map((p) => p.label));
+  };
+
+  const handleToggleSpecialty = (label: string) => {
+    sound.playClick();
+    setSelectedSpecialties((prev) =>
+      prev.includes(label) ? prev.filter((item) => item !== label) : [...prev, label]
+    );
+  };
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -85,27 +172,54 @@ export const WorkerRegistrationFlow: React.FC<Props> = ({
     };
   }, []);
 
-  // OTP Handling
-  const handleSendOtp = () => {
+  // Real SMS OTP Handling
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+
+  const handleSendOtp = async () => {
     sound.playClick();
-    if (phone.length < 10) {
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
       sound.playError();
       alert('कृपया सही 10-अंकीय मोबाइल नंबर दर्ज करें');
       return;
     }
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setGeneratedOtp(code);
-    setOtpSent(true);
-    setEnteredOtp(code); // auto-fill for frictionless testing
+    setIsSendingOtp(true);
+    setEnteredOtp(''); // Do not auto-fill mock code so user inputs from real SMS
+
+    try {
+      const res = await fetch('/api/auth/send-registration-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleanPhone, otp: code, role: 'worker' }),
+      });
+      const data = await res.json();
+      setIsSendingOtp(false);
+      setOtpSent(true);
+
+      if (data.status === 'sent' || data.return === true) {
+        alert(`✓ आपके मोबाइल (${cleanPhone}) पर असली SMS OTP भेज दिया गया है!`);
+      } else {
+        // Fallback if local without backend
+        setEnteredOtp(code);
+        alert(`OTP भेजा गया (कोड: ${code})`);
+      }
+    } catch {
+      setIsSendingOtp(false);
+      setOtpSent(true);
+      setEnteredOtp(code);
+      alert(`OTP भेजा गया (कोड: ${code})`);
+    }
   };
 
   const handleVerifyOtp = () => {
-    if (enteredOtp === generatedOtp || enteredOtp === '1234') {
+    if (enteredOtp && (enteredOtp === generatedOtp || enteredOtp === '1234')) {
       sound.playSuccess();
       setOtpVerified(true);
     } else {
       sound.playError();
-      alert('अमान्य OTP! कृपया सही कोड दर्ज करें।');
+      alert('अमान्य OTP! कृपया SMS में आया सही कोड दर्ज करें।');
     }
   };
 
@@ -159,7 +273,7 @@ export const WorkerRegistrationFlow: React.FC<Props> = ({
         formData.append('aadhar_image', file);
         formData.append('user_name', fullName.trim());
 
-        const response = await fetch('http://127.0.0.1:8000/api/verify-aadhar', {
+        const response = await fetch(`${apiBaseUrl}/api/verify-aadhar`, {
           method: 'POST',
           body: formData,
         });
@@ -226,6 +340,10 @@ export const WorkerRegistrationFlow: React.FC<Props> = ({
 
   // Final submit
   const handleCompleteAccount = () => {
+    if (!agreedToTerms) {
+      alert("कृपया आगे बढ़ने से पहले प्लेटफॉर्म के नियम व शर्तों (Terms & Conditions) को स्वीकार करें।");
+      return;
+    }
     sound.playCash();
     const newKaamId = `DK-2026-${Math.floor(1000 + Math.random() * 9000)}`;
     const newWorker: WorkerProfile = {
@@ -249,8 +367,14 @@ export const WorkerRegistrationFlow: React.FC<Props> = ({
         visitCharge: visitFee,
         hourlyRate: hourlyRate,
       },
+      localSpecialties: selectedSpecialties,
       skills: [
         { name: selectedTrade, level: experienceLevel === 'Experienced' ? 'Master Craftsman' : 'Skilled', verified: true },
+        ...selectedSpecialties.map((spec) => ({
+          name: spec,
+          level: 'Skilled' as const,
+          verified: true
+        })),
         { name: 'Dual-Trust Safety Certified', level: 'Skilled', verified: true },
       ],
       bio: bio,
@@ -414,7 +538,7 @@ export const WorkerRegistrationFlow: React.FC<Props> = ({
                     <FileText className="w-4 h-4 text-blue-600" />
                     <span>आधार कार्ड ओसीआर नाम सत्यापन (Aadhaar OCR Name Match) *</span>
                   </h4>
-                  {aadhaarOcrResult.isApproved ? (
+                  {aadhaarOcrResult?.isApproved ? (
                     <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                       नाम मैच {aadhaarOcrResult.matchScore}%
@@ -444,7 +568,7 @@ export const WorkerRegistrationFlow: React.FC<Props> = ({
                 )}
 
                 {/* Aadhaar Name Match Algorithm Feedback */}
-                {!isOcrScanning && (
+                {!isOcrScanning && aadhaarOcrResult && (
                   <div
                     className={`p-3 rounded-lg border flex items-start gap-2 text-xs ${
                       aadhaarOcrResult.isApproved
@@ -581,24 +705,21 @@ export const WorkerRegistrationFlow: React.FC<Props> = ({
               <label className="text-xs font-bold text-slate-700 block">स्थानीय काम की श्रेणी (Primary Trade):</label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 {[
-                  { name: 'इलेक्ट्रीशियन (Electrician)', icon: Zap },
+                  { name: 'इलेक्ट्रिशियन (Electrician)', icon: Zap },
                   { name: 'प्लंबर (Plumber)', icon: Wrench },
-                  { name: 'बढ़ई (Carpenter)', icon: Wrench },
+                  { name: 'कारपेंटर / बढ़ई (Carpenter)', icon: Wrench },
                   { name: 'पेंटर (Painter)', icon: Sparkles },
-                  { name: 'एसी & फ्रिज रिपेयर', icon: Zap },
-                  { name: 'राजमिस्त्री (Mason)', icon: Wrench },
-                  { name: 'हाउस क्लीनिंग (Cleaning)', icon: Sparkles },
-                  { name: 'ड्राइवर / मैकेनिक', icon: Wrench },
+                  { name: 'राजमिस्त्री (Mason / Mistri)', icon: Wrench },
+                  { name: 'सफाई कर्मचारी (Cleaning)', icon: Sparkles },
+                  { name: 'होम अप्लायंस रिपेयर', icon: Zap },
+                  { name: 'वेल्डर (Welder)', icon: Wrench },
                 ].map((item) => {
                   const Icon = item.icon;
                   const isSelected = selectedTrade === item.name;
                   return (
                     <button
                       key={item.name}
-                      onClick={() => {
-                        sound.playClick();
-                        setSelectedTrade(item.name);
-                      }}
+                      onClick={() => handleSelectTrade(item.name)}
                       className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
                         isSelected
                           ? 'bg-blue-50 border-blue-500 shadow-xs'
@@ -609,6 +730,54 @@ export const WorkerRegistrationFlow: React.FC<Props> = ({
                       <span className={`text-xs font-bold mt-2 ${isSelected ? 'text-blue-900' : 'text-slate-700'}`}>
                         {item.name}
                       </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Specific Problem Varieties / Types of Work under selected category */}
+            <div className="space-y-2.5 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    <span>सामान्य समस्याएं व विशिष्ट कार्य (Select Specific Problems & Varieties):</span>
+                  </label>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    {selectedTrade} के तहत आप किन-किन विशिष्ट समस्याओं को हल कर सकते हैं? (काम के प्रकार चुनें)
+                  </p>
+                </div>
+                <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full">
+                  {selectedSpecialties.length} चयनित
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                {(TRADE_PROBLEMS_MAP[selectedTrade] || []).map((problem) => {
+                  const isChecked = selectedSpecialties.includes(problem.label);
+                  return (
+                    <button
+                      key={problem.id}
+                      type="button"
+                      onClick={() => handleToggleSpecialty(problem.label)}
+                      className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center justify-between text-xs ${
+                        isChecked
+                          ? 'bg-blue-50/90 border-blue-500 text-blue-900 font-bold shadow-xs'
+                          : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700 font-medium'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{problem.icon}</span>
+                        <span>{problem.label}</span>
+                      </div>
+                      <div
+                        className={`w-4 h-4 rounded-md flex items-center justify-center border transition shrink-0 ${
+                          isChecked ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 bg-white'
+                        }`}
+                      >
+                        {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                      </div>
                     </button>
                   );
                 })}
@@ -693,6 +862,32 @@ export const WorkerRegistrationFlow: React.FC<Props> = ({
               />
             </div>
 
+            {/* Strict Platform Terms & Conditions Agreement */}
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+                <h4 className="text-xs font-bold text-slate-900">डिजिटल काम — कारीगर नियम व शर्तें (Worker Terms & Conditions)</h4>
+              </div>
+              <div className="text-[11px] text-slate-600 space-y-1.5 max-h-28 overflow-y-auto pr-1 border-y border-slate-200 py-2">
+                <p>1. <strong>सत्य पहचान व ट्रेड कौशल:</strong> मैं घोषणा करता/करती हूँ कि मेरा आधार कार्ड और लाइव सेल्फी वास्तविक है और मैं चयनित ट्रेड में निपुण हूँ।</p>
+                <p>2. <strong>ओटीपी नियम:</strong> ग्राहक के पते पर पहुंचने पर ही Start OTP दर्ज करवाएं। कार्य संतोषजनक पूर्ण होने के बाद ही End OTP प्राप्त करें।</p>
+                <p>3. <strong>एस्क्रो 90/10 विभाजन:</strong> मुझे ग्राहक शुल्क का 90% भुगतान बैंक में प्राप्त होगा और 10% न्यूनतम प्लेटफॉर्म संचालन शुल्क कटेगा।</p>
+                <p>4. <strong>सदाचार व सुरक्षा:</strong> अनुचित चार्ज या दुर्व्यवहार की स्थिति में खाता तुरंत निरस्त कर दिया जाएगा।</p>
+              </div>
+              <label className="flex items-start gap-2.5 cursor-pointer pt-1">
+                <input
+                  type="checkbox"
+                  id="worker-agree-terms-checkbox"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 cursor-pointer"
+                />
+                <span className="text-xs font-bold text-slate-800 select-none">
+                  मैंने डिजिटल काम के सभी नियम, सुरक्षा शर्तें व 90/10 एस्क्रो नीति को ध्यानपूर्वक पढ़ लिया है और मैं इसे पूर्णतः स्वीकार करता/करती हूँ। *
+                </span>
+              </label>
+            </div>
+
             {/* Action Buttons */}
             <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
               <button
@@ -705,8 +900,13 @@ export const WorkerRegistrationFlow: React.FC<Props> = ({
 
               <button
                 id="worker-complete-account-btn"
+                disabled={!agreedToTerms}
                 onClick={handleCompleteAccount}
-                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/20 transition flex items-center gap-2 cursor-pointer"
+                className={`px-6 py-3 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                  agreedToTerms
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 cursor-pointer'
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                }`}
               >
                 <BadgeCheck className="w-4 h-4" />
                 <span>{t.completeProfile}</span>
@@ -716,13 +916,17 @@ export const WorkerRegistrationFlow: React.FC<Props> = ({
         )}
       </div>
 
-      {/* Mandatory Live Face Camera Modal */}
-      <LiveFaceCaptureModal
-        isOpen={isFaceModalOpen}
-        onClose={() => setIsFaceModalOpen(false)}
-        title="कारीगर लाइव फेस सत्यापन (Worker Live Face KYC)"
-        onFaceVerified={handleFaceCaptured}
-      />
+      {/* Mandatory Live Face Camera Modal with on-demand Lazy Loading */}
+      <Suspense fallback={<LazyLoadingFallback isModal={true} message="कैमरा मॉड्यूल लोड हो रहा है..." />}>
+        {isFaceModalOpen && (
+          <LiveFaceCaptureModal
+            isOpen={isFaceModalOpen}
+            onClose={() => setIsFaceModalOpen(false)}
+            title="कारीगर लाइव फेस सत्यापन (Worker Live Face KYC)"
+            onFaceVerified={handleFaceCaptured}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };

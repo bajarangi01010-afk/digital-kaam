@@ -1,7 +1,12 @@
 import { WorkerProfile, PostedJob, Booking } from '../types';
 import { INITIAL_WORKERS, INITIAL_POSTED_JOBS } from '../data/mockData';
 
-const BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000';
+/**
+ * Single API origin for the web client. Keep this configurable so production
+ * deployments do not accidentally call the browser's own localhost.
+ */
+export const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000')
+  .replace(/\/$/, '');
 
 class SmartBrainApiService {
   private isOnline = false;
@@ -12,7 +17,7 @@ class SmartBrainApiService {
 
   async checkHealth(): Promise<boolean> {
     try {
-      const res = await fetch(`${BASE_URL}/health`, { signal: AbortSignal.timeout(1500) });
+      const res = await fetch(`${apiBaseUrl}/health`, { signal: AbortSignal.timeout(1500) });
       this.isOnline = res.ok;
       return res.ok;
     } catch {
@@ -24,7 +29,7 @@ class SmartBrainApiService {
   // Get full worker profiles feed
   async getWorkers(): Promise<WorkerProfile[]> {
     try {
-      const res = await fetch(`${BASE_URL}/api/workers`, { signal: AbortSignal.timeout(2000) });
+      const res = await fetch(`${apiBaseUrl}/api/workers`, { signal: AbortSignal.timeout(2000) });
       if (res.ok) {
         const data = await res.json();
         if (data.workers && data.workers.length > 0) {
@@ -64,7 +69,7 @@ class SmartBrainApiService {
   // Get posted jobs feed
   async getPostedJobs(): Promise<PostedJob[]> {
     try {
-      const res = await fetch(`${BASE_URL}/api/jobs`, { signal: AbortSignal.timeout(2000) });
+      const res = await fetch(`${apiBaseUrl}/api/jobs`, { signal: AbortSignal.timeout(2000) });
       if (res.ok) {
         const data = await res.json();
         if (data.jobs && data.jobs.length > 0) {
@@ -80,7 +85,7 @@ class SmartBrainApiService {
   // Post a new job in real-time
   async postJob(job: PostedJob): Promise<PostedJob> {
     try {
-      const res = await fetch(`${BASE_URL}/api/jobs`, {
+      const res = await fetch(`${apiBaseUrl}/api/jobs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -108,7 +113,7 @@ class SmartBrainApiService {
   // Worker applies for a job
   async applyForJob(jobId: string, worker: WorkerProfile, bidAmount?: number): Promise<boolean> {
     try {
-      const res = await fetch(`${BASE_URL}/api/jobs/${jobId}/apply`, {
+      const res = await fetch(`${apiBaseUrl}/api/jobs/${jobId}/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

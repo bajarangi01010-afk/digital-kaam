@@ -76,6 +76,8 @@ export const VerificationQueue: React.FC<Props> = ({ workers, onUpdateWorkerVeri
                     <img
                       src={worker.avatar}
                       alt={worker.name}
+                      loading="lazy"
+                      decoding="async"
                       className="w-11 h-11 rounded-full object-cover border border-slate-200"
                     />
                     <div className="flex-1 min-w-0">
@@ -105,6 +107,8 @@ export const VerificationQueue: React.FC<Props> = ({ workers, onUpdateWorkerVeri
               <img
                 src={selectedWorker.avatar}
                 alt={selectedWorker.name}
+                loading="lazy"
+                decoding="async"
                 className="w-14 h-14 rounded-full object-cover border-2 border-slate-200 shadow-xs"
               />
               <div>

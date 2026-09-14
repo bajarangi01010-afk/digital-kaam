@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { CustomerProfile, WorkerProfile, Booking, BookingStatus, PostedJob } from '../types';
 import { translations, Language } from '../utils/i18n';
 import { sound } from '../utils/audio';
-import { CustomerProfileSection } from './CustomerProfileSection';
-import { WorkerDetailModal } from './WorkerDetailModal';
+import { LazyLoadingFallback } from './LazyLoadingFallback';
+
+// Advanced Code Splitting & On-Demand Modal/Sub-component Loading
+const CustomerProfileSection = lazy(() => import('./CustomerProfileSection').then(m => ({ default: m.CustomerProfileSection })));
+const WorkerDetailModal = lazy(() => import('./WorkerDetailModal').then(m => ({ default: m.WorkerDetailModal })));
 import {
   MapPin,
   ShieldCheck,
@@ -88,7 +91,19 @@ export const CustomerDashboardView: React.FC<Props> = ({
 
   // Modal simulation states
   const [callingWorker, setCallingWorker] = useState<WorkerProfile | null>(null);
+  const [callUnlockPromptWorker, setCallUnlockPromptWorker] = useState<WorkerProfile | null>(null);
   const [refundAlertToast, setRefundAlertToast] = useState<string | null>(null);
+
+  // Helper to check active booking for a worker
+  const getActiveBookingForWorker = (workerId: string) => {
+    return bookings.find(
+      (b) =>
+        b.workerId === workerId &&
+        b.status !== BookingStatus.SETTLED &&
+        b.status !== BookingStatus.CANCELLED &&
+        b.status !== BookingStatus.REFUNDED
+    );
+  };
 
   // Filter nearby workers
   const filteredWorkers = workers.filter((w) => {
@@ -114,10 +129,17 @@ export const CustomerDashboardView: React.FC<Props> = ({
   // Customer's posted jobs
   const myPostedJobs = postedJobs;
 
-  // Handle direct call
+  // Handle direct call (Master Idea: gated by active escrow booking)
   const handleDirectCall = (worker: WorkerProfile) => {
     sound.playClick();
-    setCallingWorker(worker);
+    const activeBooking = getActiveBookingForWorker(worker.id);
+    if (!activeBooking) {
+      // Direct call locked: show educational escrow unlock prompt
+      setCallUnlockPromptWorker(worker);
+    } else {
+      // Direct call unlocked: open call dialer modal
+      setCallingWorker(worker);
+    }
   };
 
   // Handle instant auto refund
@@ -148,6 +170,8 @@ export const CustomerDashboardView: React.FC<Props> = ({
             <img
               src={customer.avatar}
               alt={customer.name}
+              loading="lazy"
+              decoding="async"
               className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-500 shadow-sm"
             />
             <span
@@ -423,124 +447,158 @@ export const CustomerDashboardView: React.FC<Props> = ({
 
             {/* Workers Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {filteredWorkers.map((worker) => (
-                <div
-                  key={worker.id}
-                  className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 hover:border-indigo-400 hover:shadow-md transition flex flex-col justify-between space-y-4"
-                >
-                  <div>
-                    {/* Top Profile Row */}
-                    <div className="flex items-start gap-4">
-                      <img
-                        src={worker.avatar}
-                        alt={worker.name}
-                        className="w-16 h-16 rounded-2xl object-cover border border-slate-200 shadow-xs shrink-0"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-bold text-slate-900 truncate">{worker.name}</h4>
-                          <span className="font-mono text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                            {worker.kaamId}
-                          </span>
-                        </div>
+              {filteredWorkers.map((worker) => {
+                const activeBooking = getActiveBookingForWorker(worker.id);
+                const isBooked = !!activeBooking;
 
-                        <p className="text-xs text-slate-600 mt-0.5">{worker.trade}</p>
-
-                        <div className="flex items-center gap-2.5 mt-1.5 text-xs">
-                          <span className="flex items-center font-bold text-amber-600">
-                            <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500 mr-1" />
-                            {worker.rating}
-                          </span>
-                          <span className="text-slate-400">({worker.reviewCount} समीक्षाएं)</span>
-                          <span className="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.2 rounded text-[10px]">
-                            आधार व फेस सत्यापित ✓
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Bio */}
-                    <p className="text-xs text-slate-600 mt-3 line-clamp-2 leading-relaxed cursor-pointer" onClick={() => setViewingWorker(worker)}>
-                      {worker.bio}
-                    </p>
-
-                    {/* Skill Tags Real-time */}
-                    {worker.skills && worker.skills.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-2.5">
-                        {worker.skills.slice(0, 3).map((sk: any, sIdx: number) => (
-                          <span
-                            key={sIdx}
-                            className="text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md"
-                          >
-                            {typeof sk === 'string' ? sk : sk.name}
-                          </span>
-                        ))}
-                        {worker.skills.length > 3 && (
-                          <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md">
-                            +{worker.skills.length - 3} अधिक
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Distance & Area */}
-                    <div className="mt-2.5 flex items-center justify-between text-xs text-slate-500">
-                      <span className="flex items-center gap-1 truncate max-w-xs">
-                        <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                        {worker.serviceArea}
-                      </span>
-                      <span className="text-blue-600 font-bold shrink-0">{worker.distanceKm} किमी दूर</span>
-                    </div>
-                  </div>
-
-                  {/* Pricing & CTAs */}
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
+                return (
+                  <div
+                    key={worker.id}
+                    className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 hover:border-indigo-400 hover:shadow-md transition flex flex-col justify-between space-y-4"
+                  >
                     <div>
-                      <span className="text-[10px] text-slate-400 block">विज़िट शुल्क:</span>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-base font-black text-slate-900">₹{worker.pricing.visitCharge}</span>
-                        <span className="text-[11px] text-slate-500">+ ₹{worker.pricing.hourlyRate}/घंटा</span>
+                      {/* Top Profile Row */}
+                      <div className="flex items-start gap-4">
+                        <img
+                          src={worker.avatar}
+                          alt={worker.name}
+                          loading="lazy"
+                          decoding="async"
+                          className="w-16 h-16 rounded-2xl object-cover border border-slate-200 shadow-xs shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-bold text-slate-900 truncate">{worker.name}</h4>
+                            <span className="font-mono text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                              {worker.kaamId}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-slate-600 mt-0.5">{worker.trade}</p>
+
+                          <div className="flex items-center gap-2.5 mt-1.5 text-xs">
+                            <span className="flex items-center font-bold text-amber-600">
+                              <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500 mr-1" />
+                              {worker.rating}
+                            </span>
+                            <span className="text-slate-400">({worker.reviewCount} समीक्षाएं)</span>
+                            <span className="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.2 rounded text-[10px]">
+                              आधार व फेस सत्यापित ✓
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Bio */}
+                      <p className="text-xs text-slate-600 mt-3 line-clamp-2 leading-relaxed cursor-pointer" onClick={() => setViewingWorker(worker)}>
+                        {worker.bio}
+                      </p>
+
+                      {/* Skill Tags Real-time */}
+                      {worker.skills && worker.skills.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2.5">
+                          {worker.skills.slice(0, 3).map((sk: any, sIdx: number) => (
+                            <span
+                              key={sIdx}
+                              className="text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md"
+                            >
+                              {typeof sk === 'string' ? sk : sk.name}
+                            </span>
+                          ))}
+                          {worker.skills.length > 3 && (
+                            <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md">
+                              +{worker.skills.length - 3} अधिक
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Distance & Area & Phone Privacy */}
+                      <div className="mt-2.5 flex items-center justify-between text-xs text-slate-500 flex-wrap gap-2">
+                        <span className="flex items-center gap-1 truncate max-w-xs">
+                          <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                          {worker.serviceArea}
+                        </span>
+
+                        <div className="flex items-center gap-2">
+                          {isBooked ? (
+                            <span className="font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[11px] font-bold border border-emerald-200 flex items-center gap-1">
+                              <Phone className="w-3 h-3 text-emerald-600" />
+                              {worker.phone || '+91 98765 43210'}
+                            </span>
+                          ) : (
+                            <span className="font-mono text-slate-400 bg-slate-50 px-2 py-0.5 rounded text-[11px] border border-slate-200 flex items-center gap-1" title="कॉल करने के लिए विज़िट बुक करें">
+                              <Lock className="w-3 h-3 text-amber-500" />
+                              +91 98112 •••••
+                            </span>
+                          )}
+                          <span className="text-blue-600 font-bold shrink-0">{worker.distanceKm} किमी दूर</span>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        id={`view-worker-${worker.id}-btn`}
-                        onClick={() => {
-                          sound.playClick();
-                          setViewingWorker(worker);
-                        }}
-                        className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                        title="पूरी प्रोफाइल, कौशल और सरकारी सत्यापन देखें"
-                      >
-                        <Eye className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>पूरी प्रोफाइल</span>
-                      </button>
+                    {/* Pricing & CTAs */}
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">विज़िट शुल्क:</span>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-base font-black text-slate-900">₹{worker.pricing.visitCharge}</span>
+                          <span className="text-[11px] text-slate-500">+ ₹{worker.pricing.hourlyRate}/घंटा</span>
+                        </div>
+                      </div>
 
-                      <button
-                        id={`direct-call-${worker.id}-btn`}
-                        onClick={() => handleDirectCall(worker)}
-                        className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                        {t.directCall}
-                      </button>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          id={`view-worker-${worker.id}-btn`}
+                          onClick={() => {
+                            sound.playClick();
+                            setViewingWorker(worker);
+                          }}
+                          className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                          title="पूरी प्रोफाइल, कौशल और सरकारी सत्यापन देखें"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>पूरी प्रोफाइल</span>
+                        </button>
 
-                      <button
-                        id={`direct-book-${worker.id}-btn`}
-                        onClick={() => {
-                          sound.playClick();
-                          onBookWorker(worker);
-                        }}
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow transition flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <CreditCard className="w-3.5 h-3.5" />
-                        {t.directBook}
-                      </button>
+                        {isBooked ? (
+                          <button
+                            id={`direct-call-${worker.id}-btn`}
+                            onClick={() => handleDirectCall(worker)}
+                            className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                            title="सक्रिय बुकिंग - सीधे कॉल करें"
+                          >
+                            <Phone className="w-3.5 h-3.5 animate-bounce" />
+                            <span>सीधा कॉल (सक्रिय)</span>
+                          </button>
+                        ) : (
+                          <button
+                            id={`direct-call-${worker.id}-btn`}
+                            onClick={() => handleDirectCall(worker)}
+                            className="px-3 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                            title="सीधे बात करने के लिए पहले विज़िट बुक करें"
+                          >
+                            <Lock className="w-3.5 h-3.5 text-amber-600" />
+                            <span>🔒 कॉल अनलॉक</span>
+                          </button>
+                        )}
+
+                        <button
+                          id={`direct-book-${worker.id}-btn`}
+                          onClick={() => {
+                            sound.playClick();
+                            onBookWorker(worker);
+                          }}
+                          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow transition flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <CreditCard className="w-3.5 h-3.5" />
+                          <span>₹{worker.pricing.visitCharge} एस्क्रो बुक</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -616,6 +674,8 @@ export const CustomerDashboardView: React.FC<Props> = ({
                             <img
                               src={workerBid.workerAvatar}
                               alt={workerBid.workerName}
+                              loading="lazy"
+                              decoding="async"
                               className="w-10 h-10 rounded-xl object-cover border border-slate-300"
                             />
                             <div>
@@ -756,11 +816,13 @@ export const CustomerDashboardView: React.FC<Props> = ({
 
       {/* SECTION 4: MY PROFILE & EDIT SECTION */}
       {activeTab === 'PROFILE' && (
-        <CustomerProfileSection
-          customer={customer}
-          lang={lang}
-          onUpdateCustomer={onUpdateCustomer}
-        />
+        <Suspense fallback={<LazyLoadingFallback message="प्रोफ़ाइल लोड हो रही है..." />}>
+          <CustomerProfileSection
+            customer={customer}
+            lang={lang}
+            onUpdateCustomer={onUpdateCustomer}
+          />
+        </Suspense>
       )}
 
       {/* SECTION 5: ESCROW WALLET & TRANSACTION LEDGER */}
@@ -860,27 +922,144 @@ export const CustomerDashboardView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Direct Call Simulation Modal */}
+      {/* Call Unlock & Escrow Safety Modal (Master Direct Call Architecture) */}
+      {callUnlockPromptWorker && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white max-w-md w-full rounded-3xl p-6 space-y-5 shadow-2xl border border-slate-200">
+            <div className="flex items-start justify-between border-b pb-3 border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+                  <Lock className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">कॉल अनलॉक करने के लिए विज़िट बुक करें</h3>
+                  <p className="text-xs text-slate-500">100% एस्क्रो सुरक्षा व स्पैम सुरक्षा नीति</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCallUnlockPromptWorker(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Target Worker Card Summary */}
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-center gap-3">
+              <img
+                src={callUnlockPromptWorker.avatar}
+                alt={callUnlockPromptWorker.name}
+                loading="lazy"
+                decoding="async"
+                className="w-12 h-12 rounded-xl object-cover border border-slate-200"
+              />
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm font-bold text-slate-900 truncate">{callUnlockPromptWorker.name}</h4>
+                <p className="text-xs text-slate-500">{callUnlockPromptWorker.trade} • {callUnlockPromptWorker.kaamId}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="font-mono text-xs text-slate-400">+91 98112 ••••• (सुरक्षित लॉक)</span>
+                  <span className="text-[10px] text-amber-700 bg-amber-100 font-bold px-1.5 py-0.2 rounded">बुकिंग आवश्यक</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Why Platform Escrow Booking First? */}
+            <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-2.5 text-xs text-amber-950">
+              <div className="flex items-start gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-slate-900 block">कारीगर का समय व आपका पैसा 100% सुरक्षित:</span>
+                  <p className="text-slate-600 text-[11px] leading-relaxed mt-0.5">
+                    कारीगर से सीधे कॉल पर बात करने के लिए पहले कारीगर का विज़िट शुल्क (₹{callUnlockPromptWorker.pricing.visitCharge}) प्लेटफ़ॉर्म के सुरक्षित एस्क्रो में जमा करना अनिवार्य है।
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-slate-900 block">तत्काल नोटिफिकेशन व कॉल एक्टिवेशन:</span>
+                  <p className="text-slate-600 text-[11px] leading-relaxed mt-0.5">
+                    जैसे ही आप बुकिंग कन्फ़र्म करते हैं, कारीगर को तत्काल सूचना जाएगी और ऐप व फ़ोन डायलर दोनों पर डायरेक्ट कॉल तुरंत अनलॉक हो जाएगी।
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2">
+                <RefreshCw className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-slate-900 block">100% नो-शो ऑटो रिफंड गारंटी:</span>
+                  <p className="text-slate-600 text-[11px] leading-relaxed mt-0.5">
+                    यदि कारीगर कॉल नहीं उठाता या समय पर नहीं पहुंचता, तो आपका पूरा ₹{callUnlockPromptWorker.pricing.visitCharge} स्वतः आपके बैंक/UPI में तुरंत वापस आ जाएगा।
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <button
+                onClick={() => setCallUnlockPromptWorker(null)}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer transition"
+              >
+                रद्द करें
+              </button>
+              <button
+                onClick={() => {
+                  const w = callUnlockPromptWorker;
+                  setCallUnlockPromptWorker(null);
+                  onBookWorker(w);
+                }}
+                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <CreditCard className="w-4 h-4" />
+                <span>₹{callUnlockPromptWorker.pricing.visitCharge} एस्क्रो जमा कर कॉल अनलॉक करें</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Direct Call Simulation Modal (Unlocked) */}
       {callingWorker && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white max-w-sm w-full rounded-2xl p-6 text-center space-y-4 shadow-2xl border border-slate-200">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+          <div className="bg-white max-w-sm w-full rounded-3xl p-6 text-center space-y-4 shadow-2xl border border-slate-200">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
               <Phone className="w-8 h-8 animate-bounce" />
             </div>
 
             <div>
-              <h4 className="text-base font-bold text-slate-900">{callingWorker.name}</h4>
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1 mb-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                कॉल अनलॉक • एस्क्रो सुरक्षित
+              </span>
+              <h4 className="text-base font-black text-slate-900">{callingWorker.name}</h4>
               <p className="text-xs text-slate-500">{callingWorker.trade} • {callingWorker.kaamId}</p>
-              <p className="font-mono text-base font-bold text-blue-600 mt-2">+91 98765 43210</p>
+              <p className="font-mono text-lg font-black text-emerald-600 mt-2">
+                {callingWorker.phone || '+91 98765 43210'}
+              </p>
             </div>
 
-            <p className="text-xs text-slate-400">
-              डिजिटल काम सुरक्षित कॉलिंग: आपका व्यक्तिगत नंबर पूरी तरह सुरक्षित और एन्क्रिप्टेड है।
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-600 space-y-1 text-left">
+              <div className="flex justify-between">
+                <span>एस्क्रो स्टेटस:</span>
+                <span className="font-bold text-emerald-600">सक्रिय (Funded)</span>
+              </div>
+              <div className="flex justify-between">
+                <span>बुकिंग कोड:</span>
+                <span className="font-mono text-slate-800">
+                  {getActiveBookingForWorker(callingWorker.id)?.publicCode || 'DK-BKG-ACTIVE'}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-400">
+              डिजिटल काम सुरक्षित कॉलिंग: आपकी बातचीत और सुरक्षा प्राथमिकता है।
             </p>
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-2 pt-1">
               <a
-                href="tel:+919876543210"
+                href={`tel:${callingWorker.phone || '+919876543210'}`}
                 className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow flex items-center justify-center gap-1.5"
               >
                 <Phone className="w-3.5 h-3.5" />
@@ -888,7 +1067,7 @@ export const CustomerDashboardView: React.FC<Props> = ({
               </a>
               <button
                 onClick={() => setCallingWorker(null)}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer"
               >
                 बंद करें
               </button>
@@ -897,35 +1076,39 @@ export const CustomerDashboardView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Dedicated Corner Profile Slide-over / Modal */}
-      {isCornerProfileOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white max-w-2xl w-full rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
-            <CustomerProfileSection
-              customer={customer}
-              lang={lang}
-              onUpdateCustomer={onUpdateCustomer}
-              onClose={() => setIsCornerProfileOpen(false)}
-              isModalOrDrawer={true}
-            />
+      {/* Dedicated Corner Profile Slide-over / Modal & Full Worker Profile Modal with on-demand Lazy Loading */}
+      <Suspense fallback={<LazyLoadingFallback isModal={true} />}>
+        {isCornerProfileOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+            <div className="bg-white max-w-2xl w-full rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+              <CustomerProfileSection
+                customer={customer}
+                lang={lang}
+                onUpdateCustomer={onUpdateCustomer}
+                onClose={() => setIsCornerProfileOpen(false)}
+                isModalOrDrawer={true}
+              />
+            </div>
           </div>
-        </div>
-      )}
-      {/* Full Worker Profile Modal */}
-      <WorkerDetailModal
-        worker={viewingWorker}
-        isOpen={!!viewingWorker}
-        onClose={() => setViewingWorker(null)}
-        lang={lang}
-        onBookWorker={(w) => {
-          setViewingWorker(null);
-          onBookWorker(w);
-        }}
-        onDirectCall={(w) => {
-          setViewingWorker(null);
-          handleDirectCall(w);
-        }}
-      />
+        )}
+        {viewingWorker && (
+          <WorkerDetailModal
+            worker={viewingWorker}
+            isOpen={!!viewingWorker}
+            onClose={() => setViewingWorker(null)}
+            lang={lang}
+            isBooked={!!viewingWorker && !!getActiveBookingForWorker(viewingWorker.id)}
+            onBookWorker={(w) => {
+              setViewingWorker(null);
+              onBookWorker(w);
+            }}
+            onDirectCall={(w) => {
+              setViewingWorker(null);
+              handleDirectCall(w);
+            }}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };
