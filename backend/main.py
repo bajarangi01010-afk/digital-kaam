@@ -442,31 +442,8 @@ async def verify_aadhar(
             except Exception as e:
                 logger.warning(f"EasyOCR error: {e}")
 
-    # ── Smart Computer-Vision Document Integrity Fallback ──
-    # If heavy OCR (which needs 2GB RAM) is not active on free cloud tier,
-    # inspect the image with OpenCV: verify aspect ratio, resolution & document boundaries.
+    # If no text was extracted at all, reject immediately
     if not extracted_texts:
-        try:
-            arr = np.frombuffer(image_bytes, dtype=np.uint8)
-            img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-            if img is not None:
-                h, w = img.shape[:2]
-                # Valid document check (adequate resolution for Aadhaar/ID)
-                if w >= 200 and h >= 120 and len(image_bytes) > 2048:
-                    logger.info("Valid document detected via OpenCV Computer Vision fallback.")
-                    return {
-                        "status": "success",
-                        "is_approved": True,
-                        "match": True,
-                        "user_name": user_name,
-                        "message": f"✓ आधार कार्ड दस्तावेज़ सफलतापूर्वक सत्यापित हुआ! (सत्यापित नाम: '{user_name}')",
-                        "score": 95,
-                        "threshold": 65,
-                        "matched_text": user_name,
-                    }
-        except Exception as cv_err:
-            logger.warning(f"CV inspection error: {cv_err}")
-
         return {
             "status": "error",
             "is_approved": False,
