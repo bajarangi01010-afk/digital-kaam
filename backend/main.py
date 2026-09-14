@@ -1143,6 +1143,23 @@ async def admin_delete_account(account_id: str):
         logger.exception(f"Error deleting account {account_id}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.delete("/api/admin/jobs/{job_id}")
+@app.post("/api/admin/jobs/{job_id}/delete")
+async def admin_delete_job(job_id: str):
+    """Admin endpoint to permanently delete a posted job."""
+    try:
+        deleted = database.delete_posted_job(job_id)
+        if hasattr(s2_engine, "customer_jobs") and job_id in s2_engine.customer_jobs:
+            s2_engine.customer_jobs.pop(job_id, None)
+        return {
+            "status": "success",
+            "message": f"Job {job_id} deleted successfully",
+            "job_id": job_id
+        }
+    except Exception as e:
+        logger.exception(f"Error deleting job {job_id}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # ══════════════════════════════════════════════════════════════
 #  FEATURE 5: USER LOGOUT ARCHIVE & PUBLIC QR WEB PROFILE

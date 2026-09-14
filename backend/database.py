@@ -419,6 +419,16 @@ def apply_to_posted_job(job_id: str, bid: Dict[str, Any]) -> Optional[Dict[str, 
     d["id"] = d["job_id"]
     return d
 
+def delete_posted_job(job_id: str) -> bool:
+    """Deletes a customer posted job from SQLite database."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("DELETE FROM posted_jobs WHERE job_id = ?", (job_id,))
+    deleted = c.rowcount
+    conn.commit()
+    conn.close()
+    return deleted > 0
+
 def get_worker_by_id(worker_id: str) -> Optional[Dict[str, Any]]:
     """Retrieves a single worker by ID with full details."""
     conn = get_db_connection()
