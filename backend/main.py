@@ -106,7 +106,7 @@ async def health():
     return {
         "status": "healthy",
         "service": "digital-kaam-verification-api",
-        "version": "1.0.2",
+        "version": "1.0.3",
         "cv2_file": cv2_file,
         "has_cascade": has_cascade,
         "has_objdetect": has_objdetect,
@@ -128,14 +128,12 @@ def get_face_cascades():
             "profile": "haarcascade_profileface.xml",
         }
         
-        # Safely resolve CascadeClassifier constructor across varying OpenCV packaging
+        # Safely resolve CascadeClassifier constructor without local import scoping issues
         classifier_cls = getattr(cv2, "CascadeClassifier", None)
         if classifier_cls is None:
-            try:
-                import cv2.objdetect
-                classifier_cls = getattr(cv2.objdetect, "CascadeClassifier", None)
-            except Exception:
-                pass
+            objdetect = getattr(cv2, "objdetect", None)
+            if objdetect is not None:
+                classifier_cls = getattr(objdetect, "CascadeClassifier", None)
             
         if classifier_cls is not None:
             for key, filename in cascade_files.items():
