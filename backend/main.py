@@ -294,6 +294,18 @@ async def verify_face(
         logger.error(f"Image read error: {e}")
         raise HTTPException(status_code=400, detail=f"Image processing error: {str(e)[:100]}")
 
+    # ── Laplacian Variance Blur Check on live camera snapshot ──
+    live_gray_check = cv2.cvtColor(live_img, cv2.COLOR_BGR2GRAY)
+    laplacian_var = cv2.Laplacian(live_gray_check, cv2.CV_64F).var()
+    if laplacian_var < 35.0:
+        return {
+            "status": "error",
+            "match": False,
+            "face_detected": False,
+            "code": "IMAGE_TOO_BLURRY",
+            "message": "फोटो बहुत धुंधली (Blurry) है! कृपया कैमरा स्थिर रखें और अच्छी रोशनी में दोबारा फोटो लें।",
+        }
+
     fr = get_face_recognition()
     if fr is None:
         cascade = get_face_cascade()

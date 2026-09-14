@@ -66,12 +66,13 @@ export function verifyAadhaarNameMatch(enteredName: string, candidateExtractedNa
   };
 }
 
-// Live Face Quality Analyzer for HTML Canvas
+// Live Face Quality & Sharpness Analyzer for HTML Canvas
 export interface FaceQualityResult {
   hasFace: boolean;
   lightingQuality: 'EXCELLENT' | 'GOOD' | 'POOR';
   brightnessScore: number;
-  status: 'SUCCESS' | 'POOR_LIGHTING' | 'NO_FACE';
+  sharpnessScore: number;
+  status: 'SUCCESS' | 'POOR_LIGHTING' | 'BLURRY' | 'NO_FACE';
   message: string;
 }
 
@@ -82,6 +83,7 @@ export function analyzeCanvasFaceLighting(canvas: HTMLCanvasElement): FaceQualit
       hasFace: true,
       lightingQuality: 'GOOD',
       brightnessScore: 75,
+      sharpnessScore: 80,
       status: 'SUCCESS',
       message: 'चेहरा सफलता पूर्वक कैप्चर किया गया',
     };
@@ -93,21 +95,29 @@ export function analyzeCanvasFaceLighting(canvas: HTMLCanvasElement): FaceQualit
   let totalBrightness = 0;
   let count = 0;
 
-  // Sample center region where face oval is positioned
+  // Sample center region where face oval is positioned (50% width, 60% height)
   const startX = Math.floor(width * 0.25);
   const endX = Math.floor(width * 0.75);
   const startY = Math.floor(height * 0.2);
   const endY = Math.floor(height * 0.8);
 
-  for (let y = startY; y < endY; y += 4) {
-    for (let x = startX; x < endX; x += 4) {
+  const step = 2; // high resolution sample for blur detection
+  const cols = Math.floor((endX - startX) / step);
+  const rows = Math.floor((endY - startY) / step);
+  const grayGrid: number[][] = [];
+
+  for (let r = 0; r < rows; r++) {
+    grayGrid[r] = [];
+    const y = startY + r * step;
+    for (let c = 0; c < cols; c++) {
+      const x = startX + c * step;
       const idx = (y * width + x) * 4;
-      const r = data[idx];
-      const g = data[idx + 1];
-      const b = data[idx + 2];
-      // Perceived luminance formula
-      const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-      totalBrightness += luminance;
+      const red = data[idx];
+      const green = data[idx + 1];
+      const blue = data[idx + 2];
+      const lum = 0.299 * red + 0.587 * green + 0.114 * blue;
+      grayGrid[r][c] = lum;
+      totalBrightness += lum;
       count++;
     }
   }
@@ -115,13 +125,63 @@ export function analyzeCanvasFaceLighting(canvas: HTMLCanvasElement): FaceQualit
   const avgBrightness = count > 0 ? totalBrightness / count : 120;
   const brightnessScore = Math.round((avgBrightness / 255) * 100);
 
+  // Laplacian Variance Sharpness calculation on center face region
+  let sumL = 0;
+  let sumL2 = 0;
+  let laplacianCount = 0;
+
+  for (let r = 1; r < rows - 1; r++) {
+    for (let c = 1; c < cols - 1; c++) {
+      const val = grayGrid[r][c];
+      const lap =
+        grayGrid[r - 1][c] +
+        grayGrid[r + 1][c] +
+        grayGrid[r][c - 1] +
+        grayGrid[r][c + 1] -
+        4 * val;
+      sumL += lap;
+      sumL2 += lap * lap;
+      laplacianCount++;
+    }
+  }
+
+  const meanL = laplacianCount > 0 ? sumL / laplacianCount : 0;
+  const laplacianVariance = laplacianCount > 0 ? sumL2 / laplacianCount - meanL * meanL : 50;
+  const sharpnessScore = Math.min(100, Math.round(laplacianVariance));
+
+  // 1. Check for extreme darkness
   if (avgBrightness < 35) {
     return {
       hasFace: false,
       lightingQuality: 'POOR',
       brightnessScore,
+      sharpnessScore,
       status: 'POOR_LIGHTING',
-      message: 'रोशनी बहुत कम है! कृपया किसी अच्छी रोशनी वाले स्थान पर जाएं।',
+      message: 'कैमरे में बहुत अंधेरा है! कृपया किसी अच्छी रोशनी वाले स्थान पर आएं।',
+    };
+  }
+
+  // 2. Check for extreme glare / washout
+  if (avgBrightness > 240) {
+    return {
+      hasFace: false,
+      lightingQuality: 'POOR',
+      brightnessScore,
+      sharpnessScore,
+      status: 'POOR_LIGHTING',
+      message: 'कैमरे पर अत्यधिक चमक या फ्लैश है! कृपया सामान्य रोशनी में चेहरा दिखाएं।',
+    };
+  }
+
+  // 3. Strict Motion Blur / Out of Focus check
+  if (laplacianVariance < 35) {
+    return {
+      hasFace: false,
+      lightingQuality: 'POOR',
+      brightnessScore,
+      sharpnessScore,
+      status: 'BLURRY',
+      message: 'फोटो बहुत धुंधली (Blurry) है! कृपया कैमरा स्थिर रखें और स्पष्ट चेहरा दिखाएं।',
     };
   }
 
@@ -129,7 +189,8 @@ export function analyzeCanvasFaceLighting(canvas: HTMLCanvasElement): FaceQualit
     hasFace: true,
     lightingQuality: avgBrightness > 70 ? 'EXCELLENT' : 'GOOD',
     brightnessScore,
+    sharpnessScore,
     status: 'SUCCESS',
-    message: 'लाइव चेहरा सही स्थिति में है और रोशनी उत्तम है!',
+    message: '✓ लाइव चेहरा स्पष्ट और सही स्थिति में सत्यापित हुआ!',
   };
 }
