@@ -135,16 +135,7 @@ async def verify_live_face(
     aadhar_image: Optional[UploadFile] = File(None, description="Optional Aadhaar card to compare face against"),
     is_simulated: Optional[bool] = Form(False, description="True if captured in simulator mode"),
 ):
-    """Direct real-time live face detection without gallery upload."""
-    if is_simulated:
-        return {
-            "status": "success",
-            "match": True,
-            "face_detected": True,
-            "confidence_percentage": 98.8,
-            "distance": 0.21,
-            "message": "लाइव बायोमेट्रिक चेहरा 100% सफलतापूर्वक डिटेक्ट व सत्यापित हुआ! (सिम्युलेटर लाइव कैमरा मोड)",
-        }
+    """Direct real-time live face detection with strict biometric quality."""
 
     try:
         live_bytes = await live_snapshot.read()
@@ -153,26 +144,84 @@ async def verify_live_face(
         if live_img is None:
             raise HTTPException(status_code=400, detail="Live snapshot could not be read. Use JPG/PNG format.")
 
-        face_detected = False
+        # ── 1. Image Quality & Blur Check (Laplacian Variance) ──
+        gray = cv2.cvtColor(live_img, cv2.COLOR_BGR2GRAY)
+        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+        logger.info(f"Image sharpness score (Laplacian variance): {laplacian_var:.2f}")
+        
+        # If image is too blurry (motion blur or bad camera)
+        if laplacian_var < 35.0:
+            return {
+                "status": "error",
+                "match": False,
+                "face_detected": False,
+                "code": "IMAGE_TOO_BLURRY",
+                "message": "फोटो बहुत धुंधली (Blurry) है! कृपया कैमरा स्थिर रखें और अच्छी रोशनी में दोबारा फोटो लें।",
+            }
 
-        # 1. Primary check: OpenCV Haar Cascade Face Detector
+        # ── 2. Brightness Check (Under/Over-exposed) ──
+        mean_brightness = np.mean(gray)
+        if mean_brightness < 30:
+            return {
+                "status": "error",
+                "match": False,
+                "face_detected": False,
+                "code": "TOO_DARK",
+                "message": "कैमरा में बहुत अंधेरा है! कृपया पर्याप्त रोशनी में अपना चेहरा दिखाएं।",
+            }
+        elif mean_brightness > 235:
+            return {
+                "status": "error",
+                "match": False,
+                "face_detected": False,
+                "code": "TOO_BRIGHT",
+                "message": "चेहरे पर बहुत तेज़ रोशनी या रिफ्लेक्शन है। कृपया रोशनी संतुलित करें।",
+            }
+
+        # ── 3. Face Detection with Strict Min-Size (Minimum 90x90 px) ──
+        face_detected = False
+        valid_face_count = 0
+        h_img, w_img = live_img.shape[:2]
+
         cascade = get_face_cascade()
         if cascade is not None:
-            gray = cv2.cvtColor(live_img, cv2.COLOR_BGR2GRAY)
-            faces = cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(50, 50))
-            if len(faces) > 0:
+            # Require higher minNeighbors and minimum size so false positives/noise are rejected
+            min_dim = int(min(h_img, w_img) * 0.20)  # Face must occupy at least 20% of frame
+            min_dim = max(min_dim, 80)
+            faces = cascade.detectMultiScale(
+                gray,
+                scaleFactor=1.12,
+                minNeighbors=5,
+                minSize=(min_dim, min_dim)
+            )
+            valid_face_count = len(faces)
+            if valid_face_count == 1:
                 face_detected = True
-                logger.info(f"Haar Cascade detected {len(faces)} face(s)")
-            else:
-                logger.info("Haar Cascade: No face found in camera frame")
+                logger.info(f"Haar Cascade detected 1 valid face of size {faces[0][2]}x{faces[0][3]}")
+            elif valid_face_count > 1:
+                return {
+                    "status": "error",
+                    "match": False,
+                    "face_detected": False,
+                    "code": "MULTIPLE_FACES",
+                    "message": "कैमरा में एक से अधिक चेहरे दिखे! कृपया अकेले फ्रेम में आएं।",
+                }
 
-        # 2. Secondary check: dlib face_recognition if installed
+        # 4. Secondary check: dlib face_recognition if available
         fr = get_face_recognition()
         if fr is not None:
             live_rgb = cv2.cvtColor(live_img, cv2.COLOR_BGR2RGB)
             live_encodings = fr.face_encodings(live_rgb)
-            if len(live_encodings) > 0:
+            if len(live_encodings) == 1:
                 face_detected = True
+            elif len(live_encodings) > 1:
+                return {
+                    "status": "error",
+                    "match": False,
+                    "face_detected": False,
+                    "code": "MULTIPLE_FACES",
+                    "message": "कैमरा में एक से अधिक चेहरे मिले। कृपया अकेले फोटो लें।",
+                }
             elif cascade is None:
                 face_detected = False
 
@@ -182,7 +231,7 @@ async def verify_live_face(
                 "match": False,
                 "face_detected": False,
                 "code": "NO_FACE_IN_LIVE",
-                "message": "कैमरा फ्रेम में कोई चेहरा नहीं मिला। कृपया अपने चेहरे को दिए गए ओवल गाइड के अंदर रखें।",
+                "message": "कैमरा फ्रेम में कोई स्पष्ट चेहरा नहीं मिला। कृपया अपने पूरे चेहरे को ओवल गाइड के अंदर रखें।",
             }
 
         return {
