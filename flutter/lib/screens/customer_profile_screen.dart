@@ -9,6 +9,7 @@ import '../services/gps_location_service.dart';
 import '../widgets/live_face_verification_dialog.dart';
 import '../controllers/app_theme_controller.dart';
 import '../widgets/app_settings_dialog.dart';
+import '../models/worker_session.dart';
 import 'landing_screen.dart';
 
 class CustomerProfileScreen extends StatefulWidget {
@@ -46,9 +47,9 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _name = widget.customerName;
-    _phone = widget.customerPhone ?? "+91 99887 76655";
-    _address = widget.customerAddress ?? "shivpur , sikariyan , darigaon road sasaram";
+    _name = widget.customerName.isNotEmpty ? widget.customerName : (WorkerSession.name.isNotEmpty ? WorkerSession.name : "ग्राहक");
+    _phone = widget.customerPhone ?? (WorkerSession.phone.isNotEmpty ? WorkerSession.phone : "");
+    _address = widget.customerAddress ?? (WorkerSession.address.isNotEmpty ? WorkerSession.address : "");
     _photo = widget.customerPhoto;
     _photoBytes = widget.customerBytes;
   }
@@ -682,6 +683,9 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                   "s2_token": "390ce2b4",
                 });
               } catch (_) {}
+
+              // Clear persistent session from disk
+              await WorkerSession.clearSession();
 
               if (!mounted) return;
               _showToast("सुरक्षित लॉगआउट संपन्न! आपका डेटा एडमिन आर्काइव में सुरक्षित है।", isSuccess: true);

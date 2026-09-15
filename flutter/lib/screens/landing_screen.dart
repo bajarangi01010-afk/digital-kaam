@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'worker_registration_screen.dart';
 import 'customer_registration_screen.dart';
+import 'worker_dashboard_screen.dart';
+import 'customer_dashboard_screen.dart';
+import '../models/worker_session.dart';
 import '../controllers/app_theme_controller.dart';
 
 class LandingScreen extends StatefulWidget {
@@ -224,7 +227,142 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
                           ),
 
                           const Spacer(),
-                          const SizedBox(height: 28),
+                          const SizedBox(height: 20),
+
+                          // Active Persistent Session Banner (Auto-Resume)
+                          if (WorkerSession.isLoggedIn) ...[
+                            Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(bottom: 18),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0F172A),
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.6), width: 1.5),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                                    blurRadius: 14,
+                                    offset: const Offset(0, 4),
+                                  )
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            width: 8,
+                                            height: 8,
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFF10B981),
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            isHindi ? "सक्रिय खाता उपलब्ध ✓" : "Active Account ✓",
+                                            style: const TextStyle(color: Color(0xFF10B981), fontSize: 12, fontWeight: FontWeight.bold),
+                                          ),
+                                        ],
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          WorkerSession.role == "WORKER" ? (isHindi ? "कारीगर" : "Worker") : (isHindi ? "ग्राहक" : "Customer"),
+                                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    "${WorkerSession.name}",
+                                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    isHindi
+                                        ? "आपका खाता पहले से सत्यापित है। दोबारा पंजीकरण की जरूरत नहीं है।"
+                                        : "Your account is already verified. No need to register again.",
+                                    style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          onPressed: () {
+                                            if (WorkerSession.role == "CUSTOMER") {
+                                              Navigator.of(context).pushAndRemoveUntil(
+                                                MaterialPageRoute(
+                                                  builder: (_) => CustomerDashboardScreen(
+                                                    customerName: WorkerSession.name,
+                                                    customerPhone: WorkerSession.phone,
+                                                    customerAddress: WorkerSession.address,
+                                                    profilePhoto: WorkerSession.profilePhoto,
+                                                    profilePhotoBytes: WorkerSession.profilePhotoBytes,
+                                                  ),
+                                                ),
+                                                (route) => false,
+                                              );
+                                            } else {
+                                              Navigator.of(context).pushAndRemoveUntil(
+                                                MaterialPageRoute(
+                                                  builder: (_) => WorkerDashboardScreen(
+                                                    workerName: WorkerSession.name,
+                                                    primarySkill: WorkerSession.primarySkill,
+                                                    profilePhoto: WorkerSession.profilePhoto,
+                                                    profilePhotoBytes: WorkerSession.profilePhotoBytes,
+                                                  ),
+                                                ),
+                                                (route) => false,
+                                              );
+                                            }
+                                          },
+                                          icon: const Icon(Icons.dashboard_rounded, size: 16),
+                                          label: Text(
+                                            isHindi ? "सीधे डैशबोर्ड खोलें" : "Open Dashboard",
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                          ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFF2563EB),
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(vertical: 10),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      OutlinedButton(
+                                        onPressed: () async {
+                                          await WorkerSession.clearSession();
+                                          setState(() {});
+                                        },
+                                        child: Text(
+                                          isHindi ? "खाता बदलें" : "Switch",
+                                          style: const TextStyle(fontSize: 12, color: Color(0xFFF87171)),
+                                        ),
+                                        style: OutlinedButton.styleFrom(
+                                          side: const BorderSide(color: Color(0xFFEF4444)),
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
 
                           // 5. Role Selection Section (Airy, Uncongested Cards)
                           Align(
@@ -245,9 +383,23 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
                           // Role 1: Worker Card
                           InkWell(
                             onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(builder: (ctx) => const WorkerRegistrationScreen()),
-                              );
+                              if (WorkerSession.isLoggedIn && WorkerSession.role == "WORKER") {
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                    builder: (_) => WorkerDashboardScreen(
+                                      workerName: WorkerSession.name,
+                                      primarySkill: WorkerSession.primarySkill,
+                                      profilePhoto: WorkerSession.profilePhoto,
+                                      profilePhotoBytes: WorkerSession.profilePhotoBytes,
+                                    ),
+                                  ),
+                                  (route) => false,
+                                );
+                              } else {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(builder: (ctx) => const WorkerRegistrationScreen()),
+                                );
+                              }
                             },
                             borderRadius: BorderRadius.circular(18),
                             child: Container(
@@ -308,9 +460,24 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
                           // Role 2: Customer Card
                           InkWell(
                             onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(builder: (ctx) => const CustomerRegistrationScreen()),
-                              );
+                              if (WorkerSession.isLoggedIn && WorkerSession.role == "CUSTOMER") {
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                    builder: (_) => CustomerDashboardScreen(
+                                      customerName: WorkerSession.name,
+                                      customerPhone: WorkerSession.phone,
+                                      customerAddress: WorkerSession.address,
+                                      profilePhoto: WorkerSession.profilePhoto,
+                                      profilePhotoBytes: WorkerSession.profilePhotoBytes,
+                                    ),
+                                  ),
+                                  (route) => false,
+                                );
+                              } else {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(builder: (ctx) => const CustomerRegistrationScreen()),
+                                );
+                              }
                             },
                             borderRadius: BorderRadius.circular(18),
                             child: Container(

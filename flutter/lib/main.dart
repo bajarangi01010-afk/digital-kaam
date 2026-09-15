@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'controllers/app_theme_controller.dart';
+import 'models/worker_session.dart';
 import 'screens/landing_screen.dart';
 import 'screens/worker_registration_screen.dart';
 import 'screens/worker_dashboard_screen.dart';
@@ -8,13 +9,15 @@ import 'screens/customer_registration_screen.dart';
 import 'screens/customer_dashboard_screen.dart';
 import 'screens/kyc_verification_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const DigitalKaamApp());
+  final hasSession = await WorkerSession.loadFromDisk();
+  runApp(DigitalKaamApp(hasSession: hasSession));
 }
 
 class DigitalKaamApp extends StatelessWidget {
-  const DigitalKaamApp({Key? key}) : super(key: key);
+  final bool hasSession;
+  const DigitalKaamApp({Key? key, this.hasSession = false}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -68,17 +71,38 @@ class DigitalKaamApp extends StatelessWidget {
             ),
           ),
 
-          home: const LandingScreen(),
+          home: hasSession && WorkerSession.isLoggedIn
+              ? (WorkerSession.role == "CUSTOMER"
+                  ? CustomerDashboardScreen(
+                      customerName: WorkerSession.name,
+                      customerPhone: WorkerSession.phone,
+                      customerAddress: WorkerSession.address,
+                      profilePhoto: WorkerSession.profilePhoto,
+                      profilePhotoBytes: WorkerSession.profilePhotoBytes,
+                    )
+                  : WorkerDashboardScreen(
+                      workerName: WorkerSession.name,
+                      primarySkill: WorkerSession.primarySkill,
+                      profilePhoto: WorkerSession.profilePhoto,
+                      profilePhotoBytes: WorkerSession.profilePhotoBytes,
+                    ))
+              : const LandingScreen(),
           routes: {
             '/landing': (context) => const LandingScreen(),
             '/worker-register': (context) => const WorkerRegistrationScreen(),
-            '/worker-dashboard': (context) => const WorkerDashboardScreen(
-                  workerName: "राम कुमार (Ram Kumar)",
-                  primarySkill: "इलेक्ट्रीशियन (Electrician)",
+            '/worker-dashboard': (context) => WorkerDashboardScreen(
+                  workerName: WorkerSession.name,
+                  primarySkill: WorkerSession.primarySkill,
+                  profilePhoto: WorkerSession.profilePhoto,
+                  profilePhotoBytes: WorkerSession.profilePhotoBytes,
                 ),
             '/customer-register': (context) => const CustomerRegistrationScreen(),
-            '/customer-dashboard': (context) => const CustomerDashboardScreen(
-                  customerName: "सुरेश यादव (Suresh Yadav)",
+            '/customer-dashboard': (context) => CustomerDashboardScreen(
+                  customerName: WorkerSession.name,
+                  customerPhone: WorkerSession.phone,
+                  customerAddress: WorkerSession.address,
+                  profilePhoto: WorkerSession.profilePhoto,
+                  profilePhotoBytes: WorkerSession.profilePhotoBytes,
                 ),
             '/standalone-kyc': (context) => const KycVerificationScreen(role: UserKycRole.worker),
           },

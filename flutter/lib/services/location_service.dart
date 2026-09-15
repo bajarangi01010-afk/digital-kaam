@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../config/api_config.dart';
 
 class LocationService {
@@ -167,7 +168,9 @@ class LocationService {
         final data = response.data as Map<String, dynamic>;
         return Map<String, dynamic>.from(data['job'] as Map);
       }
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('Error in postJob: $e');
+    }
     return null;
   }
 
@@ -198,7 +201,9 @@ class LocationService {
           };
         }).toList();
       }
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('Error in fetchPostedJobs: $e');
+    }
     return [];
   }
 

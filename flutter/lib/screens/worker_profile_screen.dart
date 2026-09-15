@@ -126,8 +126,6 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
     Uint8List? newFaceBytes = WorkerSession.profilePhotoBytes;
     bool isFaceVerified = true;
 
-    File? aadhaarImage;
-    Uint8List? aadhaarBytes;
     String? aadhaarStatusMessage = WorkerSession.aadhaarStatus;
     bool isAadhaarOcrPassed = true;
 
@@ -588,8 +586,6 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
 
                                               if (ocrRes.isApproved) {
                                                 setModalState(() {
-                                                  aadhaarImage = file;
-                                                  aadhaarBytes = bytes;
                                                   isAadhaarOcrPassed = true;
                                                   isNameAadhaarVerified = true;
                                                   verifiedNameForAadhaar = nameCtrl.text.trim();
@@ -842,6 +838,9 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                 // Archive session in backend database
                 await _apiService.archiveLogout(WorkerSession.toMap());
               } catch (_) {}
+
+              // Clear persistent session from disk
+              await WorkerSession.clearSession();
 
               if (!mounted) return;
               _showToast("सुरक्षित लॉगआउट संपन्न! आपका डेटा एडमिन आर्काइव में सुरक्षित है।", isSuccess: true);

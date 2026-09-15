@@ -126,6 +126,8 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
     }
   }
 
+  Map<String, dynamic>? _existingAccount;
+
   Future<void> _sendMobileOtp() async {
     final cleanPhone = _phoneController.text.trim();
     if (cleanPhone.length < 10) {
@@ -146,7 +148,11 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
         _isOtpSent = true;
       });
 
-      if (res["status"] == "sent" || res["return"] == true) {
+      if (res["account_exists"] == true && res["user"] != null) {
+        _existingAccount = res["user"] as Map<String, dynamic>;
+        final accName = _existingAccount!["name"] ?? "ग्राहक";
+        _showSnackbar("✓ स्वागत है, $accName! आपका सत्यापित खाता मिल गया है। OTP डालकर सीधा लॉगिन करें!", isError: false);
+      } else if (res["status"] == "sent" || res["return"] == true) {
         _showSnackbar("✓ आपके मोबाइल ($cleanPhone) पर असली SMS OTP भेज दिया गया है!", isError: false);
       } else if (res["status"] == "simulated") {
         _otpController.text = dynamicCode;
@@ -169,6 +175,40 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
     final entered = _otpController.text.trim();
     if (entered.isNotEmpty && (entered == _sentOtpCode || entered == "3190" || entered == "1234")) {
       setState(() => _isPhoneVerified = true);
+
+      if (_existingAccount != null) {
+        final existingName = _existingAccount!["name"] ?? "सत्यापित ग्राहक";
+        final existingPhone = _existingAccount!["phone"] ?? _phoneController.text.trim();
+        final existingAddress = _existingAccount!["address"] ?? _addressController.text.trim();
+
+        WorkerSession.update(
+          newRole: "CUSTOMER",
+          newIsLoggedIn: true,
+          newName: existingName,
+          newPhone: existingPhone,
+          newAddress: existingAddress,
+          newSkill: "सत्यापित ग्राहक (Customer)",
+        );
+        WorkerSession.saveToDisk(userRole: "CUSTOMER");
+
+        _showSnackbar("✓ स्वागत है $existingName! आपका खाता मिल गया है, सीधा डैशबोर्ड खोला जा रहा है...", isError: false);
+
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (!mounted) return;
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (_) => CustomerDashboardScreen(
+                customerName: existingName,
+                customerPhone: existingPhone,
+                customerAddress: existingAddress,
+              ),
+            ),
+            (route) => false,
+          );
+        });
+        return;
+      }
+
       _showSnackbar("मोबाइल नंबर OTP सफलतापूर्वक सत्यापित!", isError: false);
     } else {
       _showSnackbar("अवैध OTP! कृपया SMS में आया सही कोड दर्ज करें", isError: true);
@@ -463,16 +503,33 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
         ),
         actions: [
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
+              final cName = _nameController.text.trim();
+              final cPhone = _phoneController.text.trim();
+              final cAddress = _addressController.text.trim();
+
+              WorkerSession.update(
+                newRole: "CUSTOMER",
+                newIsLoggedIn: true,
+                newName: cName,
+                newPhone: cPhone,
+                newAddress: cAddress,
+                newPhoto: _profilePhoto,
+                newBytes: _profilePhotoBytes,
+                newSkill: "सत्यापित ग्राहक (Customer)",
+              );
+              await WorkerSession.saveToDisk(userRole: "CUSTOMER");
+
+              if (!mounted) return;
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
                   builder: (context) => CustomerDashboardScreen(
-                    customerName: _nameController.text.trim(),
+                    customerName: cName,
                     profilePhoto: _profilePhoto,
                     profilePhotoBytes: _profilePhotoBytes,
-                    customerPhone: _phoneController.text.trim(),
-                    customerAddress: _addressController.text.trim(),
+                    customerPhone: cPhone,
+                    customerAddress: cAddress,
                   ),
                 ),
                 (route) => false,

@@ -153,6 +153,7 @@ class _WorkerSkillSetupScreenState extends State<WorkerSkillSetupScreen> {
               WorkerSession.update(
                 newRole: "WORKER",
                 newIsLoggedIn: true,
+                newWorkerId: wid,
                 newName: widget.workerName,
                 newSkill: skill,
                 newPhone: widget.phone,

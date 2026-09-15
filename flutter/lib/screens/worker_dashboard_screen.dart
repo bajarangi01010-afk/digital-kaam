@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../models/worker_session.dart';
@@ -56,9 +57,11 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
   double _escrowHoldAmount = 0.0;
   int _completedJobsCount = 0;
 
-  // Active Job Demo State for Handshake OTP Workflow
+  // Active Job State for Handshake OTP Workflow
   bool _hasActiveJob = false;
   String _jobState = "ARRIVED"; // "ARRIVED", "IN_PROGRESS", "COMPLETED"
+  Map<String, dynamic> _activeJobData = {};
+  Timer? _liveJobsPollingTimer;
   final TextEditingController _startOtpController = TextEditingController();
   final TextEditingController _completionOtpController = TextEditingController();
 
@@ -76,6 +79,32 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
     _profileBytes = widget.profilePhotoBytes ?? WorkerSession.profilePhotoBytes;
     _accountHolderName = _workerName;
     _loadLivePostedJobs();
+    _startLiveRadarPolling();
+  }
+
+  void _startLiveRadarPolling() {
+    _liveJobsPollingTimer?.cancel();
+    _liveJobsPollingTimer = Timer.periodic(const Duration(seconds: 8), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_selectedTabIndex == 0 && _isLocationOn && !_isLoadingJobs) {
+        _loadLivePostedJobsSilently();
+      }
+    });
+  }
+
+  Future<void> _loadLivePostedJobsSilently() async {
+    try {
+      final liveJobs = await LocationService.instance.fetchPostedJobs();
+      if (mounted) {
+        setState(() {
+          _nearbyJobs.clear();
+          _nearbyJobs.addAll(liveJobs);
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadLivePostedJobs() async {
@@ -97,6 +126,7 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
 
   @override
   void dispose() {
+    _liveJobsPollingTimer?.cancel();
     _startOtpController.dispose();
     _completionOtpController.dispose();
     super.dispose();
@@ -171,14 +201,15 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
 
   void _verifyCompletionOtp() {
     if (_completionOtpController.text.trim() == "9341" || _completionOtpController.text.trim().length == 4) {
+      final earned = _escrowHoldAmount > 0 ? _escrowHoldAmount : _customVisitPrice.toDouble();
       setState(() {
         _jobState = "COMPLETED";
         _hasActiveJob = false;
-        _totalEarnings += _escrowHoldAmount;
+        _totalEarnings += earned;
         _escrowHoldAmount = 0.0;
         _completedJobsCount += 1;
       });
-      _showToast("बधाई हो! Completion OTP सत्यापित! ₹$_customVisitPrice की राशि प्लेटफॉर्म एस्क्रो से आपके बैंक खाते में सुरक्षित ट्रांसफर कर दी गई है।", isSuccess: true);
+      _showToast("बधाई हो! Completion OTP सत्यापित! ₹${earned.toInt()} की राशि प्लेटफॉर्म एस्क्रो से आपके बैंक खाते में सुरक्षित ट्रांसफर कर दी गई है।", isSuccess: true);
     } else {
       _showToast("गलत Completion OTP! ग्राहक द्वारा कार्य निरीक्षण के बाद ही OTP दर्ज करें।", isSuccess: false);
     }
@@ -939,15 +970,20 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                         onPressed: requested
                             ? null
                             : () async {
+                                final double budgetAmount = double.tryParse(job["budget"].toString().replaceAll(RegExp(r'[^0-9.]'), '')) ?? _customVisitPrice.toDouble();
                                 setState(() {
                                   job["requested"] = true;
+                                  _hasActiveJob = true;
+                                  _jobState = "ARRIVED";
+                                  _escrowHoldAmount = budgetAmount;
+                                  _activeJobData = Map<String, dynamic>.from(job);
                                 });
                                 final jobId = job["id"]?.toString() ?? "";
                                 final wid = WorkerSession.workerId.isNotEmpty ? WorkerSession.workerId : "w-101";
                                 try {
                                   await LocationService.instance.applyToJob(jobId, wid);
                                 } catch (_) {}
-                                _showToast("ग्राहक को कार्य स्वीकार्यता अनुरोध भेज दिया गया!");
+                                _showToast("कार्य स्वीकार कर लिया गया! विवरण 'बुकिंग्स' टैब में देखें।", isSuccess: true);
                               },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: requested ? theme.emeraldGreen : const Color(0xFF2563EB),
@@ -1021,12 +1057,12 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                           color: theme.emeraldGreen.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text("₹$_customVisitPrice एस्क्रो जमा", style: TextStyle(color: theme.emeraldGreen, fontSize: 11, fontWeight: FontWeight.bold)),
+                        child: Text("₹${_escrowHoldAmount > 0 ? _escrowHoldAmount.toInt() : _customVisitPrice} एस्क्रो जमा", style: TextStyle(color: theme.emeraldGreen, fontSize: 11, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
                   const SizedBox(height: 14),
-                  Text("स्विचबोर्ड रिपेयर व शॉर्ट सर्किट चेकिंग", style: TextStyle(color: theme.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(_activeJobData["title"] ?? "स्विचबोर्ड रिपेयर व शॉर्ट सर्किट चेकिंग", style: TextStyle(color: theme.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
 
                   // Destination Customer Location & Navigation Card
@@ -1053,7 +1089,7 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
-                                        "ग्राहक: अमित शर्मा (Customer)",
+                                        "ग्राहक: ${_activeJobData["customerName"] ?? "सत्यापित ग्राहक"}",
                                         style: TextStyle(color: theme.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
                                       ),
                                       Container(
@@ -1063,7 +1099,7 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                                           borderRadius: BorderRadius.circular(6),
                                         ),
                                         child: Text(
-                                          "1.2 km • 5 मिनट",
+                                          "${_activeJobData["distance"] ?? "1.2 km • 5 मिनट"}",
                                           style: TextStyle(color: theme.brandBlue, fontSize: 10, fontWeight: FontWeight.bold),
                                         ),
                                       ),
@@ -1071,7 +1107,7 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                                   ),
                                   const SizedBox(height: 3),
                                   Text(
-                                    "फ्लैट 402, शांति अपार्टमेंट, ब्लॉक B, सेक्टर 18",
+                                    _activeJobData["locality"] ?? "फ्लैट 402, शांति अपार्टमेंट, ब्लॉक B, सेक्टर 18",
                                     style: TextStyle(color: theme.textSecondary, fontSize: 11, height: 1.3),
                                   ),
                                   const SizedBox(height: 2),
@@ -1095,7 +1131,7 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                                   await GpsLocationService.openNavigationMap(
                                     destLat: 28.5708,
                                     destLng: 77.3271,
-                                    addressLabel: "फ्लैट 402, शांति अपार्टमेंट, ब्लॉक B, सेक्टर 18",
+                                    addressLabel: _activeJobData["locality"] ?? "फ्लैट 402, शांति अपार्टमेंट, ब्लॉक B, सेक्टर 18",
                                   );
                                 },
                                 icon: const Icon(Icons.navigation_rounded, size: 16),
@@ -1114,7 +1150,8 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                             Expanded(
                               child: ElevatedButton.icon(
                                 onPressed: () {
-                                  TelephonyService.makePhoneCall("+919876543210");
+                                  final callNumber = _activeJobData["phone"] ?? "+919876543210";
+                                  TelephonyService.makePhoneCall(callNumber);
                                   _showToast("ग्राहक को कॉल डायल हो रहा है...");
                                 },
                                 icon: const Icon(Icons.phone_in_talk_rounded, size: 16),
@@ -1290,35 +1327,6 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPastBookingCard(AppThemeController theme, String customer, String service, String amount, String date, String status) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: theme.card,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: theme.border),
-        boxShadow: theme.cardShadow,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(service, style: TextStyle(color: theme.textPrimary, fontWeight: FontWeight.bold, fontSize: 13)),
-              const SizedBox(height: 3),
-              Text("ग्राहक: $customer • $date", style: TextStyle(color: theme.textSecondary, fontSize: 11)),
-              const SizedBox(height: 3),
-              Text(status, style: TextStyle(color: theme.emeraldGreen, fontSize: 10, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          Text(amount, style: TextStyle(color: theme.emeraldGreen, fontWeight: FontWeight.w900, fontSize: 15)),
         ],
       ),
     );

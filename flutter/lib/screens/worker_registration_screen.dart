@@ -11,6 +11,7 @@ import '../widgets/safe_image.dart';
 import '../widgets/document_camera_scanner_dialog.dart';
 import '../services/gps_location_service.dart';
 import 'worker_skill_setup_screen.dart';
+import 'worker_dashboard_screen.dart';
 
 class WorkerRegistrationScreen extends StatefulWidget {
   const WorkerRegistrationScreen({Key? key}) : super(key: key);
@@ -112,11 +113,15 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
     super.dispose();
   }
 
-  // 1. Send Real Mobile SMS OTP
+  Map<String, dynamic>? _existingAccount;
+
+  // 1. Dispatch Real Cellular SMS OTP via Fast2SMS Gateway
   Future<void> _sendMobileOtp() async {
-    final cleanPhone = _phoneController.text.trim();
-    if (cleanPhone.length < 10) {
-      _showSnackbar("कृपया 10 अंकों का वैध मोबाइल नंबर दर्ज करें", isError: true);
+    final phone = _phoneController.text.trim();
+    final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+
+    if (cleanPhone.length != 10) {
+      _showSnackbar("कृपया सही 10-अंकीय मोबाइल नंबर दर्ज करें", isError: true);
       return;
     }
 
@@ -136,7 +141,11 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
         _isOtpSent = true;
       });
 
-      if (res["status"] == "sent" || res["return"] == true) {
+      if (res["account_exists"] == true && res["user"] != null) {
+        _existingAccount = res["user"] as Map<String, dynamic>;
+        final accName = _existingAccount!["name"] ?? "कारीगर";
+        _showSnackbar("✓ स्वागत है, $accName! आपका सत्यापित खाता डेटाबेस में मिल गया है। OTP डालकर सीधा लॉगिन करें!", isError: false);
+      } else if (res["status"] == "sent" || res["return"] == true) {
         _showSnackbar("✓ आपके मोबाइल ($cleanPhone) पर असली SMS OTP भेज दिया गया है!", isError: false);
       } else if (res["status"] == "simulated") {
         _otpController.text = dynamicCode; // Fallback only if offline/simulated
@@ -162,6 +171,44 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
       setState(() {
         _isPhoneVerified = true;
       });
+
+      if (_existingAccount != null) {
+        final existingName = _existingAccount!["name"] ?? "कारीगर";
+        final existingSkill = _existingAccount!["skill"] ?? "कुशल कारीगर";
+        final existingPhone = _existingAccount!["phone"] ?? _phoneController.text.trim();
+        final existingAddress = _existingAccount!["address"] ?? _addressController.text.trim();
+        final existingPrice = (_existingAccount!["visiting_fee"] as num?)?.toInt() ?? 350;
+        final existingId = _existingAccount!["worker_id"] ?? "DK-VERIFIED-9842";
+
+        WorkerSession.update(
+          newRole: "WORKER",
+          newIsLoggedIn: true,
+          newName: existingName,
+          newSkill: existingSkill,
+          newPhone: existingPhone,
+          newAddress: existingAddress,
+          newPrice: existingPrice,
+          newWorkerId: existingId,
+        );
+        WorkerSession.saveToDisk(userRole: "WORKER");
+
+        _showSnackbar("✓ स्वागत है $existingName! आपका खाता मिल गया है, सीधा डैशबोर्ड खोला जा रहा है...", isError: false);
+
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (!mounted) return;
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (_) => WorkerDashboardScreen(
+                workerName: existingName,
+                primarySkill: existingSkill,
+              ),
+            ),
+            (route) => false,
+          );
+        });
+        return;
+      }
+
       _showSnackbar("मोबाइल नंबर सफलतापूर्वक OTP सत्यापित हो गया!", isError: false);
     } else {
       _showSnackbar("अवैध OTP! कृपया SMS में आया सही कोड दर्ज करें", isError: true);

@@ -126,8 +126,6 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
     Uint8List? newFaceBytes = WorkerSession.profilePhotoBytes;
     bool isFaceVerified = true;
 
-    File? aadhaarImage;
-    Uint8List? aadhaarBytes;
     String? aadhaarStatusMessage = WorkerSession.aadhaarStatus;
     bool isAadhaarOcrPassed = true;
 
@@ -588,8 +586,6 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
 
                                               if (ocrRes.isApproved) {
                                                 setModalState(() {
-                                                  aadhaarImage = file;
-                                                  aadhaarBytes = bytes;
                                                   isAadhaarOcrPassed = true;
                                                   isNameAadhaarVerified = true;
                                                   verifiedNameForAadhaar = nameCtrl.text.trim();

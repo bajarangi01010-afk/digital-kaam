@@ -14,6 +14,19 @@ class ApiConfig {
 
   /// Smart cross-platform base URL resolver
   static String get baseUrl {
+    if (kIsWeb) {
+      return "https://digital-kaam-bakend.onrender.com";
+    }
+
+    if (Platform.isAndroid || Platform.isIOS) {
+      // Direct live cloud backend access anywhere via 4G/5G/WiFi
+      return cloudBackendUrl;
+    }
+
+    if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+      return cloudBackendUrl;
+    }
+
     return cloudBackendUrl;
   }
 

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -48,8 +49,9 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   // Active Booking & Escrow & Handshake OTP State (Fresh user starts with 0 active bookings)
   bool _hasActiveBooking = false;
   String _activeBookingStatus = "NONE"; // "CONFIRMED", "WORKER_ARRIVED", "IN_PROGRESS", "COMPLETED", "REFUNDED"
-  final String _startOtp = "5182";
-  final String _completionOtp = "9341";
+  String _startOtp = "5182";
+  String _completionOtp = "9341";
+  Timer? _trackingPollTimer;
 
   // Payment Report & Escrow State (Fresh user starts with 0)
   double _totalSpent = 0.0;
@@ -93,8 +95,45 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
 
   @override
   void dispose() {
+    _trackingPollTimer?.cancel();
     _workDescriptionController.dispose();
     super.dispose();
+  }
+
+  void _startLiveTrackingPolling(String bookingId) {
+    _trackingPollTimer?.cancel();
+    _trackingPollTimer = Timer.periodic(const Duration(seconds: 4), (timer) async {
+      if (!mounted || !_hasActiveBooking) {
+        timer.cancel();
+        return;
+      }
+      try {
+        final updated = await LocationService.instance.getLiveTracking(bookingId);
+        if (updated != null && mounted) {
+          setState(() {
+            _liveTrackingData = updated;
+            final String st = updated["status"]?.toString() ?? "";
+            if (st == "REACHED") {
+              _activeBookingStatus = "WORKER_ARRIVED";
+            } else if (st == "STARTED") {
+              _activeBookingStatus = "IN_PROGRESS";
+            } else if (st == "COMPLETED") {
+              _activeBookingStatus = "COMPLETED";
+              _hasActiveBooking = false;
+              _totalSpent += _escrowLocked;
+              _escrowLocked = 0.0;
+              timer.cancel();
+            }
+            if (updated["start_otp"] != null) {
+              _startOtp = updated["start_otp"].toString();
+            }
+            if (updated["end_otp"] != null) {
+              _completionOtp = updated["end_otp"].toString();
+            }
+          });
+        }
+      } catch (_) {}
+    });
   }
 
   void _showToast(String msg, {bool isSuccess = true}) {
@@ -511,13 +550,18 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
             onPressed: () async {
               Navigator.of(ctx).pop();
               final String bookingId = "DK-BK-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}";
+              final String phoneToUse = (_currentCustomerPhone != null && _currentCustomerPhone!.isNotEmpty)
+                  ? _currentCustomerPhone!
+                  : (WorkerSession.phone.isNotEmpty ? WorkerSession.phone : "+91 98765 43210");
+              final int visitingFee = (worker["visitingFeeInt"] as num?)?.toInt() ?? 199;
+
               final tracking = await LocationService.instance.createBookingTracking(
                 bookingId: bookingId,
                 customerName: widget.customerName.isNotEmpty ? widget.customerName : "ग्राहक",
-                customerPhone: "+91 99999 88888",
+                customerPhone: phoneToUse,
                 workerId: worker["workerId"] ?? worker["id"] ?? "W-101",
                 serviceName: worker["skill"] ?? "दैनिक कारीगर",
-                visitingFee: worker["visitingFeeInt"] ?? 199,
+                visitingFee: visitingFee,
               );
               if (!mounted) return;
               setState(() {
@@ -525,6 +569,15 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                 _hasActiveBooking = true;
                 _activeBookingStatus = "ON_THE_WAY";
                 _liveTrackingData = tracking;
+                _escrowLocked = visitingFee.toDouble();
+                if (tracking != null) {
+                  if (tracking["start_otp"] != null) {
+                    _startOtp = tracking["start_otp"].toString();
+                  }
+                  if (tracking["end_otp"] != null) {
+                    _completionOtp = tracking["end_otp"].toString();
+                  }
+                }
                 _activeWorker = {
                   "name": worker["name"],
                   "skill": worker["skill"],
@@ -536,6 +589,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                 };
                 _selectedTabIndex = 1; // Auto jump to My Bookings tab
               });
+              _startLiveTrackingPolling(bookingId);
               _showToast("बुकिंग सफल! ${worker["visitCharge"]} एस्क्रो सुरक्षित। लाइव ट्रैकिंग चालू हुई।", isSuccess: true);
               _openLiveTrackingSheet();
             },
@@ -832,6 +886,12 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                                     if (updated["status"] == "REACHED") {
                                       _activeBookingStatus = "WORKER_ARRIVED";
                                     }
+                                    if (updated["start_otp"] != null) {
+                                      _startOtp = updated["start_otp"].toString();
+                                    }
+                                    if (updated["end_otp"] != null) {
+                                      _completionOtp = updated["end_otp"].toString();
+                                    }
                                   });
                                   setSheetState(() {});
                                   _showToast(
@@ -891,16 +951,62 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(ctx).pop();
+              final refunded = _escrowLocked > 0 ? _escrowLocked : 199.0;
               setState(() {
+                _trackingPollTimer?.cancel();
                 _activeBookingStatus = "REFUNDED";
                 _hasActiveBooking = false;
-                _totalRefunded += _escrowLocked;
+                _totalRefunded += refunded;
                 _escrowLocked = 0.0;
               });
-              _showToast("100% रिफंड सफल! ₹350 तत्काल आपके खाते में वापस क्रेडिट कर दिए गए हैं।", isSuccess: true);
+              _showToast("100% रिफंड सफल! ₹${refunded.toInt()} तत्काल आपके खाते में वापस क्रेडिट कर दिए गए हैं।", isSuccess: true);
             },
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626), foregroundColor: Colors.white),
             child: const Text("हाँ, तुरंत रिफंड प्राप्त करें", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 4b. Customer Satisfied Work Completion Confirmation
+  void _confirmJobCompletionByCustomer() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: const [
+            Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 24),
+            SizedBox(width: 8),
+            Text("कार्य संपन्न व संतुष्टि", style: TextStyle(color: Colors.white, fontSize: 16)),
+          ],
+        ),
+        content: const Text(
+          "क्या आप पुष्टि करते हैं कि कारीगर ने काम संतोषजनक ढंग से पूरा कर दिया है?\n\nपुष्टि करने पर प्लेटफॉर्म एस्क्रो सुरक्षित राशि कारीगर के बैंक खाते में ट्रांसफर कर दी जाएगी।",
+          style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text("अभी नहीं", style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              final released = _escrowLocked > 0 ? _escrowLocked : 199.0;
+              setState(() {
+                _trackingPollTimer?.cancel();
+                _activeBookingStatus = "COMPLETED";
+                _hasActiveBooking = false;
+                _totalSpent += released;
+                _escrowLocked = 0.0;
+              });
+              _showToast("बधाई! कार्य सफलतापूर्वक संपन्न हुआ। ₹${released.toInt()} एस्क्रो से कारीगर को रिलीज़ हो गए।", isSuccess: true);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+            child: const Text("हाँ, कार्य पूरा हुआ", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -1830,6 +1936,24 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                   ),
                   const SizedBox(height: 14),
 
+                  // Customer Confirm Completion Action
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _confirmJobCompletionByCustomer,
+                      icon: const Icon(Icons.verified_rounded, size: 18),
+                      label: const Text("काम पूरा हुआ (कार्य संतुष्टि व एस्क्रो रिलीज़)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.emeraldGreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
                   // Emergency / No-Show Auto Refund Trigger
                   Center(
                     child: TextButton.icon(
@@ -1883,51 +2007,6 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                 const SizedBox(height: 8),
                 Text("अभी तक कोई पिछली बुकिंग नहीं है", style: TextStyle(color: theme.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPastCustomerJobCard(String worker, String title, String amount, String status) {
-    final theme = AppThemeController.instance;
-    final bool isRefund = status.contains("रिफंड");
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: theme.card,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: theme.border),
-        boxShadow: theme.cardShadow,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: TextStyle(color: theme.textPrimary, fontWeight: FontWeight.bold, fontSize: 13)),
-              const SizedBox(height: 3),
-              Text("कारीगर: $worker", style: TextStyle(color: theme.textSecondary, fontSize: 11)),
-              const SizedBox(height: 3),
-              Text(
-                status,
-                style: TextStyle(
-                  color: isRefund ? const Color(0xFFEF4444) : theme.emeraldGreen,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          Text(
-            amount,
-            style: TextStyle(
-              color: isRefund ? const Color(0xFFEF4444) : theme.textPrimary,
-              fontWeight: FontWeight.w900,
-              fontSize: 15,
             ),
           ),
         ],
