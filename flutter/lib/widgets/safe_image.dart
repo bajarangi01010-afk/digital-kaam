@@ -4,21 +4,25 @@ import 'package:flutter/material.dart';
 
 class SafeImage extends StatelessWidget {
   final File? file;
+  final Uint8List? bytes;
   final double? width;
   final double? height;
   final BoxFit fit;
+  final Widget? errorWidget;
 
   const SafeImage({
     super.key,
     this.file,
+    this.bytes,
     this.width,
     this.height,
     this.fit = BoxFit.cover,
+    this.errorWidget,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (file == null) {
+    if (file == null && bytes == null) {
       return Container(
         width: width,
         height: height,
@@ -44,12 +48,30 @@ class SafeImage extends StatelessWidget {
       ),
     );
 
-    Widget buildErrorContainer() => Container(
+    Widget buildErrorContainer() => errorWidget ?? Container(
       width: width,
       height: height,
       color: const Color(0xFF1E293B),
       child: const Icon(Icons.image_not_supported, color: Color(0xFF64748B)),
     );
+
+    if (bytes != null) {
+      return Image.memory(
+        bytes!,
+        width: width,
+        height: height,
+        fit: fit,
+        cacheWidth: targetCacheWidth,
+        cacheHeight: targetCacheHeight,
+        frameBuilder: (ctx, child, frame, wasSynchronouslyLoaded) {
+          if (wasSynchronouslyLoaded || frame != null) {
+            return child;
+          }
+          return buildPlaceholder();
+        },
+        errorBuilder: (ctx, err, stack) => buildErrorContainer(),
+      );
+    }
 
     if (kIsWeb) {
       return Image.network(

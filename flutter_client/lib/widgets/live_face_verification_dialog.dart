@@ -9,13 +9,17 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import '../services/api_service.dart';
 
 class LiveFaceVerificationDialog extends StatefulWidget {
+  final String? title;
   final File? uploadedProfilePhoto;
-  final Function(File snapshotFile, FaceVerificationResult result) onVerificationComplete;
+  final Function(File snapshotFile, FaceVerificationResult result)? onVerificationComplete;
+  final Function(File snapshotFile, Uint8List snapshotBytes)? onFaceVerified;
 
   const LiveFaceVerificationDialog({
     Key? key,
+    this.title,
     this.uploadedProfilePhoto,
-    required this.onVerificationComplete,
+    this.onVerificationComplete,
+    this.onFaceVerified,
   }) : super(key: key);
 
   @override
@@ -202,7 +206,13 @@ class _LiveFaceVerificationDialogState extends State<LiveFaceVerificationDialog>
       if (!mounted) return;
 
       if (result.isSuccess && result.match && result.faceDetected) {
-        widget.onVerificationComplete(snapshotFile, result);
+        if (widget.onVerificationComplete != null) {
+          widget.onVerificationComplete!(snapshotFile, result);
+        }
+        if (widget.onFaceVerified != null) {
+          final bytes = _lastSnapshotBytes ?? (kIsWeb ? Uint8List(0) : (snapshotFile.existsSync() ? snapshotFile.readAsBytesSync() : Uint8List(0)));
+          widget.onFaceVerified!(snapshotFile, bytes);
+        }
         Navigator.of(context).pop();
       } else {
         setState(() {
@@ -240,12 +250,12 @@ class _LiveFaceVerificationDialogState extends State<LiveFaceVerificationDialog>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
-                    children: const [
-                      Icon(Icons.face_retouching_natural, color: Color(0xFF4F46E5), size: 22),
-                      SizedBox(width: 8),
+                    children: [
+                      const Icon(Icons.face_retouching_natural, color: Color(0xFF4F46E5), size: 22),
+                      const SizedBox(width: 8),
                       Text(
-                        "लाइव फेस सत्यापन",
-                        style: TextStyle(
+                        widget.title ?? "लाइव फेस सत्यापन",
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF0F172A),
