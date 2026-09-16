@@ -337,9 +337,14 @@ async def lookup_phone_account(body: LookupPhonePayload):
 @app.post("/api/auth/send-registration-otp", tags=["auth"])
 async def send_registration_otp(body: SendOtpPayload):
     """Dispatches a real cellular OTP via Fast2SMS for worker/customer registration."""
-    msg = f"Digital Kaam: Aapka verification OTP {body.otp} hai. Use this to complete your registration."
-    res = sms_gateway.send_sms(phone=body.phone, message=msg)
-    # Check if user already has an existing account in the database
+    try:
+        import sms_gateway
+        msg = f"Digital Kaam: Aapka verification OTP {body.otp} hai. Use this to complete your registration."
+        res = sms_gateway.send_sms(phone=body.phone, message=msg, otp=body.otp)
+    except Exception as e:
+        res = {"status": "simulated", "otp": body.otp, "message": f"Simulated delivery: {e}"}
+    
+    res["otp"] = body.otp
     existing_user = database.find_user_by_phone(body.phone)
     res["account_exists"] = existing_user is not None
     res["user"] = existing_user
@@ -348,7 +353,11 @@ async def send_registration_otp(body: SendOtpPayload):
 @app.post("/api/notifications/send-sms", tags=["notifications"])
 async def send_cellular_sms(body: SendSmsPayload):
     """Dispatches SMS to Indian mobile numbers via Fast2SMS, Twilio or In-Memory fallback."""
-    res = sms_gateway.send_sms(phone=body.phone, message=body.message)
+    try:
+        import sms_gateway
+        res = sms_gateway.send_sms(phone=body.phone, message=body.message)
+    except Exception as e:
+        res = {"status": "error", "message": str(e)}
     return res
 
 

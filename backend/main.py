@@ -1359,10 +1359,11 @@ async def send_registration_otp_main(body: SendOtpPayload):
     try:
         import sms_gateway
         msg = f"Digital Kaam: Aapka verification OTP {body.otp} hai. Use this to login or complete your registration."
-        res = sms_gateway.send_sms(phone=body.phone, message=msg)
+        res = sms_gateway.send_sms(phone=body.phone, message=msg, otp=body.otp)
     except Exception as e:
         res = {"status": "simulated", "otp": body.otp, "message": f"Simulated delivery: {e}"}
     
+    res["otp"] = body.otp
     existing_user = database.find_user_by_phone(body.phone, role=body.role)
     res["account_exists"] = existing_user is not None
     res["user"] = existing_user

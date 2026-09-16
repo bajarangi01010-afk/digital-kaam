@@ -1,4 +1,4 @@
-﻿services:
+services:
   - type: web
     name: digital-kaam-backend
     env: python
@@ -10,7 +10,7 @@
       - key: PYTHON_VERSION
         value: 3.11.8
       - key: FAST2SMS_API_KEY
-        sync: false
+        value: PTkaR0ZryVAiHlQGgwEs3OXehFqY8Kvtc6bMmjxUC4nLJW59pIYCDa57GRkVXQiIJj1fmWl62cptuKgy
       - key: SMS_GATEWAY_PROVIDER
         value: fast2sms
       - key: SB_JWT_SECRET
