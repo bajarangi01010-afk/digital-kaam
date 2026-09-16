@@ -1222,18 +1222,36 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
           if (_currentStep > 0) ...[
             Expanded(
               flex: 1,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  setState(() => _currentStep--);
-                },
-                icon: const Icon(Icons.arrow_back_rounded, size: 16, color: Colors.white),
-                label: const Text("पिछला", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF64748B), width: 1.5),
-                  foregroundColor: Colors.white,
-                  backgroundColor: const Color(0xFF1E293B),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    setState(() => _currentStep--);
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E293B),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF475569), width: 1.2),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.arrow_back_rounded, size: 16, color: Colors.white),
+                        SizedBox(width: 6),
+                        Text(
+                          "पिछला",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -1242,54 +1260,82 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
           Expanded(
             flex: 2,
             child: _currentStep < 4
-                ? ElevatedButton.icon(
-                    onPressed: _isCurrentStepValid()
-                        ? () {
-                            setState(() => _currentStep++);
-                          }
-                        : null,
-                    icon: Icon(
-                      Icons.arrow_forward_rounded,
-                      size: 18,
-                      color: _isCurrentStepValid() ? Colors.white : const Color(0xFF94A3B8),
-                    ),
-                    label: Text(
-                      "आगे बढ़ें (Next)",
-                      style: TextStyle(
-                        color: _isCurrentStepValid() ? Colors.white : const Color(0xFF94A3B8),
-                        fontWeight: FontWeight.bold,
+                ? Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _isCurrentStepValid()
+                          ? () {
+                              setState(() => _currentStep++);
+                            }
+                          : null,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          color: _isCurrentStepValid() ? const Color(0xFF0284C7) : const Color(0xFF1E293B),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _isCurrentStepValid() ? const Color(0xFF38BDF8) : const Color(0xFF334155),
+                            width: 1.2,
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              "आगे बढ़ें (Next)",
+                              style: TextStyle(
+                                color: _isCurrentStepValid() ? Colors.white : const Color(0xFF64748B),
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 18,
+                              color: _isCurrentStepValid() ? Colors.white : const Color(0xFF64748B),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2563EB),
-                      disabledBackgroundColor: const Color(0xFF334155),
-                      foregroundColor: Colors.white,
-                      disabledForegroundColor: const Color(0xFF94A3B8),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   )
-                : ElevatedButton.icon(
-                    onPressed: _canProceed ? _showSuccessDialog : null,
-                    icon: Icon(
-                      Icons.check_circle_rounded,
-                      size: 18,
-                      color: _canProceed ? Colors.white : const Color(0xFF94A3B8),
-                    ),
-                    label: Text(
-                      "ग्राहक खाता सक्रिय करें",
-                      style: TextStyle(
-                        color: _canProceed ? Colors.white : const Color(0xFF94A3B8),
-                        fontWeight: FontWeight.bold,
+                : Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _canProceed ? _showSuccessDialog : null,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          color: _canProceed ? const Color(0xFF059669) : const Color(0xFF1E293B),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _canProceed ? const Color(0xFF34D399) : const Color(0xFF334155),
+                            width: 1.2,
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.check_circle_rounded,
+                              size: 18,
+                              color: _canProceed ? Colors.white : const Color(0xFF64748B),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "ग्राहक खाता सक्रिय करें",
+                              style: TextStyle(
+                                color: _canProceed ? Colors.white : const Color(0xFF64748B),
+                                fontWeight: FontWeight.w900,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      disabledBackgroundColor: const Color(0xFF334155),
-                      foregroundColor: Colors.white,
-                      disabledForegroundColor: const Color(0xFF94A3B8),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
           ),

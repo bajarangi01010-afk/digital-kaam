@@ -1247,17 +1247,36 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
           if (_currentStep > 0) ...[
             Expanded(
               flex: 1,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  setState(() => _currentStep--);
-                },
-                icon: const Icon(Icons.arrow_back_rounded, size: 16, color: Colors.white),
-                label: const Text("पिछला", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Color(0xFF475569)),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    setState(() => _currentStep--);
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E293B),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF475569), width: 1.2),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.arrow_back_rounded, size: 16, color: Colors.white),
+                        SizedBox(width: 6),
+                        Text(
+                          "पिछला",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -1266,62 +1285,96 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
           Expanded(
             flex: 2,
             child: _currentStep < 4
-                ? ElevatedButton.icon(
-                    onPressed: _isCurrentStepValid()
-                        ? () {
-                            setState(() => _currentStep++);
-                          }
-                        : null,
-                    icon: Icon(
-                      Icons.arrow_forward_rounded,
-                      size: 18,
-                      color: _isCurrentStepValid() ? Colors.white : const Color(0xFF94A3B8),
-                    ),
-                    label: Text(
-                      "आगे बढ़ें (Next)",
-                      style: TextStyle(
-                        color: _isCurrentStepValid() ? Colors.white : const Color(0xFF94A3B8),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                ? Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _isCurrentStepValid()
+                          ? () {
+                              setState(() => _currentStep++);
+                            }
+                          : null,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          color: _isCurrentStepValid() ? const Color(0xFF0284C7) : const Color(0xFF1E293B),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _isCurrentStepValid() ? const Color(0xFF38BDF8) : const Color(0xFF334155),
+                            width: 1.2,
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              "आगे बढ़ें (Next)",
+                              style: TextStyle(
+                                color: _isCurrentStepValid() ? Colors.white : const Color(0xFF64748B),
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 18,
+                              color: _isCurrentStepValid() ? Colors.white : const Color(0xFF64748B),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2563EB),
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: const Color(0xFF334155),
-                      disabledForegroundColor: const Color(0xFF94A3B8),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
                   )
-                : ElevatedButton.icon(
-                    onPressed: _canProceed
-                        ? () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (ctx) => WorkerSkillSetupScreen(
-                                  workerName: _nameController.text.trim(),
-                                  phone: _phoneController.text.trim(),
-                                  address: _addressController.text.trim(),
-                                  profilePhoto: _profilePhoto,
-                                  profilePhotoBytes: WorkerSession.profilePhotoBytes,
+                : Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _canProceed
+                          ? () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (ctx) => WorkerSkillSetupScreen(
+                                    workerName: _nameController.text.trim(),
+                                    phone: _phoneController.text.trim(),
+                                    address: _addressController.text.trim(),
+                                    profilePhoto: _profilePhoto,
+                                    profilePhotoBytes: WorkerSession.profilePhotoBytes,
+                                  ),
                                 ),
+                              );
+                            }
+                          : null,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          color: _canProceed ? const Color(0xFF059669) : const Color(0xFF1E293B),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _canProceed ? const Color(0xFF34D399) : const Color(0xFF334155),
+                            width: 1.2,
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.check_circle_rounded,
+                              size: 18,
+                              color: _canProceed ? Colors.white : const Color(0xFF64748B),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "कौशल चयन पर आगे बढ़ें",
+                              style: TextStyle(
+                                color: _canProceed ? Colors.white : const Color(0xFF64748B),
+                                fontWeight: FontWeight.w900,
+                                fontSize: 14,
                               ),
-                            );
-                          }
-                        : null,
-                    icon: const Icon(Icons.check_circle_rounded, size: 18, color: Colors.white),
-                    label: const Text(
-                      "कौशल चयन पर आगे बढ़ें",
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: const Color(0xFF334155),
-                      disabledForegroundColor: const Color(0xFF94A3B8),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
           ),
