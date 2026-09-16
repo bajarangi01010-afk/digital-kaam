@@ -1,10 +1,12 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:s2geometry/s2geometry.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 's2_helper_stub.dart'
+    if (dart.library.io) 's2_helper_native.dart';
+import 'gps_windows_helper_stub.dart'
+    if (dart.library.io) 'gps_windows_helper_native.dart';
 
 class GpsLocationResult {
   final String formattedAddress;
@@ -49,13 +51,7 @@ class GpsLocationService {
 
   /// Computes Google S2 Geometry cell token for given coordinates
   String computeS2Token(double lat, double lng, {int level = 14}) {
-    try {
-      final latLng = S2LatLng.fromDegrees(lat, lng);
-      final cellId = S2CellId.fromLatLng(latLng).parentAtLevel(level);
-      return cellId.toToken();
-    } catch (_) {
-      return "s2_${lat.toStringAsFixed(3)}_${lng.toStringAsFixed(3)}";
-    }
+    return calculateS2CellToken(lat, lng, level: level);
   }
 
   /// Obtains the highest accuracy real-time device location, calculates S2 cell,
@@ -94,36 +90,11 @@ class GpsLocationService {
     // 2. Second attempt: On Windows Desktop, query native Windows GeoCoordinateWatcher
     if ((lat == null || lng == null) && !kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
       try {
-        const psCommand = "Add-Type -AssemblyName System.Device; "
-            "\$w = New-Object System.Device.Location.GeoCoordinateWatcher(1); "
-            "\$w.TryStart(\$false, [TimeSpan]::FromSeconds(2)); "
-            "Start-Sleep -Milliseconds 1200; "
-            "\$p = \$w.Position.Location; "
-            "if (-not \$p.IsUnknown) { Write-Output ('' + \$p.Latitude + ',' + \$p.Longitude) }";
-
-        final result = await Process.run(
-          'powershell',
-          ['-NoProfile', '-Command', psCommand],
-        );
-
-        if (result.exitCode == 0 && result.stdout != null) {
-          final out = result.stdout.toString().trim();
-          final lines = out.split(RegExp(r'[\r\n]+'));
-          for (final line in lines) {
-            if (line.contains(',')) {
-              final parts = line.trim().split(',');
-              if (parts.length >= 2) {
-                final pLat = double.tryParse(parts[0].trim());
-                final pLng = double.tryParse(parts[1].trim());
-                if (pLat != null && pLng != null && (pLat != 0 || pLng != 0)) {
-                  lat = pLat;
-                  lng = pLng;
-                  isExact = true;
-                  break;
-                }
-              }
-            }
-          }
+        final coords = await getWindowsGpsCoordinates();
+        if (coords != null) {
+          lat = coords['lat'];
+          lng = coords['lng'];
+          isExact = true;
         }
       } catch (_) {}
     }

@@ -1,0 +1,8 @@
+name = "digital-kaam-edge"
+main = "worker.js"
+compatibility_date = "2024-09-01"
+workers_dev = true
+
+# 24x7 Keep-Alive Cron Warmer Trigger (runs every 10 minutes)
+[triggers]
+crons = ["*/10 * * * *"]
