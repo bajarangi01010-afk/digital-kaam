@@ -194,12 +194,11 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // Verify OTP against sent OTP or standard offline verification fallbacks
-    final validCodes = [_sentOtpCode, "4826", "1234", "0000", "9999", "1111", "3190"];
-    final isOtpValid = validCodes.contains(enteredOtp);
+    // Verify OTP strictly against sent OTP
+    final isOtpValid = (_sentOtpCode != null && enteredOtp == _sentOtpCode);
 
     if (!isOtpValid) {
-      setState(() => _errorMessage = "गलत OTP दर्ज किया गया है। कृपया पुनः प्रयास करें।");
+      setState(() => _errorMessage = "गलत OTP दर्ज किया गया है। कृपया अपने SMS में आया सही कोड दर्ज करें।");
       return;
     }
 
@@ -264,21 +263,21 @@ class _LoginScreenState extends State<LoginScreen> {
               : (finalRole == "WORKER" ? "कुशल कारीगर" : "सत्यापित ग्राहक"));
       final finalAddress = (userData?["address"] as String?)?.isNotEmpty == true
           ? userData!["address"] as String
-          : (isLocalMatch ? WorkerSession.address : "सेक्टर 18, ब्लॉक B, नोएडा");
+          : (isLocalMatch ? WorkerSession.address : "");
       final finalPrice = (userData?["visiting_fee"] as num?)?.toInt() ??
           (isLocalMatch ? WorkerSession.customVisitPrice : (finalRole == "WORKER" ? 350 : 0));
       final finalRating = (userData?["rating"] as num?)?.toDouble() ??
-          (isLocalMatch ? WorkerSession.rating : 4.9);
+          (isLocalMatch ? WorkerSession.rating : 5.0);
       final finalJobs = (userData?["completed_jobs"] as num?)?.toInt() ??
           (userData?["total_jobs"] as num?)?.toInt() ??
-          (isLocalMatch ? WorkerSession.completedJobs : 14);
+          (isLocalMatch ? WorkerSession.completedJobs : 0);
       final finalWorkerId = (userData?["worker_id"] as String?) ??
           (userData?["id"] as String?) ??
           (isLocalMatch && WorkerSession.workerId.isNotEmpty
               ? WorkerSession.workerId
               : "DK-${phone.substring(phone.length >= 4 ? phone.length - 4 : 0)}");
       final finalS2Token = (userData?["s2_token"] as String?) ??
-          (isLocalMatch && WorkerSession.s2Token.isNotEmpty ? WorkerSession.s2Token : "390ce2b4");
+          (isLocalMatch && WorkerSession.s2Token.isNotEmpty ? WorkerSession.s2Token : "");
 
       // 4. Restore Profile Photo (Live Profile Photo)
       Uint8List? restoredBytes;
@@ -766,24 +765,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF10B981), width: 1.5)),
                     focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF10B981), width: 2)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: InkWell(
-                    onTap: () {
-                      setState(() {
-                        _otpController.text = _sentOtpCode ?? "4826";
-                      });
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-                      child: Text(
-                        isHi ? "⚡ कोड स्वतः भरें (${_sentOtpCode ?? '4826'})" : "⚡ Auto-fill code (${_sentOtpCode ?? '4826'})",
-                        style: const TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold),
-                      ),
-                    ),
                   ),
                 ),
               ],

@@ -1193,15 +1193,15 @@ class LogoutRequest(BaseModel):
     role: Optional[str] = "WORKER"
     name: Optional[str] = "annu kumar"
     customerName: Optional[str] = None
-    phone: Optional[str] = "+91 98765 43210"
+    phone: Optional[str] = ""
     customerPhone: Optional[str] = None
-    skill: Optional[str] = "प्लंबर (Plumber)"
+    skill: Optional[str] = "कारीगर"
     primarySkill: Optional[str] = None
-    address: Optional[str] = "shivpur , sikariyan , darigaon road sasaram"
+    address: Optional[str] = ""
     customerAddress: Optional[str] = None
     visiting_fee: Optional[int] = 350
-    rating: Optional[float] = 4.9
-    total_jobs: Optional[int] = 14
+    rating: Optional[float] = 5.0
+    total_jobs: Optional[int] = 0
     photo_url: Optional[str] = ""
     aadhaar_status: Optional[str] = "✓ 100% आधार व फेस सत्यापित"
     s2_token: Optional[str] = "390ce2b4"
@@ -1414,15 +1414,15 @@ async def public_worker_qr_profile(worker_id: str):
         # Fallback default verified worker data
         w = {
             "worker_id": worker_id,
-            "name": "annu kumar (अन्नू कुमार)",
-            "skill": "प्लंबर (Plumber)",
-            "phone": "+91 98765 43210",
-            "address": "shivpur , sikariyan , darigaon road sasaram (बिहार)",
+            "name": "कारीगर",
+            "skill": "कुशल कारीगर",
+            "phone": "",
+            "address": "",
             "visiting_fee": 350,
-            "rating": 4.9,
-            "total_jobs": 14,
-            "s2_token": "390ce2b4",
-            "photo_url": "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150",
+            "rating": 5.0,
+            "total_jobs": 0,
+            "s2_token": "",
+            "photo_url": "",
             "is_verified": 1,
             "is_available": 1,
         }
@@ -1499,7 +1499,7 @@ async def public_worker_qr_profile(worker_id: str):
 
             <div class="detail-row">
                 <span>📍</span>
-                <span><strong>सत्यापित पता:</strong> {w.get('address') or 'shivpur , sikariyan , darigaon road sasaram'}</span>
+                <span><strong>सत्यापित पता:</strong> {w.get('address') or 'पता उपलब्ध नहीं'}</span>
             </div>
 
             <div class="detail-row">

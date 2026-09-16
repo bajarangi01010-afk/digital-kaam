@@ -115,7 +115,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
     String originalPhone = phoneCtrl.text.trim();
     bool isSendingOtp = false;
     bool isOtpSent = false;
-    String sentOtpCode = "4826";
+    String sentOtpCode = "";
 
     bool isDetectingLocation = false;
     String s2Cell = WorkerSession.s2Token;
@@ -287,13 +287,13 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                                           setModalState(() => isSendingOtp = true);
                                           final dynamicCode = (1000 + (DateTime.now().millisecondsSinceEpoch % 9000)).toString();
                                           sentOtpCode = dynamicCode;
-                                          otpCtrl.text = dynamicCode;
+                                          otpCtrl.clear();
                                           await Future.delayed(const Duration(milliseconds: 600));
                                           setModalState(() {
                                             isSendingOtp = false;
                                             isOtpSent = true;
                                           });
-                                          _showToast("OTP भेजा गया! (सुरक्षा कोड: $dynamicCode)", isSuccess: true);
+                                          _showToast("OTP भेजा गया! कृपया 4-अंकीय कोड दर्ज करें", isSuccess: true);
                                         },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF0284C7),
@@ -341,14 +341,14 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                                 const SizedBox(width: 8),
                                 ElevatedButton(
                                   onPressed: () {
-                                    if (otpCtrl.text.trim() == sentOtpCode || otpCtrl.text.trim().length == 4) {
+                                    if (otpCtrl.text.trim().isNotEmpty && otpCtrl.text.trim() == sentOtpCode) {
                                       setModalState(() {
                                         isPhoneVerified = true;
                                         originalPhone = phoneCtrl.text.trim();
                                       });
                                       _showToast("मोबाइल नंबर सफलतापूर्वक OTP सत्यापित हो गया!", isSuccess: true);
                                     } else {
-                                      _showToast("अमान्य OTP! कृपया सही कोड दर्ज करें", isSuccess: false);
+                                      _showToast("अमान्य OTP! कृपया SMS में आया सही कोड दर्ज करें", isSuccess: false);
                                     }
                                   },
                                   style: ElevatedButton.styleFrom(

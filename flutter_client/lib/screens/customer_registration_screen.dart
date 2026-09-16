@@ -28,7 +28,7 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
-  String _sentOtpCode = "3190";
+  String? _sentOtpCode;
 
   final ImagePicker _picker = ImagePicker();
 
@@ -82,8 +82,8 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
     super.initState();
     _nameController.addListener(_onNameChanged);
     _phoneController.addListener(_onPhoneChanged);
-    _addressController.text = "shivpur , sikariyan , darigaon road sasaram (GPS Live)";
-    _isLocationDetected = true;
+    _addressController.text = "";
+    _isLocationDetected = false;
   }
 
   void _onNameChanged() {
@@ -151,7 +151,6 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
 
       final isSimulated = res["status"] == "simulated";
       if (isSimulated) {
-        _otpController.text = randomOtp;
         _showSnackbar("OTP भेजा गया (परीक्षण कोड: $randomOtp)", isError: false);
       } else {
         _showSnackbar("✓ मोबाइल नंबर ($phone) पर SMS OTP भेज दिया गया है", isError: false);
@@ -162,21 +161,19 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
         _isSendingOtp = false;
         _isOtpSent = true;
       });
-      _otpController.text = randomOtp;
-      _showSnackbar("OTP भेजा गया (कोड: $randomOtp)", isError: false);
+      _showSnackbar("SMS भेजा गया! कृपया अपने फोन की जांच करें (कोड: $randomOtp)", isError: false);
     }
   }
 
   void _verifyMobileOtp() {
     final entered = _otpController.text.trim();
-    final validCodes = [_sentOtpCode, "4826", "1234", "0000", "9999", "1111", "3190"];
-    if (entered.isNotEmpty && validCodes.contains(entered)) {
+    if (entered.isNotEmpty && _sentOtpCode != null && entered == _sentOtpCode) {
       setState(() {
         _isPhoneVerified = true;
       });
       _showSnackbar("✓ मोबाइल नंबर सफलतापूर्वक OTP सत्यापित हो गया!", isError: false);
     } else {
-      _showSnackbar("अवैध OTP! कृपया SMS में प्राप्त सही कोड या टेस्ट कोड 4826 दर्ज करें", isError: true);
+      _showSnackbar("अवैध OTP! कृपया SMS में प्राप्त सही 4-अंकीय कोड दर्ज करें", isError: true);
     }
   }
 
@@ -718,38 +715,6 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       child: const Text("सत्यापित करें", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    const Icon(Icons.bolt_rounded, size: 14, color: Color(0xFFFBBF24)),
-                    const Text(
-                      "SMS आने में विलंब? कोड स्वतः भरें:",
-                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
-                    ),
-                    InkWell(
-                      onTap: () {
-                        setState(() {
-                          _otpController.text = _sentOtpCode;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E293B),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.6)),
-                        ),
-                        child: Text(
-                          "⚡ $_sentOtpCode भरें",
-                          style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11, fontWeight: FontWeight.bold),
-                        ),
-                      ),
                     ),
                   ],
                 ),

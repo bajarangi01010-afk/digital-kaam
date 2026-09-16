@@ -135,6 +135,18 @@ class ApiService {
     );
   }
 
+  /// Safe helper to convert any dynamic response map into Map<String, dynamic>
+  static Map<String, dynamic> _toMap(dynamic data) {
+    if (data == null) return {};
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) {
+      return Map<String, dynamic>.from(
+        data.map((key, value) => MapEntry(key.toString(), value)),
+      );
+    }
+    return {};
+  }
+
   /// Helper to convert File to MultipartFile safely across Mobile, Desktop, and Web
   Future<MultipartFile> _fileToMultipart(
     File file,
@@ -194,11 +206,11 @@ class ApiService {
         data: formData,
       );
 
-      if (response.statusCode == 200 && response.data != null) {
-        return FaceVerificationResult.fromJson(response.data as Map<String, dynamic>);
-      } else {
-        return FaceVerificationResult.fromJson(response.data as Map<String, dynamic>);
+      final respMap = _toMap(response.data);
+      if (respMap.isNotEmpty) {
+        return FaceVerificationResult.fromJson(respMap);
       }
+      return FaceVerificationResult.error('सर्वर से रिक्त उत्तर प्राप्त हुआ।');
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
         // Fallback for legacy servers that only support verify-face
@@ -211,12 +223,22 @@ class ApiService {
         );
       }
 
-      if (e.response != null && e.response?.data is Map<String, dynamic>) {
-        return FaceVerificationResult.fromJson(e.response!.data as Map<String, dynamic>);
+      if (e.response?.data != null) {
+        final errMap = _toMap(e.response!.data);
+        if (errMap.isNotEmpty) {
+          return FaceVerificationResult.fromJson(errMap);
+        }
+      }
+
+      final statusCode = e.response?.statusCode;
+      if (statusCode == 502 || statusCode == 503) {
+        return FaceVerificationResult.error(
+          'सर्वर वर्तमान में लोड हो रहा है (कोड: $statusCode)। कृपया 5-10 सेकंड प्रतीक्षा करके पुनः प्रयास करें।',
+        );
       }
 
       return FaceVerificationResult.error(
-        'चेहरा सत्यापन सर्वर से संपर्क नहीं हो सका। कृपया जांचें कि Python बैकएंड चालू है।',
+        'चेहरा सत्यापन सर्वर से संपर्क नहीं हो सका (${e.message ?? "नेटवर्क त्रुटि"})। कृपया इंटरनेट कनेक्शन जांचें।',
       );
     } catch (e) {
       return FaceVerificationResult.error('चेहरा सत्यापन त्रुटि: $e');
@@ -251,25 +273,35 @@ class ApiService {
         data: formData,
       );
 
-      if (response.statusCode == 200 && response.data != null) {
-        return FaceVerificationResult.fromJson(response.data as Map<String, dynamic>);
-      } else {
-        return FaceVerificationResult.fromJson(response.data as Map<String, dynamic>);
+      final respMap = _toMap(response.data);
+      if (respMap.isNotEmpty) {
+        return FaceVerificationResult.fromJson(respMap);
       }
+      return FaceVerificationResult.error('सर्वर से रिक्त उत्तर प्राप्त हुआ।');
     } on DioException catch (e) {
-      if (e.response != null && e.response?.data is Map<String, dynamic>) {
-        return FaceVerificationResult.fromJson(e.response!.data as Map<String, dynamic>);
+      if (e.response?.data != null) {
+        final errMap = _toMap(e.response!.data);
+        if (errMap.isNotEmpty) {
+          return FaceVerificationResult.fromJson(errMap);
+        }
+      }
+
+      final statusCode = e.response?.statusCode;
+      if (statusCode == 502 || statusCode == 503) {
+        return FaceVerificationResult.error(
+          'सर्वर वर्तमान में लोड हो रहा है (कोड: $statusCode)। कृपया 5-10 सेकंड प्रतीक्षा करके पुनः प्रयास करें।',
+        );
       }
 
       return FaceVerificationResult.error(
-        'चेहरा सत्यापन सर्वर से संपर्क नहीं हो सका। कृपया जांचें कि Python बैकएंड चालू है।',
+        'चेहरा सत्यापन सर्वर से संपर्क नहीं हो सका (${e.message ?? "नेटवर्क त्रुटि"})। कृपया इंटरनेट कनेक्शन जांचें।',
       );
     } catch (e) {
       return FaceVerificationResult.error('चेहरा सत्यापन त्रुटि: $e');
     }
   }
 
-  /// Sends Aadhaar card image and user name to OCR verification API (threshold >= 85%)
+  /// Sends Aadhaar card image and user name to OCR verification API (threshold >= 60%)
   Future<AadhaarOcrResult> verifyAadhaar({
     required File aadharImage,
     required String userName,
@@ -290,18 +322,28 @@ class ApiService {
         data: formData,
       );
 
-      if (response.statusCode == 200 && response.data != null) {
-        return AadhaarOcrResult.fromJson(response.data as Map<String, dynamic>, userName);
-      } else {
-        return AadhaarOcrResult.fromJson(response.data as Map<String, dynamic>, userName);
+      final respMap = _toMap(response.data);
+      if (respMap.isNotEmpty) {
+        return AadhaarOcrResult.fromJson(respMap, userName);
       }
+      return AadhaarOcrResult.error('सर्वर से रिक्त उत्तर प्राप्त हुआ।');
     } on DioException catch (e) {
-      if (e.response != null && e.response?.data is Map<String, dynamic>) {
-        return AadhaarOcrResult.fromJson(e.response!.data as Map<String, dynamic>, userName);
+      if (e.response?.data != null) {
+        final errMap = _toMap(e.response!.data);
+        if (errMap.isNotEmpty) {
+          return AadhaarOcrResult.fromJson(errMap, userName);
+        }
+      }
+
+      final statusCode = e.response?.statusCode;
+      if (statusCode == 502 || statusCode == 503) {
+        return AadhaarOcrResult.error(
+          'सर्वर वर्तमान में लोड हो रहा है (कोड: $statusCode)। कृपया 5-10 सेकंड बाद पुनः प्रयास करें।',
+        );
       }
 
       return AadhaarOcrResult.error(
-        'आधार कार्ड सत्यापन सर्वर से संपर्क नहीं हो सका। कृपया पुनः प्रयास करें।',
+        'आधार कार्ड सत्यापन सर्वर से संपर्क नहीं हो सका (${e.message ?? "नेटवर्क त्रुटि"})। कृपया पुनः प्रयास करें।',
       );
     } catch (e) {
       return AadhaarOcrResult.error('आधार कार्ड सत्यापन त्रुटि: $e');

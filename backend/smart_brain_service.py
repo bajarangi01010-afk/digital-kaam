@@ -212,7 +212,17 @@ async def apply_to_job(job_id: str, body: JobApplyPayload):
 
     worker = next((w for w in SYSTEM_WORKERS if w["worker_id"] == body.worker_id), None)
     if not worker:
-        worker = SYSTEM_WORKERS[0]
+        if SYSTEM_WORKERS:
+            worker = SYSTEM_WORKERS[0]
+        else:
+            worker = {
+                "worker_id": body.worker_id,
+                "name": body.worker_id,
+                "kaam_id": body.worker_id,
+                "avatar": "",
+                "trade": "कारीगर",
+                "rating": 5.0,
+            }
 
     bid = {
         "workerId": worker["worker_id"],
