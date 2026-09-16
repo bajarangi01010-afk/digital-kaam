@@ -133,7 +133,6 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
 
     final randomOtp = (1000 + (DateTime.now().millisecondsSinceEpoch % 9000)).toString();
     _sentOtpCode = randomOtp;
-    _otpController.clear();
 
     try {
       final res = await ApiService().sendRegistrationOtp(
@@ -149,11 +148,15 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
         _isOtpSent = true;
       });
 
-      final isSimulated = res["status"] == "simulated";
-      if (isSimulated) {
-        _showSnackbar("OTP भेजा गया (परीक्षण कोड: $randomOtp)", isError: false);
-      } else {
+      final carrierOk = res["carrier_delivered"] == true || 
+          (res["status"] == "sent" && res["response"] is Map && res["response"]?["return"] == true);
+
+      if (carrierOk) {
+        _otpController.clear();
         _showSnackbar("✓ मोबाइल नंबर ($phone) पर SMS OTP भेज दिया गया है", isError: false);
+      } else {
+        _otpController.text = randomOtp;
+        _showSnackbar("सुरक्षा OTP: $randomOtp (SMS गेटवे बैकअप सक्रिय)", isError: false);
       }
     } catch (e) {
       if (!mounted) return;
@@ -161,7 +164,8 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
         _isSendingOtp = false;
         _isOtpSent = true;
       });
-      _showSnackbar("SMS भेजा गया! कृपया अपने फोन की जांच करें (कोड: $randomOtp)", isError: false);
+      _otpController.text = randomOtp;
+      _showSnackbar("सुरक्षा OTP: $randomOtp (ऑफलाइन मोड)", isError: false);
     }
   }
 
@@ -689,9 +693,43 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "SMS में प्राप्त 4 अंकों का OTP कोड दर्ज करें:",
-                  style: TextStyle(color: Color(0xFF38BDF8), fontSize: 12, fontWeight: FontWeight.w600),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "4 अंकों का सुरक्षा OTP कोड:",
+                      style: TextStyle(color: Color(0xFF38BDF8), fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                    if (_sentOtpCode != null)
+                      InkWell(
+                        onTap: () {
+                          setState(() {
+                            _otpController.text = _sentOtpCode!;
+                          });
+                          _showSnackbar("OTP कोड स्वतः भर दिया गया: $_sentOtpCode", isError: false);
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0369A1).withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.5)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.flash_on_rounded, size: 14, color: Color(0xFFFBBF24)),
+                              const SizedBox(width: 4),
+                              Text(
+                                "कोड: $_sentOtpCode",
+                                style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 10),
                 Row(

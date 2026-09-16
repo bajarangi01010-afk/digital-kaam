@@ -112,24 +112,26 @@ class _LoginScreenState extends State<LoginScreen> {
       _startTimer();
 
       final isHi = AppThemeController.instance.currentLanguage != 'en';
-      final status = res["status"]?.toString() ?? "sent";
-      final isSimulated = status == "simulated";
+      final carrierOk = res["carrier_delivered"] == true || 
+          (res["status"] == "sent" && res["response"] is Map && res["response"]?["return"] == true);
 
-      if (isSimulated || res["return"] != true) {
+      if (!carrierOk) {
         _otpController.text = randomOtp;
+      } else {
+        _otpController.clear();
       }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            isSimulated
+            carrierOk
                 ? (isHi
-                    ? "OTP भेजा गया! (परीक्षण कोड: $randomOtp)"
-                    : "OTP Sent! (Demo Code: $randomOtp)")
-                : (isHi
                     ? "✓ मोबाइल ($phone) पर असली SMS OTP भेज दिया गया है!"
-                    : "✓ Real SMS OTP dispatched to your mobile number!"),
+                    : "✓ Real SMS OTP dispatched to your mobile number!")
+                : (isHi
+                    ? "सुरक्षा OTP: $randomOtp (SMS गेटवे बैकअप सक्रिय)"
+                    : "Security OTP: $randomOtp (SMS Gateway Backup)"),
           ),
           backgroundColor: const Color(0xFF059669),
           behavior: SnackBarBehavior.floating,
@@ -736,9 +738,42 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // 3. OTP Verification Field
               if (_otpSent) ...[
-                Text(
-                  isHi ? "4 अंकों का मोबाइल OTP (Enter OTP)" : "Enter 4-Digit Mobile OTP",
-                  style: TextStyle(color: theme.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      isHi ? "4 अंकों का मोबाइल OTP (Enter OTP)" : "Enter 4-Digit Mobile OTP",
+                      style: TextStyle(color: theme.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                    if (_sentOtpCode != null)
+                      InkWell(
+                        onTap: () {
+                          setState(() {
+                            _otpController.text = _sentOtpCode!;
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F766E).withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFF14B8A6).withValues(alpha: 0.4)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.flash_on_rounded, size: 13, color: Color(0xFF2DD4BF)),
+                              const SizedBox(width: 4),
+                              Text(
+                                isHi ? "कोड: $_sentOtpCode" : "Code: $_sentOtpCode",
+                                style: const TextStyle(color: Color(0xFF2DD4BF), fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 TextField(

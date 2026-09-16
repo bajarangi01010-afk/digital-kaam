@@ -81,13 +81,21 @@ class SmsGateway:
         if self.provider == "FAST2SMS":
             try:
                 url = "https://www.fast2sms.com/dev/bulkV2"
-                payload = {
-                    "route": "q",
-                    "message": message,
-                    "language": "english",
-                    "flash": 0,
-                    "numbers": clean_phone,
-                }
+                # Use dedicated OTP route if 4 or 6 digit numeric code is provided
+                if otp and otp.isdigit() and len(otp) in (4, 6):
+                    payload = {
+                        "route": "otp",
+                        "variables_values": otp,
+                        "numbers": clean_phone,
+                    }
+                else:
+                    payload = {
+                        "route": "q",
+                        "message": message,
+                        "language": "english",
+                        "flash": 0,
+                        "numbers": clean_phone,
+                    }
                 data = json.dumps(payload).encode("utf-8")
                 req = urllib.request.Request(
                     url,
@@ -99,13 +107,28 @@ class SmsGateway:
                 )
                 with urllib.request.urlopen(req, timeout=8) as resp:
                     res_body = json.loads(resp.read().decode("utf-8"))
-                    return {
-                        "status": "sent",
-                        "provider": "Fast2SMS",
-                        "phone": clean_phone,
-                        "otp": otp,
-                        "response": res_body
-                    }
+                    is_success = bool(res_body.get("return") is True or res_body.get("status_code") == 200)
+                    if is_success:
+                        return {
+                            "status": "sent",
+                            "carrier_delivered": True,
+                            "provider": "Fast2SMS",
+                            "phone": clean_phone,
+                            "otp": otp,
+                            "response": res_body
+                        }
+                    else:
+                        logger.warning("Fast2SMS carrier rejected: %s", res_body)
+                        return {
+                            "status": "carrier_failed",
+                            "carrier_delivered": False,
+                            "provider": "Fast2SMS",
+                            "phone": clean_phone,
+                            "otp": otp,
+                            "reason": res_body.get("message", "Insufficient wallet balance or carrier rejection"),
+                            "response": res_body,
+                            "tip": "Fast2SMS wallet balance exhausted. In-app fallback OTP activated."
+                        }
             except urllib.error.HTTPError as he:
                 try:
                     err_json = json.loads(he.read().decode("utf-8"))
@@ -113,16 +136,25 @@ class SmsGateway:
                     err_json = {"error": str(he)}
                 logger.error("Fast2SMS API rejected request: %s", err_json)
                 return {
-                    "status": "failed",
+                    "status": "carrier_failed",
+                    "carrier_delivered": False,
                     "provider": "Fast2SMS",
                     "phone": clean_phone,
                     "otp": otp,
                     "api_error": err_json,
-                    "tip": "Fast2SMS Quick SMS API requires a 1-time recharge in Fast2SMS wallet to activate carrier dispatch."
+                    "reason": err_json.get("message", str(he)),
+                    "tip": "Fast2SMS requires a wallet recharge for carrier SMS dispatch."
                 }
             except Exception as e:
                 logger.error("Fast2SMS delivery failed: %s", e)
-                return {"status": "error", "reason": str(e), "otp": otp}
+                return {
+                    "status": "carrier_failed",
+                    "carrier_delivered": False,
+                    "provider": "Fast2SMS",
+                    "phone": clean_phone,
+                    "otp": otp,
+                    "reason": str(e)
+                }
 
         # 2. Twilio Provider
         elif self.provider == "TWILIO":
@@ -145,8 +177,10 @@ class SmsGateway:
                 )
                 with urllib.request.urlopen(req, timeout=8) as resp:
                     res_body = json.loads(resp.read().decode("utf-8"))
+                    is_sent = res_body.get("sid") is not None
                     return {
-                        "status": "sent",
+                        "status": "sent" if is_sent else "carrier_failed",
+                        "carrier_delivered": is_sent,
                         "provider": "Twilio",
                         "phone": clean_phone,
                         "otp": otp,
@@ -154,16 +188,25 @@ class SmsGateway:
                     }
             except Exception as e:
                 logger.error("Twilio SMS delivery failed: %s", e)
+                return {
+                    "status": "carrier_failed",
+                    "carrier_delivered": False,
+                    "provider": "Twilio",
+                    "phone": clean_phone,
+                    "otp": otp,
+                    "reason": str(e)
+                }
 
         # 3. In-Memory Sandbox Mode (Safe Fallback)
         logger.info("[SMS GATEWAY MOCK DISPATCH] To: +91 %s | Message: %s | OTP: %s", clean_phone, message, otp)
         return {
             "status": "simulated",
+            "carrier_delivered": False,
             "provider": "In-Memory Console Gateway",
             "phone": clean_phone,
             "otp": otp,
             "message": message,
-            "note": "Set FAST2SMS_API_KEY in Render environment for real cellular SMS transmission."
+            "note": "Set FAST2SMS_API_KEY with wallet balance for real cellular SMS transmission."
         }
 
     def send_booking_otp_sms(

@@ -1519,6 +1519,8 @@ async def lookup_phone_account_main(body: LookupPhonePayload):
         "user": user,
     }
 
+_ACTIVE_AUTH_OTPS: Dict[str, Dict[str, Any]] = {}
+
 @app.post("/api/auth/send-registration-otp")
 async def send_registration_otp_main(body: SendOtpPayload):
     """Dispatches a real cellular OTP via Fast2SMS for worker/customer registration and login."""
@@ -1533,18 +1535,50 @@ async def send_registration_otp_main(body: SendOtpPayload):
                 "user": None,
             }
 
+    clean_p = "".join(c for c in body.phone if c.isdigit())
+    if len(clean_p) == 12 and clean_p.startswith("91"):
+        clean_p = clean_p[2:]
+
     try:
         import sms_gateway
         msg = f"Digital Kaam: Aapka verification OTP {body.otp} hai. Use this to login or complete your registration."
-        res = sms_gateway.send_sms(phone=body.phone, message=msg, otp=body.otp)
+        res = sms_gateway.send_sms(phone=clean_p, message=msg, otp=body.otp)
     except Exception as e:
-        res = {"status": "simulated", "otp": body.otp, "message": f"Simulated delivery: {e}"}
+        res = {"status": "carrier_failed", "carrier_delivered": False, "otp": body.otp, "message": f"Delivery error: {e}"}
     
+    carrier_ok = bool(
+        res.get("carrier_delivered") is True or 
+        (res.get("status") == "sent" and isinstance(res.get("response"), dict) and res.get("response", {}).get("return") is True)
+    )
+
+    res["carrier_delivered"] = carrier_ok
+    res["status"] = "sent" if carrier_ok else "fallback"
     res["otp"] = body.otp
+    _ACTIVE_AUTH_OTPS[clean_p] = {"otp": body.otp, "time": time.time()}
+
     existing_user = database.find_user_by_phone(body.phone, role=body.role)
     res["account_exists"] = existing_user is not None
     res["user"] = existing_user
+    if not carrier_ok:
+        res["helper_code"] = body.otp
+        res["message"] = f"सुरक्षा कोड (OTP): {body.otp}"
+
     return res
+
+class VerifyOtpBody(BaseModel):
+    phone: str
+    otp: str
+    purpose: str = "registration"
+
+@app.post("/api/auth/verify-otp")
+async def verify_auth_otp(body: VerifyOtpBody):
+    clean_p = "".join(c for c in body.phone if c.isdigit())
+    if len(clean_p) == 12 and clean_p.startswith("91"):
+        clean_p = clean_p[2:]
+    cached = _ACTIVE_AUTH_OTPS.get(clean_p)
+    if cached and cached.get("otp") == body.otp.strip():
+        return {"status": "verified", "is_valid": True, "message": "OTP सफलतापूर्वक सत्यापित हो गया!"}
+    return {"status": "failed", "is_valid": False, "message": "अमान्य OTP कोड। कृपया पुनः प्रयास करें।"}
 
 
 @app.get("/w/{worker_id}", response_class=HTMLResponse)
