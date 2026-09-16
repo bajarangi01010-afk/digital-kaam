@@ -388,4 +388,46 @@ class ApiService {
       return {"status": "error", "message": e.toString()};
     }
   }
+
+  /// Authenticates a pre-registered worker or customer and fetches their complete profile & photo
+  Future<Map<String, dynamic>> loginUser({
+    required String phone,
+    required String name,
+    required String role,
+  }) async {
+    try {
+      final response = await _dio.post(
+        ApiConfig.loginUrl,
+        data: {
+          "phone": phone,
+          "name": name,
+          "role": role,
+        },
+      );
+      if (response.data is Map<String, dynamic>) {
+        return response.data as Map<String, dynamic>;
+      }
+      return {"status": "error", "message": "अमान्य सर्वर प्रतिक्रिया"};
+    } catch (e) {
+      return {"status": "error", "message": e.toString()};
+    }
+  }
+
+  /// Checks if a mobile number is already registered in the platform database
+  Future<Map<String, dynamic>> lookupPhone(String phone) async {
+    try {
+      final response = await _dio.post(
+        ApiConfig.lookupPhoneUrl,
+        data: {
+          "phone": phone,
+        },
+      );
+      if (response.data is Map<String, dynamic>) {
+        return response.data as Map<String, dynamic>;
+      }
+      return {"status": "error", "exists": false};
+    } catch (e) {
+      return {"status": "error", "exists": false, "message": e.toString()};
+    }
+  }
 }

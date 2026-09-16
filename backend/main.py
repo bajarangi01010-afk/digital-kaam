@@ -1292,6 +1292,83 @@ async def update_user_profile_api(data: UpdateProfileRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ══════════════════════════════════════════════════════════════
+#  USER AUTHENTICATION & PRE-REGISTERED LOGIN ENDPOINTS
+# ══════════════════════════════════════════════════════════════
+
+class LoginRequest(BaseModel):
+    phone: str
+    name: Optional[str] = None
+    role: Optional[str] = "WORKER"
+
+class LookupPhonePayload(BaseModel):
+    phone: str
+
+class SendOtpPayload(BaseModel):
+    phone: str
+    otp: str
+    role: Optional[str] = "user"
+
+@app.post("/api/user/login")
+@app.post("/api/auth/login")
+async def user_login(data: LoginRequest):
+    """
+    Direct login endpoint for pre-registered workers and customers.
+    Validates phone and role, returns complete profile data including live profile photo, ratings, etc.
+    """
+    try:
+        user = database.find_user_by_phone(data.phone, role=data.role)
+        if not user:
+            return {
+                "status": "error",
+                "exists": False,
+                "message": f"यह मोबाइल नंबर ({data.phone}) पंजीकृत नहीं है। कृपया नया रजिस्ट्रेशन करें।",
+            }
+        
+        # If user entered a name and db has placeholder, use entered name
+        if data.name and data.name.strip():
+            user_name = user.get("name") or ""
+            if not user_name or "Unknown" in user_name or "User" in user_name:
+                user["name"] = data.name.strip()
+
+        logger.info(f"User logged in successfully: {user.get('name')} ({data.phone}) as {user.get('role')}")
+        return {
+            "status": "success",
+            "exists": True,
+            "message": f"सत्यापित {user.get('role', data.role)} खाता प्राप्त हुआ!",
+            "user": user,
+        }
+    except Exception as e:
+        logger.exception("Error in user_login")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/auth/lookup-phone")
+async def lookup_phone_account_main(body: LookupPhonePayload):
+    """Checks if a mobile phone number belongs to an existing verified user."""
+    user = database.find_user_by_phone(body.phone)
+    return {
+        "status": "success",
+        "exists": user is not None,
+        "account_exists": user is not None,
+        "user": user,
+    }
+
+@app.post("/api/auth/send-registration-otp")
+async def send_registration_otp_main(body: SendOtpPayload):
+    """Dispatches a real cellular OTP via Fast2SMS for worker/customer registration and login."""
+    try:
+        import sms_gateway
+        msg = f"Digital Kaam: Aapka verification OTP {body.otp} hai. Use this to login or complete your registration."
+        res = sms_gateway.send_sms(phone=body.phone, message=msg)
+    except Exception as e:
+        res = {"status": "simulated", "otp": body.otp, "message": f"Simulated delivery: {e}"}
+    
+    existing_user = database.find_user_by_phone(body.phone, role=body.role)
+    res["account_exists"] = existing_user is not None
+    res["user"] = existing_user
+    return res
+
+
 @app.get("/w/{worker_id}", response_class=HTMLResponse)
 @app.get("/profile/worker/{worker_id}", response_class=HTMLResponse)
 async def public_worker_qr_profile(worker_id: str):

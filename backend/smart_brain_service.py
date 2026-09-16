@@ -293,6 +293,33 @@ class SendOtpPayload(BaseModel):
     otp: str = Field(..., min_length=4, max_length=8)
     role: Optional[str] = "user"
 
+class LoginPayload(BaseModel):
+    phone: str
+    name: Optional[str] = None
+    role: Optional[str] = "WORKER"
+
+@app.post("/api/user/login", tags=["auth"])
+@app.post("/api/auth/login", tags=["auth"])
+async def user_login_service(body: LoginPayload):
+    """Direct login endpoint for pre-registered workers and customers."""
+    user = database.find_user_by_phone(body.phone, role=body.role)
+    if not user:
+        return {
+            "status": "error",
+            "exists": False,
+            "message": f"यह मोबाइल नंबर ({body.phone}) पंजीकृत नहीं है। कृपया नया रजिस्ट्रेशन करें।",
+        }
+    if body.name and body.name.strip():
+        user_name = user.get("name") or ""
+        if not user_name or "Unknown" in user_name or "User" in user_name:
+            user["name"] = body.name.strip()
+    return {
+        "status": "success",
+        "exists": True,
+        "message": f"सत्यापित {user.get('role', body.role)} खाता प्राप्त हुआ!",
+        "user": user,
+    }
+
 class LookupPhonePayload(BaseModel):
     phone: str
 

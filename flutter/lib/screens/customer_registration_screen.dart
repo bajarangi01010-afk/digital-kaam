@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -509,6 +510,10 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
               final cPhone = _phoneController.text.trim();
               final cAddress = _addressController.text.trim();
 
+              final photoB64 = _profilePhotoBytes != null
+                  ? "data:image/jpeg;base64,${base64Encode(_profilePhotoBytes!)}"
+                  : "";
+
               WorkerSession.update(
                 newRole: "CUSTOMER",
                 newIsLoggedIn: true,
@@ -517,9 +522,23 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
                 newAddress: cAddress,
                 newPhoto: _profilePhoto,
                 newBytes: _profilePhotoBytes,
+                newPhotoUrl: photoB64,
                 newSkill: "सत्यापित ग्राहक (Customer)",
               );
               await WorkerSession.saveToDisk(userRole: "CUSTOMER");
+
+              // Sync to backend SQLite database so customer is saved for login
+              try {
+                await ApiService.instance.updateProfile({
+                  "user_id": "cust-${cPhone.replaceAll(RegExp(r'[^0-9]'), '')}",
+                  "role": "CUSTOMER",
+                  "name": cName,
+                  "phone": cPhone,
+                  "address": cAddress,
+                  "skill": "सत्यापित ग्राहक (Customer)",
+                  "photo_url": photoB64,
+                });
+              } catch (_) {}
 
               if (!mounted) return;
               Navigator.of(context).pushAndRemoveUntil(

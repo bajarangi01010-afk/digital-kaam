@@ -3,6 +3,7 @@ import 'worker_registration_screen.dart';
 import 'customer_registration_screen.dart';
 import 'worker_dashboard_screen.dart';
 import 'customer_dashboard_screen.dart';
+import 'login_screen.dart';
 import '../models/worker_session.dart';
 import '../controllers/app_theme_controller.dart';
 
@@ -93,6 +94,42 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
                               ),
                               Row(
                                 children: [
+                                  // Quick Login Button
+                                  InkWell(
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => const LoginScreen(),
+                                        ),
+                                      ).then((_) {
+                                        if (mounted) setState(() {});
+                                      });
+                                    },
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                                      margin: const EdgeInsets.only(right: 8),
+                                      decoration: BoxDecoration(
+                                        color: theme.brandBlue.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(color: theme.brandBlue.withValues(alpha: 0.3)),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.login_rounded, color: theme.brandBlue, size: 14),
+                                          const SizedBox(width: 5),
+                                          Text(
+                                            isHindi ? 'लॉगिन' : 'Login',
+                                            style: TextStyle(
+                                              color: theme.brandBlue,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                                   // Quick Language Toggle (Cycles: hi -> hinglish -> en -> hi)
                                   InkWell(
                                     onTap: () {
@@ -525,6 +562,71 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
                                     ),
                                   ),
                                   Icon(Icons.arrow_forward_ios_rounded, color: theme.textMuted, size: 18),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          // Dedicated Pre-Registered Login Action Card
+                          InkWell(
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const LoginScreen(),
+                                ),
+                              ).then((_) {
+                                if (mounted) setState(() {});
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(18),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                              decoration: BoxDecoration(
+                                color: theme.cardSub,
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(color: theme.brandBlue.withValues(alpha: 0.4), width: 1.2),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: theme.brandBlue.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Icon(Icons.login_rounded, color: theme.brandBlue, size: 22),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          isHindi ? 'पहले से रजिस्टर्ड हैं? यहाँ लॉगिन करें' : 'Already Registered? Login Here',
+                                          style: TextStyle(
+                                            color: theme.textPrimary,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          isHindi
+                                              ? 'आधार नाम व OTP से प्रोफाइल व फोटो पुनः पाएं'
+                                              : 'Restore full profile & live photo with OTP',
+                                          style: TextStyle(
+                                            color: theme.textSecondary,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Icon(Icons.arrow_forward_rounded, color: theme.brandBlue, size: 18),
                                 ],
                               ),
                             ),

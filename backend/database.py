@@ -133,6 +133,22 @@ def init_db():
     )
     """)
 
+    # 6. Registered Customers Table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS customers (
+        customer_id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        address TEXT DEFAULT '',
+        photo_url TEXT DEFAULT '',
+        aadhaar_status TEXT DEFAULT '✓ 100% आधार व फेस सत्यापित',
+        rating REAL DEFAULT 5.0,
+        completed_jobs INTEGER DEFAULT 0,
+        s2_token TEXT DEFAULT '390ce2b4',
+        created_at REAL
+    )
+    """)
+
     # Safe migrations for existing SQLite database
     for col, col_def in [
         ("direct_booking_enabled", "INTEGER DEFAULT 1"),
@@ -486,11 +502,60 @@ def get_all_logged_out_accounts() -> List[Dict[str, Any]]:
     return [dict(r) for r in rows]
 
 def upsert_user_profile(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Updates or inserts worker profile information in the SQLite database."""
+    """Updates or inserts worker or customer profile information in the SQLite database."""
     conn = get_db_connection()
-    worker_id = data.get("worker_id") or data.get("user_id") or "DK-VERIFIED-9842"
-    
-    row = conn.execute("SELECT * FROM workers WHERE worker_id = ?", (worker_id,)).fetchone()
+    role = (data.get("role") or "WORKER").upper()
+    user_id = data.get("worker_id") or data.get("user_id") or data.get("customerId") or "DK-USER-01"
+
+    if "CUSTOMER" in role:
+        phone = data.get("phone") or data.get("customerPhone") or ""
+        clean_digits = "".join(c for c in phone if c.isdigit())
+        clean_10 = clean_digits[-10:] if len(clean_digits) >= 10 else clean_digits
+
+        row = None
+        if clean_10:
+            row = conn.execute(
+                "SELECT * FROM customers WHERE customer_id = ? OR phone LIKE ?",
+                (user_id, f"%{clean_10}%")
+            ).fetchone()
+        else:
+            row = conn.execute("SELECT * FROM customers WHERE customer_id = ?", (user_id,)).fetchone()
+
+        if row:
+            cid = row["customer_id"]
+            conn.execute("""
+            UPDATE customers SET
+                name = COALESCE(?, name),
+                phone = COALESCE(?, phone),
+                address = COALESCE(?, address),
+                photo_url = COALESCE(?, photo_url)
+            WHERE customer_id = ?
+            """, (
+                data.get("name") or data.get("customerName"),
+                phone,
+                data.get("address") or data.get("customerAddress"),
+                data.get("photo_url"),
+                cid
+            ))
+        else:
+            cid = user_id if user_id and user_id != "DK-USER-01" else f"cust-{clean_10 if clean_10 else int(time.time())}"
+            conn.execute("""
+            INSERT INTO customers (
+                customer_id, name, phone, address, photo_url, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                cid,
+                data.get("name") or data.get("customerName") or "सत्यापित ग्राहक",
+                phone,
+                data.get("address") or data.get("customerAddress") or "",
+                data.get("photo_url") or "",
+                time.time()
+            ))
+        conn.commit()
+        conn.close()
+        return {"status": "success", "user_id": cid, "role": "CUSTOMER"}
+
+    row = conn.execute("SELECT * FROM workers WHERE worker_id = ?", (user_id,)).fetchone()
     if row:
         conn.execute("""
         UPDATE workers SET
@@ -510,7 +575,7 @@ def upsert_user_profile(data: Dict[str, Any]) -> Dict[str, Any]:
             data.get("visiting_fee"),
             data.get("s2_token"),
             data.get("photo_url"),
-            worker_id
+            user_id
         ))
     else:
         conn.execute("""
@@ -519,7 +584,7 @@ def upsert_user_profile(data: Dict[str, Any]) -> Dict[str, Any]:
             photo_url, is_verified, is_available, s2_token, created_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ?)
         """, (
-            worker_id,
+            user_id,
             data.get("name", "Unknown Worker"),
             data.get("skill", "कुशल कारीगर"),
             data.get("phone", ""),
@@ -533,7 +598,7 @@ def upsert_user_profile(data: Dict[str, Any]) -> Dict[str, Any]:
         ))
     conn.commit()
     conn.close()
-    return {"status": "success", "worker_id": worker_id}
+    return {"status": "success", "worker_id": user_id}
 
 
 def delete_worker(worker_id: str) -> bool:
@@ -560,10 +625,11 @@ def delete_logged_out_account(account_id: str) -> bool:
     return count > 0
 
 
-def find_user_by_phone(phone: str) -> Optional[Dict[str, Any]]:
+def find_user_by_phone(phone: str, role: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """
     Lightweight, zero-overhead user lookup by 10-digit Indian phone number.
-    Checks workers table, logged_out_accounts table, and posted_jobs table.
+    Checks workers table, customers table, logged_out_accounts table, and posted_jobs table.
+    Supports optional role filtering ('WORKER' or 'CUSTOMER').
     """
     clean_digits = "".join(c for c in phone if c.isdigit())
     if len(clean_digits) >= 10:
@@ -574,87 +640,128 @@ def find_user_by_phone(phone: str) -> Optional[Dict[str, Any]]:
     if not clean_phone_10 or len(clean_phone_10) < 10:
         return None
 
+    target_role = role.upper() if role else None
     conn = get_db_connection()
     try:
-        # 1. Search in workers table
-        row = conn.execute(
-            "SELECT * FROM workers WHERE phone LIKE ? OR phone LIKE ? ORDER BY created_at DESC LIMIT 1",
-            (f"%{clean_phone_10}%", f"%{clean_phone_10}")
-        ).fetchone()
+        def _search_workers():
+            row = conn.execute(
+                "SELECT * FROM workers WHERE phone LIKE ? OR phone LIKE ? ORDER BY created_at DESC LIMIT 1",
+                (f"%{clean_phone_10}%", f"%{clean_phone_10}")
+            ).fetchone()
+            if row:
+                w = dict(row)
+                return {
+                    "role": "WORKER",
+                    "id": w.get("worker_id"),
+                    "worker_id": w.get("worker_id"),
+                    "user_id": w.get("worker_id"),
+                    "name": w.get("name"),
+                    "skill": w.get("skill"),
+                    "phone": w.get("phone"),
+                    "address": w.get("address") or "सेक्टर 18, ब्लॉक B, नोएडा",
+                    "visiting_fee": w.get("visiting_fee", 350),
+                    "rating": w.get("rating", 4.9),
+                    "completed_jobs": w.get("total_jobs", 14),
+                    "avatar": w.get("photo_url") or "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=160&auto=format&fit=crop&q=80",
+                    "photo_url": w.get("photo_url") or "",
+                    "s2_token": w.get("s2_token", "390ce2b4"),
+                    "is_verified": bool(w.get("is_verified", 1)),
+                }
+            return None
 
-        if row:
-            w = dict(row)
-            return {
-                "role": "WORKER",
-                "id": w.get("worker_id"),
-                "worker_id": w.get("worker_id"),
-                "user_id": w.get("worker_id"),
-                "name": w.get("name"),
-                "skill": w.get("skill"),
-                "phone": w.get("phone"),
-                "address": w.get("address") or "सेक्टर 18, ब्लॉक B, नोएडा",
-                "visiting_fee": w.get("visiting_fee", 350),
-                "rating": w.get("rating", 4.9),
-                "completed_jobs": w.get("total_jobs", 14),
-                "avatar": w.get("photo_url") or "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=160&auto=format&fit=crop&q=80",
-                "photo_url": w.get("photo_url") or "",
-                "s2_token": w.get("s2_token", "390ce2b4"),
-                "is_verified": bool(w.get("is_verified", 1)),
-            }
+        def _search_customers():
+            row = conn.execute(
+                "SELECT * FROM customers WHERE phone LIKE ? OR phone LIKE ? ORDER BY created_at DESC LIMIT 1",
+                (f"%{clean_phone_10}%", f"%{clean_phone_10}")
+            ).fetchone()
+            if row:
+                c = dict(row)
+                return {
+                    "role": "CUSTOMER",
+                    "id": c.get("customer_id"),
+                    "worker_id": c.get("customer_id"),
+                    "user_id": c.get("customer_id"),
+                    "name": c.get("name") or "सत्यापित ग्राहक",
+                    "skill": "सत्यापित ग्राहक (Customer)",
+                    "phone": c.get("phone"),
+                    "address": c.get("address") or "",
+                    "visiting_fee": 0,
+                    "rating": c.get("rating", 5.0),
+                    "completed_jobs": c.get("completed_jobs", 0),
+                    "avatar": c.get("photo_url") or "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&auto=format&fit=crop&q=80",
+                    "photo_url": c.get("photo_url") or "",
+                    "s2_token": c.get("s2_token", "390ce2b4"),
+                    "is_verified": True,
+                }
+            return None
 
-        # 2. Search in logged_out_accounts table (customers and workers)
-        row2 = conn.execute(
-            "SELECT * FROM logged_out_accounts WHERE phone LIKE ? OR phone LIKE ? ORDER BY created_at DESC LIMIT 1",
-            (f"%{clean_phone_10}%", f"%{clean_phone_10}")
-        ).fetchone()
+        def _search_logged_out(filter_role=None):
+            if filter_role:
+                row = conn.execute(
+                    "SELECT * FROM logged_out_accounts WHERE (phone LIKE ? OR phone LIKE ?) AND role = ? ORDER BY created_at DESC LIMIT 1",
+                    (f"%{clean_phone_10}%", f"%{clean_phone_10}", filter_role)
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT * FROM logged_out_accounts WHERE phone LIKE ? OR phone LIKE ? ORDER BY created_at DESC LIMIT 1",
+                    (f"%{clean_phone_10}%", f"%{clean_phone_10}")
+                ).fetchone()
 
-        if row2:
-            a = dict(row2)
-            role = a.get("role", "CUSTOMER")
-            return {
-                "role": role,
-                "id": a.get("user_id"),
-                "worker_id": a.get("user_id"),
-                "user_id": a.get("user_id"),
-                "name": a.get("name"),
-                "skill": a.get("skill"),
-                "phone": a.get("phone"),
-                "address": a.get("address") or "",
-                "visiting_fee": a.get("visiting_fee", 0),
-                "rating": a.get("rating", 5.0),
-                "completed_jobs": a.get("total_jobs", 4),
-                "avatar": a.get("photo_url") or "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&auto=format&fit=crop&q=80",
-                "photo_url": a.get("photo_url") or "",
-                "s2_token": a.get("s2_token", "390ce2b4"),
-                "is_verified": True,
-            }
+            if row:
+                a = dict(row)
+                a_role = a.get("role", "CUSTOMER")
+                return {
+                    "role": a_role,
+                    "id": a.get("user_id"),
+                    "worker_id": a.get("user_id"),
+                    "user_id": a.get("user_id"),
+                    "name": a.get("name"),
+                    "skill": a.get("skill"),
+                    "phone": a.get("phone"),
+                    "address": a.get("address") or "",
+                    "visiting_fee": a.get("visiting_fee", 350 if a_role == "WORKER" else 0),
+                    "rating": a.get("rating", 4.9 if a_role == "WORKER" else 5.0),
+                    "completed_jobs": a.get("total_jobs", 14 if a_role == "WORKER" else 4),
+                    "avatar": a.get("photo_url") or "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&auto=format&fit=crop&q=80",
+                    "photo_url": a.get("photo_url") or "",
+                    "s2_token": a.get("s2_token", "390ce2b4"),
+                    "is_verified": True,
+                }
+            return None
 
-        # 3. Search in posted_jobs for customer phone
-        row3 = conn.execute(
-            "SELECT * FROM posted_jobs WHERE customer_phone LIKE ? ORDER BY created_at DESC LIMIT 1",
-            (f"%{clean_phone_10}%",)
-        ).fetchone()
+        def _search_posted_jobs():
+            row = conn.execute(
+                "SELECT * FROM posted_jobs WHERE customer_phone LIKE ? ORDER BY created_at DESC LIMIT 1",
+                (f"%{clean_phone_10}%",)
+            ).fetchone()
+            if row:
+                j = dict(row)
+                return {
+                    "role": "CUSTOMER",
+                    "id": f"cust-{clean_phone_10}",
+                    "user_id": f"cust-{clean_phone_10}",
+                    "name": j.get("customer_name") or "सत्यापित ग्राहक",
+                    "skill": "सत्यापित ग्राहक (Customer)",
+                    "phone": j.get("customer_phone") or clean_phone_10,
+                    "address": j.get("customer_address") or "",
+                    "visiting_fee": 0,
+                    "rating": 5.0,
+                    "completed_jobs": 2,
+                    "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&auto=format&fit=crop&q=80",
+                    "photo_url": "",
+                    "s2_token": "390ce2b4",
+                    "is_verified": True,
+                }
+            return None
 
-        if row3:
-            j = dict(row3)
-            return {
-                "role": "CUSTOMER",
-                "id": f"cust-{clean_phone_10}",
-                "user_id": f"cust-{clean_phone_10}",
-                "name": j.get("customer_name") or "सत्यापित ग्राहक",
-                "skill": "सत्यापित ग्राहक (Customer)",
-                "phone": j.get("customer_phone") or clean_phone_10,
-                "address": j.get("customer_address") or "",
-                "visiting_fee": 0,
-                "rating": 5.0,
-                "completed_jobs": 2,
-                "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&auto=format&fit=crop&q=80",
-                "photo_url": "",
-                "s2_token": "390ce2b4",
-                "is_verified": True,
-            }
+        # Prioritize based on requested role
+        if target_role == "CUSTOMER":
+            return _search_customers() or _search_logged_out("CUSTOMER") or _search_posted_jobs() or _search_logged_out()
+        elif target_role == "WORKER":
+            return _search_workers() or _search_logged_out("WORKER") or _search_logged_out()
+        else:
+            return _search_workers() or _search_customers() or _search_logged_out() or _search_posted_jobs()
 
-        return None
     except Exception:
         return None
     finally:

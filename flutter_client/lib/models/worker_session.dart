@@ -24,6 +24,7 @@ class WorkerSession {
   static double lat = 28.6139;
   static double lng = 77.2090;
   static String s2Token = "";
+  static String photoUrl = "";
 
   static void update({
     String? newRole,
@@ -41,6 +42,9 @@ class WorkerSession {
     String? newS2Token,
     String? newAadhaarStatus,
     String? newWorkerId,
+    String? newPhotoUrl,
+    double? newRating,
+    int? newCompletedJobs,
   }) {
     if (newRole != null && newRole.isNotEmpty) role = newRole;
     if (newIsLoggedIn != null) isLoggedIn = newIsLoggedIn;
@@ -57,6 +61,9 @@ class WorkerSession {
     if (newS2Token != null && newS2Token.isNotEmpty) s2Token = newS2Token;
     if (newAadhaarStatus != null && newAadhaarStatus.isNotEmpty) aadhaarStatus = newAadhaarStatus;
     if (newWorkerId != null && newWorkerId.isNotEmpty) workerId = newWorkerId;
+    if (newPhotoUrl != null) photoUrl = newPhotoUrl;
+    if (newRating != null) rating = newRating;
+    if (newCompletedJobs != null) completedJobs = newCompletedJobs;
   }
 
   static void setSessionData({
@@ -135,6 +142,7 @@ class WorkerSession {
         "s2Token": s2Token,
         "photoPath": profilePhoto?.path,
         "photoBase64": photoBase64,
+        "photoUrl": photoUrl,
         "savedAt": DateTime.now().toIso8601String(),
       };
 
@@ -177,6 +185,7 @@ class WorkerSession {
         lat = (data["lat"] as num?)?.toDouble() ?? lat;
         lng = (data["lng"] as num?)?.toDouble() ?? lng;
         s2Token = data["s2Token"] ?? s2Token;
+        photoUrl = data["photoUrl"] ?? photoUrl;
 
         // Restore photo from path or base64
         final path = data["photoPath"] as String?;
@@ -190,6 +199,13 @@ class WorkerSession {
         if (profilePhotoBytes == null && data["photoBase64"] != null) {
           try {
             profilePhotoBytes = base64Decode(data["photoBase64"]);
+          } catch (_) {}
+        }
+        if (profilePhotoBytes == null && photoUrl.isNotEmpty && photoUrl.startsWith("data:image")) {
+          try {
+            final comma = photoUrl.indexOf(",");
+            final rawB64 = comma != -1 ? photoUrl.substring(comma + 1) : photoUrl;
+            profilePhotoBytes = base64Decode(rawB64);
           } catch (_) {}
         }
 
@@ -214,6 +230,7 @@ class WorkerSession {
       address = "";
       profilePhoto = null;
       profilePhotoBytes = null;
+      photoUrl = "";
       workerId = "";
       aadhaarStatus = "सत्यापन लंबित";
       rating = 5.0;
@@ -249,6 +266,7 @@ class WorkerSession {
       "s2_token": s2Token,
       "lat": lat,
       "lng": lng,
+      "photo_url": photoUrl,
     };
   }
 }

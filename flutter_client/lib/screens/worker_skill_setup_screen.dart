@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'dart:typed_data';
 import '../models/worker_session.dart';
 import '../services/location_service.dart';
@@ -160,11 +161,17 @@ class _WorkerSkillSetupScreenState extends State<WorkerSkillSetupScreen> {
                 newAddress: widget.address,
                 newPhoto: widget.profilePhoto,
                 newBytes: widget.profilePhotoBytes,
+                newPhotoUrl: widget.profilePhotoBytes != null
+                    ? "data:image/jpeg;base64,${base64Encode(widget.profilePhotoBytes!)}"
+                    : "",
               );
               await WorkerSession.saveToDisk(userRole: "WORKER");
 
               // Publish to backend real-time S2 radar & feed database
               try {
+                final photoB64 = widget.profilePhotoBytes != null
+                    ? "data:image/jpeg;base64,${base64Encode(widget.profilePhotoBytes!)}"
+                    : "";
                 await LocationService.instance.registerWorkerProfile(
                   workerId: wid,
                   name: widget.workerName,
@@ -172,7 +179,7 @@ class _WorkerSkillSetupScreenState extends State<WorkerSkillSetupScreen> {
                   phone: widget.phone,
                   address: widget.address,
                   visitingFee: WorkerSession.customVisitPrice,
-                  photoUrl: "",
+                  photoUrl: photoB64,
                 );
               } catch (_) {}
 

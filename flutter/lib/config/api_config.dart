@@ -38,6 +38,8 @@ class ApiConfig {
   static String get logoutUrl => "$baseUrl/api/user/logout";
   static String get updateProfileUrl => "$baseUrl/api/user/update-profile";
   static String get sendOtpUrl => "$baseUrl/api/auth/send-registration-otp";
+  static String get loginUrl => "$baseUrl/api/user/login";
+  static String get lookupPhoneUrl => "$baseUrl/api/auth/lookup-phone";
 
   /// Local network LAN IP for scannable QR Code that any phone can open
   static String get lanHost => "10.72.72.227";
