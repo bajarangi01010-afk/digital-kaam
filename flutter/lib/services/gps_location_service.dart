@@ -64,27 +64,44 @@ class GpsLocationService {
     // 1. First attempt: Cross-platform Geolocator hardware GPS
     try {
       final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (serviceEnabled) {
-        LocationPermission permission = await Geolocator.checkPermission();
+      if (!serviceEnabled) {
+        debugPrint("Location services are disabled on the device.");
+      }
 
-        if (permission == LocationPermission.denied) {
-          permission = await Geolocator.requestPermission();
-        }
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
 
-        if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
+      if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
+        // (A) Check fused last known position first for instantaneous hardware coordinates
+        try {
+          final Position? lastPos = await Geolocator.getLastKnownPosition();
+          if (lastPos != null) {
+            lat = lastPos.latitude;
+            lng = lastPos.longitude;
+            isExact = true;
+          }
+        } catch (_) {}
+
+        // (B) Query fresh hardware GPS position with high accuracy and 15s lock window
+        try {
           final Position pos = await Geolocator.getCurrentPosition(
             locationSettings: const LocationSettings(
-              accuracy: LocationAccuracy.high,
-              timeLimit: Duration(seconds: 5),
+              accuracy: LocationAccuracy.best,
+              timeLimit: Duration(seconds: 15),
             ),
           );
           lat = pos.latitude;
           lng = pos.longitude;
           isExact = true;
+        } catch (e) {
+          debugPrint("getCurrentPosition hardware lock notice: $e");
+          // If pos timed out but lastPos was retrieved, lat/lng remains valid
         }
       }
-    } catch (_) {
-      // Graceful fallback to Windows native watcher or IP
+    } catch (e) {
+      debugPrint("Geolocator permission/service error: $e");
     }
 
     // 2. Second attempt: On Windows Desktop, query native Windows GeoCoordinateWatcher
@@ -99,21 +116,8 @@ class GpsLocationService {
       } catch (_) {}
     }
 
-    // 3. Third attempt: Network / IP-based coordinates if GPS hardware unavailable
-    if (lat == null || lng == null) {
-      try {
-        final ipRes = await _dio.get('http://ip-api.com/json/');
-        if (ipRes.statusCode == 200 && ipRes.data != null) {
-          final data = ipRes.data is Map ? ipRes.data : jsonDecode(ipRes.data.toString());
-          if (data['lat'] != null && data['lon'] != null) {
-            lat = (data['lat'] as num).toDouble();
-            lng = (data['lon'] as num).toDouble();
-          }
-        }
-      } catch (_) {}
-    }
-
-    // Default fallback to Sasaram (Rohtas, Bihar) center coordinates if offline
+    // 3. Fallback to Sasaram center coordinates if device GPS hardware is completely off
+    // We intentionally DO NOT query cellular IP gateways (which route via Patna ISP hubs)
     lat ??= 24.9510;
     lng ??= 84.0149;
 
@@ -141,10 +145,10 @@ class GpsLocationService {
         final data = reverseRes.data is Map ? reverseRes.data : jsonDecode(reverseRes.data.toString());
         final addr = data['address'] as Map<String, dynamic>? ?? {};
 
-        // Extract precise components
+        // Extract precise components without hardcoding Patna
         final road = addr['road'] ?? addr['suburb'] ?? addr['neighbourhood'] ?? addr['residential'] ?? '';
         final landmark = addr['amenity'] ?? addr['building'] ?? addr['office'] ?? '';
-        city = addr['city'] ?? addr['town'] ?? addr['city_district'] ?? addr['county'] ?? 'पटना';
+        city = addr['city'] ?? addr['town'] ?? addr['village'] ?? addr['city_district'] ?? addr['county'] ?? addr['state_district'] ?? '';
         state = addr['state'] ?? 'बिहार';
         postal = addr['postcode'] ?? '';
 
@@ -178,7 +182,7 @@ class GpsLocationService {
         );
         if (bdcRes.statusCode == 200 && bdcRes.data != null) {
           final data = bdcRes.data is Map ? bdcRes.data : jsonDecode(bdcRes.data.toString());
-          final locality = data['locality'] ?? data['city'] ?? 'पटना';
+          final locality = data['locality'] ?? data['city'] ?? data['principalSubdivisionText'] ?? '';
           final principalSub = data['principalSubdivision'] ?? 'बिहार';
           postal = data['postcode'] ?? '';
           formattedAddress = postal.isNotEmpty

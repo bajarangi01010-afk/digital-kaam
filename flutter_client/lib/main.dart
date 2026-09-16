@@ -43,8 +43,24 @@ class DigitalKaamApp extends StatelessWidget {
             ),
             colorScheme: const ColorScheme.light(
               primary: Color(0xFF0284C7),
+              onPrimary: Colors.white,
               secondary: Color(0xFF059669),
               surface: Colors.white,
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: const Color(0xFF0284C7),
+                disabledForegroundColor: const Color(0xFF94A3B8),
+                disabledBackgroundColor: const Color(0xFFCBD5E1),
+                textStyle: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            outlinedButtonTheme: OutlinedButtonThemeData(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF0F172A),
+                textStyle: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
             textTheme: GoogleFonts.notoSansDevanagariTextTheme(
               ThemeData.light().textTheme,
@@ -63,8 +79,24 @@ class DigitalKaamApp extends StatelessWidget {
             ),
             colorScheme: const ColorScheme.dark(
               primary: Color(0xFF2563EB),
+              onPrimary: Colors.white,
               secondary: Color(0xFF38BDF8),
               surface: Color(0xFF1E293B),
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: const Color(0xFF2563EB),
+                disabledForegroundColor: const Color(0xFF94A3B8),
+                disabledBackgroundColor: const Color(0xFF334155),
+                textStyle: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            outlinedButtonTheme: OutlinedButtonThemeData(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                textStyle: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
             textTheme: GoogleFonts.notoSansDevanagariTextTheme(
               ThemeData.dark().textTheme,

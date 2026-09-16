@@ -354,7 +354,13 @@ class ApiService {
   }
 
   /// Dispatches real SMS OTP via backend Fast2SMS gateway
-  Future<Map<String, dynamic>> sendRegistrationOtp(String phone, String otp, {String role = "user"}) async {
+  Future<Map<String, dynamic>> sendRegistrationOtp(
+    String phone,
+    String otp, {
+    String role = "user",
+    String? name,
+    String purpose = "registration",
+  }) async {
     try {
       final response = await _dio.post(
         ApiConfig.sendOtpUrl,
@@ -362,6 +368,8 @@ class ApiService {
           "phone": phone,
           "otp": otp,
           "role": role,
+          "name": name,
+          "purpose": purpose,
         },
       );
       if (response.data is Map<String, dynamic>) {

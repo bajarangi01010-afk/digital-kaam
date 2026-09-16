@@ -292,6 +292,8 @@ class SendOtpPayload(BaseModel):
     phone: str = Field(..., min_length=10, max_length=15)
     otp: str = Field(..., min_length=4, max_length=8)
     role: Optional[str] = "user"
+    name: Optional[str] = None
+    purpose: Optional[str] = "registration"
 
 class LoginPayload(BaseModel):
     phone: str
@@ -301,23 +303,22 @@ class LoginPayload(BaseModel):
 @app.post("/api/user/login", tags=["auth"])
 @app.post("/api/auth/login", tags=["auth"])
 async def user_login_service(body: LoginPayload):
-    """Direct login endpoint for pre-registered workers and customers."""
-    user = database.find_user_by_phone(body.phone, role=body.role)
-    if not user:
+    """Strict direct login endpoint: 100% phone AND verified name match required."""
+    check = database.verify_user_credentials(body.phone, body.name or "", role=body.role)
+    if not check["is_valid"]:
         return {
             "status": "error",
-            "exists": False,
-            "message": f"यह मोबाइल नंबर ({body.phone}) पंजीकृत नहीं है। कृपया नया रजिस्ट्रेशन करें।",
+            "exists": check["exists"],
+            "name_matched": check["name_matched"],
+            "message": check["message"],
+            "user": None,
         }
-    if body.name and body.name.strip():
-        user_name = user.get("name") or ""
-        if not user_name or "Unknown" in user_name or "User" in user_name:
-            user["name"] = body.name.strip()
     return {
         "status": "success",
         "exists": True,
-        "message": f"सत्यापित {user.get('role', body.role)} खाता प्राप्त हुआ!",
-        "user": user,
+        "name_matched": True,
+        "message": check["message"],
+        "user": check["user"],
     }
 
 class LookupPhonePayload(BaseModel):
@@ -336,16 +337,27 @@ async def lookup_phone_account(body: LookupPhonePayload):
 
 @app.post("/api/auth/send-registration-otp", tags=["auth"])
 async def send_registration_otp(body: SendOtpPayload):
-    """Dispatches a real cellular OTP via Fast2SMS for worker/customer registration."""
+    """Dispatches a real cellular OTP via Fast2SMS for worker/customer registration and login."""
+    if body.purpose == "login":
+        check = database.verify_user_credentials(body.phone, body.name or "", role=body.role)
+        if not check["is_valid"]:
+            return {
+                "status": "error",
+                "exists": check["exists"],
+                "name_matched": check["name_matched"],
+                "message": check["message"],
+                "user": None,
+            }
+
     try:
         import sms_gateway
-        msg = f"Digital Kaam: Aapka verification OTP {body.otp} hai. Use this to complete your registration."
+        msg = f"Digital Kaam: Aapka verification OTP {body.otp} hai. Use this to complete your registration or login."
         res = sms_gateway.send_sms(phone=body.phone, message=msg, otp=body.otp)
     except Exception as e:
         res = {"status": "simulated", "otp": body.otp, "message": f"Simulated delivery: {e}"}
     
     res["otp"] = body.otp
-    existing_user = database.find_user_by_phone(body.phone)
+    existing_user = database.find_user_by_phone(body.phone, role=body.role)
     res["account_exists"] = existing_user is not None
     res["user"] = existing_user
     return res

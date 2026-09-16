@@ -767,3 +767,80 @@ def find_user_by_phone(phone: str, role: Optional[str] = None) -> Optional[Dict[
     finally:
         conn.close()
 
+
+def verify_user_credentials(phone: str, name: str, role: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Strict 100% verification for login:
+    1. Phone MUST exist in database.
+    2. Name entered MUST match the verified database name (normalized, case-insensitive, word-order tolerant, or Hindi/English bilingual match).
+    """
+    user = find_user_by_phone(phone, role=role)
+    if not user:
+        return {
+            "is_valid": False,
+            "exists": False,
+            "name_matched": False,
+            "message": f"यह मोबाइल नंबर ({phone}) पंजीकृत नहीं है। कृपया पहले नया पंजीकरण (Registration) करें।",
+            "user": None
+        }
+
+    db_name = (user.get("name") or "").strip()
+    entered_name = (name or "").strip()
+
+    if not entered_name:
+        return {
+            "is_valid": False,
+            "exists": True,
+            "name_matched": False,
+            "message": "कृपया अपना आधार अनुसार नाम दर्ज करें।",
+            "user": None
+        }
+
+    # Strict name matching logic
+    import re
+    def _normalize(s: str) -> str:
+        s = s.lower().strip()
+        s = re.sub(r'[\(\)\[\],.\-_/\\]+', ' ', s)
+        return " ".join(s.split())
+
+    norm_entered = _normalize(entered_name)
+    norm_db = _normalize(db_name)
+
+    # 1. Exact normalized match
+    is_match = (norm_entered == norm_db)
+
+    # 2. Check bilingual/parenthetical split (e.g. "annu kumar (अन्नू कुमार)")
+    if not is_match and db_name:
+        parts = re.split(r'[\(\)\[\]/|]+', db_name)
+        for part in parts:
+            norm_part = _normalize(part)
+            if norm_part and (norm_part == norm_entered or norm_entered in norm_part or norm_part in norm_entered):
+                if len(norm_entered) >= 3:
+                    is_match = True
+                    break
+
+    # 3. Check token set match (e.g. "Kumar Annu" vs "Annu Kumar")
+    if not is_match:
+        tokens_entered = set(norm_entered.split())
+        tokens_db = set(norm_db.split())
+        if tokens_entered and tokens_entered == tokens_db:
+            is_match = True
+
+    if not is_match:
+        return {
+            "is_valid": False,
+            "exists": True,
+            "name_matched": False,
+            "message": "दर्ज किया गया नाम पंजीकृत आधार रिकॉर्ड से मेल नहीं खाता है। कृपया सही आधार नाम दर्ज करें।",
+            "user": None
+        }
+
+    return {
+        "is_valid": True,
+        "exists": True,
+        "name_matched": True,
+        "message": f"सत्यापित {user.get('role', role)} खाता प्राप्त हुआ!",
+        "user": user
+    }
+
+

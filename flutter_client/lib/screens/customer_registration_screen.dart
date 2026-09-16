@@ -40,7 +40,6 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
   bool _isLocationDetected = false;
 
   File? _profilePhoto;
-  File? _liveSnapshot;
   Uint8List? _profilePhotoBytes;
   FaceVerificationResult? _faceResult;
   bool get _isFaceVerified => _faceResult?.match ?? false;
@@ -137,7 +136,13 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
     _otpController.clear();
 
     try {
-      final res = await ApiService().sendRegistrationOtp(phone, randomOtp, role: "customer");
+      final res = await ApiService().sendRegistrationOtp(
+        phone,
+        randomOtp,
+        role: "customer",
+        name: _nameController.text.trim(),
+        purpose: "registration",
+      );
       if (!mounted) return;
       setState(() {
         _isSendingOtp = false;
@@ -210,7 +215,6 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
           setState(() {
             _profilePhoto = livePhoto;
             _profilePhotoBytes = verifiedBytes;
-            _liveSnapshot = livePhoto;
             _faceResult = FaceVerificationResult(
               isSuccess: true,
               match: true,
@@ -729,7 +733,7 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
                     InkWell(
                       onTap: () {
                         setState(() {
-                          _otpController.text = _sentOtpCode ?? "4826";
+                          _otpController.text = _sentOtpCode;
                         });
                       },
                       child: Container(
@@ -740,7 +744,7 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
                           border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.6)),
                         ),
                         child: Text(
-                          "⚡ ${_sentOtpCode ?? '4826'} भरें",
+                          "⚡ $_sentOtpCode भरें",
                           style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11, fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -807,10 +811,14 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
           onPressed: _isDetectingLocation ? null : _detectGpsLocation,
           icon: _isDetectingLocation
               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : const Icon(Icons.my_location_rounded, size: 16),
-          label: Text(_isDetectingLocation ? "स्थान खोजा जा रहा है..." : "GPS से सटीक पता प्राप्त करें"),
+              : const Icon(Icons.my_location_rounded, size: 16, color: Colors.white),
+          label: Text(
+            _isDetectingLocation ? "स्थान खोजा जा रहा है..." : "GPS से सटीक पता प्राप्त करें",
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0284C7),
+            foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 12),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
@@ -910,10 +918,11 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: _openDocumentCameraScanner,
-                        icon: const Icon(Icons.camera_alt_rounded, size: 16),
-                        label: const Text("कैमरा स्कैनर"),
+                        icon: const Icon(Icons.camera_alt_rounded, size: 16, color: Colors.white),
+                        label: const Text("कैमरा स्कैनर", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0284C7),
+                          foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
@@ -923,10 +932,12 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: _showAadhaarSourceSheet,
-                        icon: const Icon(Icons.upload_file_rounded, size: 16, color: Color(0xFF38BDF8)),
-                        label: const Text("अपलोड करें", style: TextStyle(color: Color(0xFF38BDF8))),
+                        icon: const Icon(Icons.upload_file_rounded, size: 16, color: Colors.white),
+                        label: const Text("अपलोड करें", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFF0284C7)),
+                          side: const BorderSide(color: Color(0xFF0284C7), width: 1.5),
+                          foregroundColor: Colors.white,
+                          backgroundColor: const Color(0xFF0284C7).withValues(alpha: 0.2),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
@@ -1031,10 +1042,11 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: _openLiveFaceVerification,
-                  icon: const Icon(Icons.camera_alt_rounded, size: 18),
-                  label: const Text("लाइव चेहरा स्कैन करें"),
+                  icon: const Icon(Icons.camera_alt_rounded, size: 18, color: Colors.white),
+                  label: const Text("लाइव चेहरा स्कैन करें", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0284C7),
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -1247,10 +1259,12 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
                 onPressed: () {
                   setState(() => _currentStep--);
                 },
-                icon: const Icon(Icons.arrow_back_rounded, size: 16, color: Color(0xFF94A3B8)),
-                label: const Text("पिछला", style: TextStyle(color: Color(0xFFCBD5E1))),
+                icon: const Icon(Icons.arrow_back_rounded, size: 16, color: Colors.white),
+                label: const Text("पिछला", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF475569)),
+                  side: const BorderSide(color: Color(0xFF64748B), width: 1.5),
+                  foregroundColor: Colors.white,
+                  backgroundColor: const Color(0xFF1E293B),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -1267,22 +1281,46 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
                             setState(() => _currentStep++);
                           }
                         : null,
-                    icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                    label: const Text("आगे बढ़ें (Next)"),
+                    icon: Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 18,
+                      color: _isCurrentStepValid() ? Colors.white : const Color(0xFF94A3B8),
+                    ),
+                    label: Text(
+                      "आगे बढ़ें (Next)",
+                      style: TextStyle(
+                        color: _isCurrentStepValid() ? Colors.white : const Color(0xFF94A3B8),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2563EB),
                       disabledBackgroundColor: const Color(0xFF334155),
+                      foregroundColor: Colors.white,
+                      disabledForegroundColor: const Color(0xFF94A3B8),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   )
                 : ElevatedButton.icon(
                     onPressed: _canProceed ? _showSuccessDialog : null,
-                    icon: const Icon(Icons.check_circle_rounded, size: 18),
-                    label: const Text("ग्राहक खाता सक्रिय करें"),
+                    icon: Icon(
+                      Icons.check_circle_rounded,
+                      size: 18,
+                      color: _canProceed ? Colors.white : const Color(0xFF94A3B8),
+                    ),
+                    label: Text(
+                      "ग्राहक खाता सक्रिय करें",
+                      style: TextStyle(
+                        color: _canProceed ? Colors.white : const Color(0xFF94A3B8),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF10B981),
                       disabledBackgroundColor: const Color(0xFF334155),
+                      foregroundColor: Colors.white,
+                      disabledForegroundColor: const Color(0xFF94A3B8),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),

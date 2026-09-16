@@ -52,7 +52,6 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
   // Live Face Verification State
   File? _profilePhoto;
   Uint8List? _profilePhotoBytes;
-  File? _liveSnapshot;
   FaceVerificationResult? _faceResult;
   bool get _isFaceVerified => _faceResult?.match ?? false;
 
@@ -149,7 +148,13 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
     _otpController.clear();
 
     try {
-      final res = await ApiService.instance.sendRegistrationOtp(cleanPhone, dynamicCode, role: "worker");
+      final res = await ApiService.instance.sendRegistrationOtp(
+        cleanPhone,
+        dynamicCode,
+        role: "worker",
+        name: _nameController.text.trim(),
+        purpose: "registration",
+      );
       if (!mounted) return;
       setState(() {
         _isSendingOtp = false;
@@ -284,7 +289,6 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
           setState(() {
             _profilePhoto = livePhoto;
             _profilePhotoBytes = verifiedBytes;
-            _liveSnapshot = livePhoto;
             _faceResult = FaceVerificationResult(
               isSuccess: true,
               match: true,
@@ -822,12 +826,18 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
         ElevatedButton.icon(
           onPressed: _isDetectingLocation ? null : _detectGpsLocation,
           icon: _isDetectingLocation
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : const Icon(Icons.my_location_rounded, size: 16),
-          label: Text(_isDetectingLocation ? "स्थान खोजा जा रहा है..." : "GPS से सटीक पता प्राप्त करें"),
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Icon(Icons.my_location_rounded, size: 18, color: Colors.white),
+          label: Text(
+            _isDetectingLocation ? "स्थान खोजा जा रहा है..." : "GPS से सटीक पता प्राप्त करें",
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+          ),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0284C7),
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: const Color(0xFF334155),
+            disabledForegroundColor: const Color(0xFF94A3B8),
+            padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         ),
@@ -928,10 +938,11 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: _openDocumentCameraScanner,
-                        icon: const Icon(Icons.camera_alt_rounded, size: 16),
-                        label: const Text("कैमरा स्कैनर"),
+                        icon: const Icon(Icons.camera_alt_rounded, size: 16, color: Colors.white),
+                        label: const Text("कैमरा स्कैनर", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0284C7),
+                          foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
@@ -942,9 +953,10 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
                       child: OutlinedButton.icon(
                         onPressed: _showAadhaarSourceSheet,
                         icon: const Icon(Icons.upload_file_rounded, size: 16, color: Color(0xFF38BDF8)),
-                        label: const Text("अपलोड करें", style: TextStyle(color: Color(0xFF38BDF8))),
+                        label: const Text("अपलोड करें", style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Color(0xFF0284C7)),
+                          foregroundColor: const Color(0xFF38BDF8),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
@@ -1049,10 +1061,14 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: _openLiveFaceVerification,
-                  icon: const Icon(Icons.camera_alt_rounded, size: 18),
-                  label: const Text("लाइव चेहरा स्कैन करें"),
+                  icon: const Icon(Icons.camera_alt_rounded, size: 18, color: Colors.white),
+                  label: const Text(
+                    "लाइव चेहरा स्कैन करें",
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0284C7),
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -1266,9 +1282,10 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
                 onPressed: () {
                   setState(() => _currentStep--);
                 },
-                icon: const Icon(Icons.arrow_back_rounded, size: 16, color: Color(0xFF94A3B8)),
-                label: const Text("पिछला", style: TextStyle(color: Color(0xFFCBD5E1))),
+                icon: const Icon(Icons.arrow_back_rounded, size: 16, color: Colors.white),
+                label: const Text("पिछला", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
                   side: const BorderSide(color: Color(0xFF475569)),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1286,11 +1303,16 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
                             setState(() => _currentStep++);
                           }
                         : null,
-                    icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                    label: const Text("आगे बढ़ें (Next)"),
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 18, color: Colors.white),
+                    label: const Text(
+                      "आगे बढ़ें (Next)",
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2563EB),
+                      foregroundColor: Colors.white,
                       disabledBackgroundColor: const Color(0xFF334155),
+                      disabledForegroundColor: const Color(0xFF94A3B8),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -1311,11 +1333,16 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
                             );
                           }
                         : null,
-                    icon: const Icon(Icons.check_circle_rounded, size: 18),
-                    label: const Text("कौशल चयन पर आगे बढ़ें"),
+                    icon: const Icon(Icons.check_circle_rounded, size: 18, color: Colors.white),
+                    label: const Text(
+                      "कौशल चयन पर आगे बढ़ें",
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
                       disabledBackgroundColor: const Color(0xFF334155),
+                      disabledForegroundColor: const Color(0xFF94A3B8),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),

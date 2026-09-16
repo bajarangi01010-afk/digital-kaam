@@ -66,7 +66,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleSendOtp() async {
+    final name = _nameController.text.trim();
     final phone = _phoneController.text.trim();
+
+    if (name.isEmpty) {
+      setState(() => _errorMessage = "कृपया पहले आधार अनुसार नाम दर्ज करें");
+      return;
+    }
     if (phone.length < 10) {
       setState(() => _errorMessage = "कृपया 10 अंकों का वैध मोबाइल नंबर दर्ज करें");
       return;
@@ -85,7 +91,18 @@ class _LoginScreenState extends State<LoginScreen> {
         phone,
         randomOtp,
         role: _selectedRole,
+        name: name,
+        purpose: "login",
       );
+
+      // Check if credentials failed (e.g. name does not match or phone not registered)
+      if (res["status"] == "error") {
+        setState(() {
+          _isSendingOtp = false;
+          _errorMessage = res["message"] ?? "प्रमाणीकरण विफल। दर्ज नाम पंजीकृत रिकॉर्ड से मेल नहीं खाता।";
+        });
+        return;
+      }
 
       setState(() {
         _isSendingOtp = false;
@@ -119,6 +136,24 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     } catch (e) {
+      // If server is unreachable, verify local persistent storage with strict name match
+      final hadLocal = await WorkerSession.loadFromDisk();
+      final localPhone = WorkerSession.phone.replaceAll(RegExp(r'[^0-9]'), '');
+      final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+      final isLocalPhoneMatch = hadLocal && localPhone.endsWith(cleanPhone.substring(cleanPhone.length >= 10 ? cleanPhone.length - 10 : 0));
+
+      if (isLocalPhoneMatch) {
+        final localNorm = WorkerSession.name.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+        final enteredNorm = name.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+        if (!localNorm.contains(enteredNorm) && !enteredNorm.contains(localNorm)) {
+          setState(() {
+            _isSendingOtp = false;
+            _errorMessage = "दर्ज किया गया नाम पंजीकृत आधार रिकॉर्ड से मेल नहीं खाता है।";
+          });
+          return;
+        }
+      }
+
       setState(() {
         _isSendingOtp = false;
         _otpSent = true;
@@ -184,16 +219,31 @@ class _LoginScreenState extends State<LoginScreen> {
       Map<String, dynamic>? userData;
       if (res["status"] == "success" && res["user"] is Map<String, dynamic>) {
         userData = res["user"] as Map<String, dynamic>;
+      } else if (res["status"] == "error") {
+        setState(() {
+          _isLoggingIn = false;
+          _errorMessage = res["message"] ?? "लॉगिन विफल। दर्ज नाम आधार रिकॉर्ड से मेल नहीं खाता है।";
+        });
+        return;
       }
 
-      // 2. Also inspect local persistent session for matching phone cache (offline/local registration)
+      // 2. Offline fallback: only allow if local persistent session exists AND name strictly matches
       final hadLocal = await WorkerSession.loadFromDisk();
       final localPhone = WorkerSession.phone.replaceAll(RegExp(r'[^0-9]'), '');
       final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
-      final isLocalMatch = hadLocal && localPhone.endsWith(cleanPhone.substring(cleanPhone.length >= 10 ? cleanPhone.length - 10 : 0));
+      final isLocalPhoneMatch = hadLocal && localPhone.endsWith(cleanPhone.substring(cleanPhone.length >= 10 ? cleanPhone.length - 10 : 0));
+      
+      bool isStrictLocalMatch = false;
+      if (isLocalPhoneMatch) {
+        final localNorm = WorkerSession.name.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+        final enteredNorm = name.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+        if (localNorm == enteredNorm || localNorm.contains(enteredNorm) || enteredNorm.contains(localNorm)) {
+          isStrictLocalMatch = true;
+        }
+      }
+      final bool isLocalMatch = isStrictLocalMatch;
 
-      if (userData == null && !isLocalMatch) {
-        // Neither server nor local device has this phone registered
+      if (userData == null && !isStrictLocalMatch) {
         setState(() => _isLoggingIn = false);
         _showNotRegisteredDialog();
         return;
