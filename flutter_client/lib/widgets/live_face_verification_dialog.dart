@@ -11,6 +11,7 @@ import '../services/api_service.dart';
 class LiveFaceVerificationDialog extends StatefulWidget {
   final String? title;
   final File? uploadedProfilePhoto;
+  final Uint8List? uploadedPhotoBytes;
   final Function(File snapshotFile, FaceVerificationResult result)? onVerificationComplete;
   final Function(File snapshotFile, Uint8List snapshotBytes)? onFaceVerified;
 
@@ -18,6 +19,7 @@ class LiveFaceVerificationDialog extends StatefulWidget {
     Key? key,
     this.title,
     this.uploadedProfilePhoto,
+    this.uploadedPhotoBytes,
     this.onVerificationComplete,
     this.onFaceVerified,
   }) : super(key: key);
@@ -63,8 +65,8 @@ class _LiveFaceVerificationDialogState extends State<LiveFaceVerificationDialog>
         final status = await Permission.camera.request();
         if (status.isDenied || status.isPermanentlyDenied) {
           setState(() {
-            _isSimulatedCameraMode = true;
-            _errorMessage = "कैमरा अनुमति नहीं मिली • टेस्टिंग सिम्युलेटर मोड सक्रिय";
+            _isCameraInitialized = false;
+            _errorMessage = "लाइव फेस सत्यापन हेतु कैमरा अनुमति आवश्यक है। कृपया कैमरा अनुमति दें।";
           });
           return;
         }
@@ -73,10 +75,18 @@ class _LiveFaceVerificationDialogState extends State<LiveFaceVerificationDialog>
       // 2. Fetch available cameras
       _cameras = await availableCameras();
       if (_cameras == null || _cameras!.isEmpty) {
-        setState(() {
-          _isSimulatedCameraMode = true; // No physical webcam found
-        });
-        return;
+        if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS)) {
+          setState(() {
+            _isCameraInitialized = false;
+            _errorMessage = "डिवाइस पर कोई कैमरा उपलब्ध नहीं है।";
+          });
+          return;
+        } else {
+          setState(() {
+            _isSimulatedCameraMode = true; // No physical webcam found on Desktop/Web
+          });
+          return;
+        }
       }
 
       // Select front-facing camera or desktop webcam
@@ -107,9 +117,15 @@ class _LiveFaceVerificationDialogState extends State<LiveFaceVerificationDialog>
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _isSimulatedCameraMode = true; // Gracefully switch to simulated camera if hardware fails
-      });
+      if (kIsWeb || (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows)) {
+        setState(() {
+          _isSimulatedCameraMode = true;
+        });
+      } else {
+        setState(() {
+          _errorMessage = "कैमरा शुरू करने में समस्या आई: $e";
+        });
+      }
     }
   }
 
@@ -188,9 +204,10 @@ class _LiveFaceVerificationDialogState extends State<LiveFaceVerificationDialog>
 
       // Call Python FastAPI backend
       FaceVerificationResult result;
-      if (widget.uploadedProfilePhoto != null) {
+      if (widget.uploadedProfilePhoto != null || widget.uploadedPhotoBytes != null) {
         result = await ApiService().verifyFace(
-          uploadedPhoto: widget.uploadedProfilePhoto!,
+          uploadedPhoto: widget.uploadedProfilePhoto ?? snapshotFile,
+          uploadedBytes: widget.uploadedPhotoBytes,
           liveSnapshot: snapshotFile,
           liveBytes: _lastSnapshotBytes,
           isSimulated: _isSimulatedCameraMode,

@@ -285,26 +285,30 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
       barrierDismissible: false,
       builder: (ctx) => LiveFaceVerificationDialog(
         title: "कारीगर लाइव बायोमेट्रिक सत्यापन",
-        onFaceVerified: (livePhoto, verifiedBytes) async {
+        uploadedProfilePhoto: _aadhaarImage,
+        uploadedPhotoBytes: _aadhaarBytes,
+        onVerificationComplete: (livePhoto, result) async {
+          Uint8List bytes = Uint8List(0);
+          try {
+            if (!kIsWeb && livePhoto.existsSync()) {
+              bytes = await livePhoto.readAsBytes();
+            }
+          } catch (_) {}
+
           setState(() {
             _profilePhoto = livePhoto;
-            _profilePhotoBytes = verifiedBytes;
-            _faceResult = FaceVerificationResult(
-              isSuccess: true,
-              match: true,
-              faceDetected: true,
-              distance: 0.12,
-              confidencePercentage: 99.4,
-              message: "बायोमेट्रिक लाइव चेहरा 100% सत्यापित!",
-            );
+            _profilePhotoBytes = bytes.isNotEmpty ? bytes : _profilePhotoBytes;
+            _faceResult = result;
           });
 
-          WorkerSession.update(
-            newPhoto: livePhoto,
-            newBytes: verifiedBytes,
-            newPhotoUrl: "data:image/jpeg;base64,${base64Encode(verifiedBytes)}",
-            newAadhaarStatus: "✓ 100% आधार बायोमेट्रिक व लाइव फेस सत्यापित",
-          );
+          if (bytes.isNotEmpty) {
+            WorkerSession.update(
+              newPhoto: livePhoto,
+              newBytes: bytes,
+              newPhotoUrl: "data:image/jpeg;base64,${base64Encode(bytes)}",
+              newAadhaarStatus: "✓ 100% आधार बायोमेट्रिक व लाइव फेस सत्यापित",
+            );
+          }
 
           _showSnackbar("✓ बायोमेट्रिक लाइव चेहरा 100% सत्यापित व सुरक्षित!", isError: false);
         },
@@ -1303,10 +1307,18 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
                             setState(() => _currentStep++);
                           }
                         : null,
-                    icon: const Icon(Icons.arrow_forward_rounded, size: 18, color: Colors.white),
-                    label: const Text(
+                    icon: Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 18,
+                      color: _isCurrentStepValid() ? Colors.white : const Color(0xFF94A3B8),
+                    ),
+                    label: Text(
                       "आगे बढ़ें (Next)",
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                      style: TextStyle(
+                        color: _isCurrentStepValid() ? Colors.white : const Color(0xFF94A3B8),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2563EB),

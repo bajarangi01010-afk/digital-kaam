@@ -133,6 +133,7 @@ def get_face_cascades():
             "alt2": "haarcascade_frontalface_alt2.xml",
             "default": "haarcascade_frontalface_default.xml",
             "profile": "haarcascade_profileface.xml",
+            "eye": "haarcascade_eye.xml",
         }
         
         # Safely resolve CascadeClassifier constructor without local import scoping issues
@@ -219,20 +220,22 @@ def _nms_boxes(boxes, overlap_thresh=0.35):
 
 def _check_biometric_face_region(img_bgr: np.ndarray) -> bool:
     """
-    Biometric fallback: checks if the central/upper oval region contains human skin tone
-    and facial edge variance. Ensures legitimate human faces are never rejected due to
-    cascade failures on diverse mobile camera hardware or lighting.
+    Biometric check: ensures the region not only has human skin tone (>= 22%),
+    but also contains actual facial features (eyes/structure) to strictly prevent
+    walls, floors, hands, clothes, or tables from being accepted as a face.
     """
     try:
         h, w = img_bgr.shape[:2]
-        ch, cw = int(h * 0.60), int(w * 0.60)
+        ch, cw = int(h * 0.65), int(w * 0.65)
         
-        # Test 1: Exact center region
+        # Test central and upper-central regions (selfie position)
         regions = [
             img_bgr[(h - ch) // 2 : (h - ch) // 2 + ch, (w - cw) // 2 : (w - cw) // 2 + cw],
-            # Test 2: Upper center (common selfie position)
-            img_bgr[max(0, int(h * 0.10)) : min(h, int(h * 0.70)), (w - cw) // 2 : (w - cw) // 2 + cw],
+            img_bgr[max(0, int(h * 0.10)) : min(h, int(h * 0.75)), (w - cw) // 2 : (w - cw) // 2 + cw],
         ]
+
+        cascades = get_face_cascades()
+        eye_cas = cascades.get("eye")
 
         for roi in regions:
             if roi.size == 0:
@@ -246,8 +249,22 @@ def _check_biometric_face_region(img_bgr: np.ndarray) -> bool:
             texture_var = cv2.Laplacian(gray_roi, cv2.CV_64F).var()
 
             logger.info(f"Biometric oval check: skin_ratio={skin_ratio:.3f}, texture_var={texture_var:.1f}")
-            if skin_ratio >= 0.10 and texture_var >= 15.0:
-                return True
+            # Human face requires significant skin ratio (>= 22%) and natural facial texture (>= 25.0)
+            if skin_ratio >= 0.22 and texture_var >= 25.0:
+                if eye_cas is not None:
+                    eyes = eye_cas.detectMultiScale(
+                        gray_roi,
+                        scaleFactor=1.12,
+                        minNeighbors=3,
+                        minSize=(max(12, int(min(rh, rw) * 0.08)), max(12, int(min(rh, rw) * 0.08))),
+                    )
+                    if len(eyes) >= 1:
+                        logger.info(f"Confirmed human face with {len(eyes)} eye feature(s)")
+                        return True
+                else:
+                    # Fallback only if eye cascade is missing from cv2 installation
+                    if skin_ratio >= 0.35 and texture_var >= 45.0:
+                        return True
         return False
     except Exception as e:
         logger.warning(f"Biometric oval check error: {e}")
@@ -355,6 +372,10 @@ async def verify_live_face(
             "distance": 0.14,
             "message": "सिम्युलेटर मोड: लाइव बायोमेट्रिक चेहरा 100% सत्यापित हुआ!",
         }
+
+    if aadhar_image is not None:
+        # Direct biometric cross-verification between live camera and Aadhaar card photo
+        return await verify_face(live_snapshot=live_snapshot, uploaded_photo=aadhar_image, is_simulated=is_simulated)
 
     try:
         live_bytes = await live_snapshot.read()
@@ -704,28 +725,14 @@ async def verify_aadhar(
                 except Exception:
                     pass
 
-    # If no text was extracted at all, check card geometry before returning error
+    # If no text was extracted at all, return strict error
     if not extracted_texts:
-        h, w = raw_img.shape[:2]
-        aspect_ratio = max(w, h) / max(min(w, h), 1)
-        if 1.2 <= aspect_ratio <= 2.2 and len(image_bytes) >= 5000:
-            logger.info("Physical Aadhaar card structure confirmed via geometry & size")
-            return {
-                "status": "success",
-                "is_approved": True,
-                "match": True,
-                "user_name": user_name,
-                "message": f"✓ आधार कार्ड दस्तावेज़ सफलतापूर्वक सत्यापित हुआ! (कार्ड नाम: '{user_name}', मिलान: 90%)",
-                "score": 90,
-                "threshold": 60,
-                "matched_text": user_name,
-            }
         return {
             "status": "error",
             "is_approved": False,
             "match": False,
             "code": "NO_TEXT_DETECTED",
-            "message": "आधार कार्ड की फोटो से कोई टेक्स्ट नहीं पढ़ा जा सका। कृपया अच्छी रोशनी में कार्ड की साफ व सीधी फोटो अपलोड करें।",
+            "message": "आधार कार्ड की फोटो से कोई टेक्स्ट नहीं पढ़ा जा सका। कृपया अच्छी रोशनी में असली आधार कार्ड की साफ व सीधी फोटो अपलोड करें।",
             "score": 0,
             "threshold": 60,
         }
@@ -807,6 +814,20 @@ async def verify_aadhar(
     logger.info(f"Aadhaar Name match — user: '{raw_user}', best: '{best_match}', score: {best_score}")
 
     THRESHOLD = 60
+
+    if not has_aadhaar_indicator and best_score < 75:
+        return {
+            "status": "error",
+            "is_approved": False,
+            "match": False,
+            "user_name": user_name,
+            "code": "NOT_AN_AADHAAR_CARD",
+            "message": "अपलोड की गई फोटो में वैध आधार कार्ड की पहचान (UIDAI / भारत सरकार / आधार नंबर) नहीं मिली। कृपया असली आधार कार्ड अपलोड करें।",
+            "score": best_score,
+            "threshold": THRESHOLD,
+            "ocr_sample": extracted_texts[:5],
+        }
+
     is_approved = best_score >= THRESHOLD
 
     if is_approved:

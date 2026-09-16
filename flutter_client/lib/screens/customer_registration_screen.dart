@@ -211,18 +211,20 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
       barrierDismissible: false,
       builder: (ctx) => LiveFaceVerificationDialog(
         title: "ग्राहक लाइव बायोमेट्रिक सत्यापन",
-        onFaceVerified: (livePhoto, verifiedBytes) async {
+        uploadedProfilePhoto: _aadhaarImage,
+        uploadedPhotoBytes: _aadhaarBytes,
+        onVerificationComplete: (livePhoto, result) async {
+          Uint8List bytes = Uint8List(0);
+          try {
+            if (!kIsWeb && livePhoto.existsSync()) {
+              bytes = await livePhoto.readAsBytes();
+            }
+          } catch (_) {}
+
           setState(() {
             _profilePhoto = livePhoto;
-            _profilePhotoBytes = verifiedBytes;
-            _faceResult = FaceVerificationResult(
-              isSuccess: true,
-              match: true,
-              faceDetected: true,
-              distance: 0.15,
-              confidencePercentage: 99.1,
-              message: "बायोमेट्रिक लाइव चेहरा 100% सत्यापित!",
-            );
+            _profilePhotoBytes = bytes.isNotEmpty ? bytes : _profilePhotoBytes;
+            _faceResult = result;
           });
           _showSnackbar("✓ लाइव चेहरा बायोमेट्रिक रूप से सत्यापित हुआ!", isError: false);
         },
