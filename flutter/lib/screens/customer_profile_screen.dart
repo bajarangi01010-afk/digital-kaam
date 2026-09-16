@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -668,6 +669,12 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
               setState(() => _isLoggingOut = true);
 
               try {
+                final photoUrl = WorkerSession.photoUrl.isNotEmpty
+                    ? WorkerSession.photoUrl
+                    : (_photoBytes != null && _photoBytes!.isNotEmpty
+                        ? "data:image/jpeg;base64,${base64Encode(_photoBytes!)}"
+                        : "");
+
                 // Archive session in backend database
                 await _apiService.archiveLogout({
                   "user_id": _customerId,
@@ -681,6 +688,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                   "total_jobs": 4,
                   "aadhaar_status": "✓ 99% ट्रस्ट स्कोर • सुरक्षित ग्राहक",
                   "s2_token": "390ce2b4",
+                  "photo_url": photoUrl,
                 });
               } catch (_) {}
 
