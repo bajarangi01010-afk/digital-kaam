@@ -214,6 +214,19 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
         title: "ग्राहक लाइव बायोमेट्रिक सत्यापन",
         uploadedProfilePhoto: _aadhaarImage,
         uploadedPhotoBytes: _aadhaarBytes,
+        onFaceVerified: (snapshotFile, snapshotBytes) {
+          if (snapshotBytes.isNotEmpty) {
+            setState(() {
+              _profilePhoto = snapshotFile;
+              _profilePhotoBytes = snapshotBytes;
+            });
+            WorkerSession.update(
+              newPhoto: snapshotFile,
+              newBytes: snapshotBytes,
+              newPhotoUrl: "data:image/jpeg;base64,${base64Encode(snapshotBytes)}",
+            );
+          }
+        },
         onVerificationComplete: (livePhoto, result) async {
           Uint8List bytes = Uint8List(0);
           try {
@@ -222,12 +235,33 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
             }
           } catch (_) {}
 
+          if (bytes.isEmpty && result.livePhotoB64 != null && result.livePhotoB64!.startsWith("data:image")) {
+            try {
+              final commaIdx = result.livePhotoB64!.indexOf(",");
+              if (commaIdx != -1) {
+                bytes = base64Decode(result.livePhotoB64!.substring(commaIdx + 1));
+              }
+            } catch (_) {}
+          }
+
           setState(() {
             _profilePhoto = livePhoto;
-            _profilePhotoBytes = bytes.isNotEmpty ? bytes : _profilePhotoBytes;
+            if (bytes.isNotEmpty) {
+              _profilePhotoBytes = bytes;
+            }
             _faceResult = result;
           });
-          _showSnackbar("✓ लाइव चेहरा बायोमेट्रिक रूप से सत्यापित हुआ!", isError: false);
+
+          final effectiveBytes = _profilePhotoBytes ?? bytes;
+          if (effectiveBytes.isNotEmpty) {
+            WorkerSession.update(
+              newPhoto: livePhoto,
+              newBytes: effectiveBytes,
+              newPhotoUrl: "data:image/jpeg;base64,${base64Encode(effectiveBytes)}",
+            );
+          }
+
+          _showSnackbar("✓ लाइव चेहरा बायोमेट्रिक रूप से सत्यापित व प्रोफाइल फोटो सुरक्षित!", isError: false);
         },
       ),
     );

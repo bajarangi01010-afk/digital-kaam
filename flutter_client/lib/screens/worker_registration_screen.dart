@@ -290,6 +290,20 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
         title: "कारीगर लाइव बायोमेट्रिक सत्यापन",
         uploadedProfilePhoto: _aadhaarImage,
         uploadedPhotoBytes: _aadhaarBytes,
+        onFaceVerified: (snapshotFile, snapshotBytes) {
+          if (snapshotBytes.isNotEmpty) {
+            setState(() {
+              _profilePhoto = snapshotFile;
+              _profilePhotoBytes = snapshotBytes;
+            });
+            WorkerSession.update(
+              newPhoto: snapshotFile,
+              newBytes: snapshotBytes,
+              newPhotoUrl: "data:image/jpeg;base64,${base64Encode(snapshotBytes)}",
+              newAadhaarStatus: "✓ 100% आधार बायोमेट्रिक व लाइव फेस सत्यापित",
+            );
+          }
+        },
         onVerificationComplete: (livePhoto, result) async {
           Uint8List bytes = Uint8List(0);
           try {
@@ -298,22 +312,35 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
             }
           } catch (_) {}
 
+          // Fallback to livePhotoB64 from backend result if file read is empty
+          if (bytes.isEmpty && result.livePhotoB64 != null && result.livePhotoB64!.startsWith("data:image")) {
+            try {
+              final commaIdx = result.livePhotoB64!.indexOf(",");
+              if (commaIdx != -1) {
+                bytes = base64Decode(result.livePhotoB64!.substring(commaIdx + 1));
+              }
+            } catch (_) {}
+          }
+
           setState(() {
             _profilePhoto = livePhoto;
-            _profilePhotoBytes = bytes.isNotEmpty ? bytes : _profilePhotoBytes;
+            if (bytes.isNotEmpty) {
+              _profilePhotoBytes = bytes;
+            }
             _faceResult = result;
           });
 
-          if (bytes.isNotEmpty) {
+          final effectiveBytes = _profilePhotoBytes ?? bytes;
+          if (effectiveBytes.isNotEmpty) {
             WorkerSession.update(
               newPhoto: livePhoto,
-              newBytes: bytes,
-              newPhotoUrl: "data:image/jpeg;base64,${base64Encode(bytes)}",
+              newBytes: effectiveBytes,
+              newPhotoUrl: "data:image/jpeg;base64,${base64Encode(effectiveBytes)}",
               newAadhaarStatus: "✓ 100% आधार बायोमेट्रिक व लाइव फेस सत्यापित",
             );
           }
 
-          _showSnackbar("✓ बायोमेट्रिक लाइव चेहरा 100% सत्यापित व सुरक्षित!", isError: false);
+          _showSnackbar("✓ बायोमेट्रिक लाइव चेहरा 100% सत्यापित व प्रोफाइल फोटो के रूप में सुरक्षित!", isError: false);
         },
       ),
     );

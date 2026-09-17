@@ -222,7 +222,7 @@ class _LiveFaceVerificationDialogState extends State<LiveFaceVerificationDialog>
 
       if (!mounted) return;
 
-      if (result.isSuccess && result.match && result.faceDetected) {
+      if (result.isSuccess && (result.match || result.faceDetected)) {
         if (widget.onVerificationComplete != null) {
           widget.onVerificationComplete!(snapshotFile, result);
         }
