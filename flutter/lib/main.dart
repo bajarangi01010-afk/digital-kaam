@@ -8,9 +8,11 @@ import 'screens/worker_dashboard_screen.dart';
 import 'screens/customer_registration_screen.dart';
 import 'screens/customer_dashboard_screen.dart';
 import 'screens/kyc_verification_screen.dart';
+import 'services/api_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  ApiService.instance.prewarmServer();
   final hasSession = await WorkerSession.loadFromDisk();
   runApp(DigitalKaamApp(hasSession: hasSession));
 }

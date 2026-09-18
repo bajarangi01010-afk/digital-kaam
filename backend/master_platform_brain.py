@@ -122,8 +122,8 @@ class MasterPlatformBrain:
 
                 for b in completed_bookings:
                     time_diff_hours = (b["updated_at"] - b["created_at"]) / 3600.0
-                    # Sanity check: between 2 minutes and 4 hours
-                    if 0.033 <= time_diff_hours <= 4.0:
+                    # Sanity check: strictly between 2 minutes and 4 hours
+                    if 0.0333 <= time_diff_hours < 4.0:
                         speed = b["distance_km"] / time_diff_hours
                         if 5.0 <= speed <= 60.0:  # Realistic Indian two-wheeler urban traffic range
                             total_derived_speed += speed
@@ -134,8 +134,6 @@ class MasterPlatformBrain:
                     # Exponential moving average to gradually adapt (smooth self-training)
                     self.urban_avg_speed_kmh = round((0.7 * self.urban_avg_speed_kmh) + (0.3 * avg_speed), 2)
                     self.total_trips_learned += valid_trips
-                else:
-                    self.total_trips_learned = trips_count
 
             # Worker Rating & Experience Optimization
             workers = conn.execute("SELECT worker_id, rating, total_jobs FROM workers").fetchall()
@@ -174,10 +172,7 @@ class MasterPlatformBrain:
         Disaster Recovery Check: Tests health of Brain 2 and Brain 3.
         If a fault, ledger break or tampering is detected, activates Fallback Isolation.
         """
-        # Step A: Audit Brain 3 Ledger
-        is_ledger_intact, ledger_count, ledger_issues = self.vault_brain.verify_ledger_integrity()
-
-        # Step B: Audit Database connection
+        # Step A: Audit Database connection
         db_alive = False
         try:
             conn = database.get_db_connection()
@@ -187,11 +182,17 @@ class MasterPlatformBrain:
         except Exception:
             db_alive = False
 
+        # Step B: Audit Brain 3 Ledger
+        try:
+            is_ledger_intact, ledger_count, ledger_issues = self.vault_brain.verify_ledger_integrity()
+        except Exception as e:
+            is_ledger_intact, ledger_count, ledger_issues = False, 0, [str(e)]
+
         # Step C: Determine Circuit Breaker Status
-        if not is_ledger_intact:
-            self.circuit_state = "TAMPER_DETECTED_LOCKDOWN"
-        elif not db_alive:
+        if not db_alive:
             self.circuit_state = "DATABASE_DISCONNECTED_FALLBACK"
+        elif not is_ledger_intact:
+            self.circuit_state = "TAMPER_DETECTED_LOCKDOWN"
         else:
             self.circuit_state = "NORMAL_HEALTHY"
 

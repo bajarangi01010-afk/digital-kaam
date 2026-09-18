@@ -80,6 +80,9 @@ class TestMasterPlatformBrain:
         conn.commit()
         conn.close()
 
+        # Reload brain state from freshly initialized DB
+        self.master_brain._load_learning_state()
+
     def test_master_brain_initialization(self):
         """Test that MasterPlatformBrain initializes and loads state correctly."""
         brain = MasterPlatformBrain()
@@ -161,6 +164,9 @@ class TestMasterPlatformBrain:
         assert resilience["master_status"] == "NORMAL_HEALTHY"
         assert resilience["is_tamper_detected"] == False
         assert resilience["database_persistent_alive"] == True
+
+        # Record a valid transaction first to establish an intact ledger entry
+        self.master_brain.vault_brain.record_transaction("BK-TAMPER-001", "LOCK", 500.0, 50.0)
 
         # Now tamper with the ledger by directly modifying hash
         conn = database.get_db_connection()

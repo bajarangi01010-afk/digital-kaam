@@ -80,6 +80,7 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
   @override
   void initState() {
     super.initState();
+    ApiService.instance.prewarmServer();
     _nameController.addListener(_onNameChanged);
     _phoneController.addListener(_onPhoneChanged);
     _addressController.text = "";

@@ -85,6 +85,7 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
   @override
   void initState() {
     super.initState();
+    ApiService.instance.prewarmServer();
     _nameController.addListener(_onNameChanged);
     _phoneController.addListener(_onPhoneChanged);
     _addressController.text = "";

@@ -1304,6 +1304,7 @@ def require_role(*roles: str):
 
 
 # ---------------------------------------------------------------- Routes: health & auth
+@app.get("/", tags=["system"])
 @app.get("/health", tags=["system"])
 async def health() -> Dict[str, Any]:
     return {

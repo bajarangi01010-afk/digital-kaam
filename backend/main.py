@@ -104,6 +104,7 @@ async def on_startup_prewarm():
     asyncio.get_event_loop().run_in_executor(None, _warm)
 
 
+@app.get("/")
 @app.get("/health")
 @app.get("/api/health")
 async def health():

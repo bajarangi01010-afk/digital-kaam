@@ -199,6 +199,13 @@ class CoreOperationsDispatchBrain:
     def get_operations_kpis(self) -> Dict[str, Any]:
         """Unified system metrics across operations and spatial radar."""
         vault_kpis = self.ledger_vault.get_vault_kpis()
+        try:
+            db_workers = database.get_all_workers()
+            for dw in db_workers:
+                if dw.get("worker_id"):
+                    self.s2_engine.workers[dw["worker_id"]] = dw
+        except Exception:
+            pass
         return {
             "active_radar_bookings": len(self.s2_engine.active_bookings),
             "indexed_radar_workers": len(self.s2_engine.workers),

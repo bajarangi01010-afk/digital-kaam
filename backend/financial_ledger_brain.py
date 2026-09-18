@@ -126,7 +126,11 @@ class FinancialLedgerVaultBrain:
         STRICT RULE 3: Self-Auditing Watchdog across entire ledger chain.
         Recomputes every SHA-256 hash from GENESIS.
         """
-        conn = database.get_db_connection()
+        try:
+            conn = database.get_db_connection()
+        except Exception as e:
+            return False, 0, [f"Database connection error: {e}"]
+
         try:
             rows = conn.execute(
                 "SELECT * FROM escrow_transactions ORDER BY created_at ASC"
