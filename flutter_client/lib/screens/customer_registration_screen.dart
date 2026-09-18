@@ -213,8 +213,6 @@ class _CustomerRegistrationScreenState extends State<CustomerRegistrationScreen>
       barrierDismissible: false,
       builder: (ctx) => LiveFaceVerificationDialog(
         title: "ग्राहक लाइव बायोमेट्रिक सत्यापन",
-        uploadedProfilePhoto: _aadhaarImage,
-        uploadedPhotoBytes: _aadhaarBytes,
         onFaceVerified: (snapshotFile, snapshotBytes) {
           if (snapshotBytes.isNotEmpty) {
             setState(() {

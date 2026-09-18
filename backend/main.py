@@ -488,9 +488,8 @@ async def verify_live_face(
             "message": "सिम्युलेटर मोड: लाइव बायोमेट्रिक चेहरा 100% सत्यापित हुआ!",
         }
 
-    if aadhar_image is not None:
-        # Direct biometric cross-verification between live camera and Aadhaar card photo
-        return await verify_face(live_snapshot=live_snapshot, uploaded_photo=aadhar_image, is_simulated=is_simulated)
+    # Live biometric face detection — does not compare against Aadhaar card photo
+    # strictly verifies live person, oval guide alignment, illumination, and quality.
 
     try:
         live_bytes = await live_snapshot.read()
@@ -1021,9 +1020,28 @@ async def verify_aadhar(
         "government", "india", "bharat", "sarkar", "सरकार", "भारत",
         "unique", "identification", "authority", "uidai", "aadhaar",
         "aadhar", "आधार", "मेरा आधार", "dob", "birth", "जन्म",
-        "male", "female", "पुरुष", "महिला", "vid", "enrolment", "yob"
+        "male", "female", "पुरुष", "महिला", "vid", "enrolment", "yob",
+        "helpdesk", "help@uidai", "www.uidai.gov.in", "resident"
     ]
     has_aadhaar_indicator = any(m in full_text for m in aadhaar_markers) or bool(extracted_uid)
+
+    THRESHOLD = 60
+
+    # ── Strict Check: Reject non-Aadhaar images immediately ──
+    if not has_aadhaar_indicator and not extracted_uid:
+        logger.warning(f"Aadhaar rejection — No Aadhaar markers or 12-digit UID detected. OCR text: {full_text[:120]}")
+        return {
+            "status": "error",
+            "is_approved": False,
+            "match": False,
+            "user_name": user_name,
+            "code": "NOT_AADHAAR_CARD",
+            "message": "❌ अपलोड की गई फोटो वैध आधार कार्ड नहीं है! कृपया अपने असली आधार कार्ड की स्पष्ट फोटो अपलोड करें।",
+            "score": 0,
+            "threshold": THRESHOLD,
+            "best_ocr_text": "",
+            "ocr_sample": extracted_texts[:3],
+        }
 
     # ── 4. Deep Bilingual & Transliterated Name Matching ────────
     from fuzzywuzzy import fuzz
@@ -1117,7 +1135,6 @@ async def verify_aadhar(
 
     logger.info(f"Deep Aadhaar Verification — Name: '{user_name}' -> Matched: '{best_match}', Score: {best_score}%, Photo: {has_photo}, UID: {extracted_uid}")
 
-    THRESHOLD = 60
     is_approved = best_score >= THRESHOLD
 
     if is_approved:
@@ -1136,36 +1153,16 @@ async def verify_aadhar(
             "has_photo": has_photo,
             "face_detected": has_photo,
             "card_type": "AADHAAR_CARD",
-            "message": f"✓ आधार कार्ड 100% सत्यापित! नाम ('{best_match or user_name}'), 12-अंकीय आधार व फोटो का सफल मिलान।",
+            "message": f"✓ आधार कार्ड 100% सत्यापित! नाम ('{best_match or user_name}') का सफल मिलान।",
         }
     else:
-        # Fallback if card image has authentic Aadhaar markers or photo
-        if has_aadhaar_indicator or has_photo:
-            return {
-                "status": "success",
-                "is_approved": True,
-                "match": True,
-                "user_name": user_name,
-                "score": 100,
-                "threshold": THRESHOLD,
-                "matched_text": user_name,
-                "extracted_name": user_name,
-                "aadhaar_number": extracted_uid or "XXXX XXXX 8492",
-                "dob": extracted_dob or "01/01/1990",
-                "gender": extracted_gender or "MALE",
-                "has_photo": has_photo,
-                "face_detected": has_photo,
-                "card_type": "AADHAAR_CARD",
-                "message": f"✓ आधार कार्ड 100% सत्यापित! वैध पहचान पत्र व फोटो की पुष्टि हुई।",
-            }
-
         return {
             "status": "error",
             "is_approved": False,
             "match": False,
             "user_name": user_name,
             "code": "NAME_MISMATCH",
-            "message": f"❌ नाम का मिलान नहीं हुआ ({best_score}%)! आधार कार्ड पर लिखा नाम '{best_match or 'अज्ञात'}' और प्रोफाइल नाम '{user_name}' अलग हैं। कृपया सही नाम दर्ज करें।",
+            "message": f"❌ नाम का मिलान नहीं हुआ ({best_score}%)! आधार कार्ड पर लिखा नाम '{best_match or 'पहचाना नहीं गया'}' और आपका प्रोफाइल नाम '{user_name}' अलग हैं। कृपया आधार कार्ड अनुसार सही नाम दर्ज करें।",
             "score": best_score,
             "threshold": THRESHOLD,
             "best_ocr_text": best_match,

@@ -274,23 +274,6 @@ class ApiService {
       }
     }
 
-    // Client-side resilience fallback: if image was captured with valid bytes,
-    // approve face verification so server sleep/proxy cold-starts never block the user
-    final bool hasValidBytes = (liveBytes != null && liveBytes.length > 2000) ||
-        (!kIsWeb && liveSnapshot.existsSync() && liveSnapshot.lengthSync() > 2000);
-
-    if (hasValidBytes) {
-      return FaceVerificationResult(
-        isSuccess: true,
-        match: true,
-        faceDetected: true,
-        distance: 0.15,
-        toleranceThreshold: 0.50,
-        confidencePercentage: 99.0,
-        message: 'बायोमेट्रिक लाइव चेहरा 100% सत्यापित!',
-      );
-    }
-
     final statusCode = lastDioError?.response?.statusCode;
     if (statusCode == 502 || statusCode == 503) {
       return FaceVerificationResult.error(
@@ -362,21 +345,6 @@ class ApiService {
       } catch (e) {
         return FaceVerificationResult.error('चेहरा सत्यापन त्रुटि: $e');
       }
-    }
-
-    final bool hasValidBytes = (liveBytes != null && liveBytes.length > 2000) ||
-        (!kIsWeb && liveSnapshot.existsSync() && liveSnapshot.lengthSync() > 2000);
-
-    if (hasValidBytes) {
-      return FaceVerificationResult(
-        isSuccess: true,
-        match: true,
-        faceDetected: true,
-        distance: 0.15,
-        toleranceThreshold: 0.50,
-        confidencePercentage: 99.0,
-        message: 'बायोमेट्रिक लाइव चेहरा 100% सत्यापित!',
-      );
     }
 
     final statusCode = lastDioError?.response?.statusCode;
@@ -457,22 +425,6 @@ class ApiService {
       } catch (e) {
         return AadhaarOcrResult.error('आधार कार्ड सत्यापन त्रुटि: $e');
       }
-    }
-
-    // Safe client-side resilience if network/cold-start error occurs on valid image
-    final bool hasValidBytes = (aadharBytes != null && aadharBytes.length > 2000) ||
-        (!kIsWeb && aadharImage.existsSync() && aadharImage.lengthSync() > 2000);
-
-    if (hasValidBytes && userName.trim().length >= 2) {
-      return AadhaarOcrResult(
-        isSuccess: true,
-        isApproved: true,
-        score: 100,
-        threshold: 60,
-        userName: userName.trim(),
-        matchedText: userName.trim(),
-        message: '✓ आधार कार्ड 100% सत्यापित! वैध पहचान पत्र व फोटो की पुष्टि हुई।',
-      );
     }
 
     final statusCode = lastDioError?.response?.statusCode;
