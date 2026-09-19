@@ -58,12 +58,20 @@ class ClientExperienceBrain {
     return await _apiService.verifyLiveFace(liveSnapshot: faceImage);
   }
 
-  /// STRICT RULE 3: Aadhaar image must exist and worker name cannot be empty
-  Future<AadhaarOcrResult> verifyWorkerAadhaar(File docImage, String workerName) async {
-    if (!await docImage.exists() || workerName.trim().isEmpty) {
-      return AadhaarOcrResult.error("आधार कार्ड फोटो और कारीगर का नाम अनिवार्य है।");
+  /// STRICT RULE 3: Aadhaar image must exist and worker name cannot be empty (Anti-Garbage Guard)
+  Future<AadhaarOcrResult> verifyWorkerAadhaar(File docImage, String workerName, [Uint8List? docBytes]) async {
+    if (workerName.trim().length < 2) {
+      return AadhaarOcrResult.error("कृपया सत्यापन हेतु अपना पूरा नाम दर्ज करें।");
     }
-    return await _apiService.verifyAadhaar(aadharImage: docImage, userName: workerName.trim());
+    final int byteLength = docBytes?.length ?? (docImage.existsSync() ? docImage.lengthSync() : 0);
+    if (byteLength < 5120) {
+      return AadhaarOcrResult.error("❌ अमान्य या खाली फोटो! कृपया अपने असली आधार कार्ड की स्पष्ट फोटो अपलोड करें।");
+    }
+    return await _apiService.verifyAadhaar(
+      aadharImage: docImage,
+      userName: workerName.trim(),
+      aadharBytes: docBytes,
+    );
   }
 
   /// STRICT RULE 4: Progressive Lazy Asset Loading & Memory Constraint
