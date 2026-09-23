@@ -399,7 +399,7 @@ class ApiService {
     required String userName,
     Uint8List? aadharBytes,
   }) async {
-    const int maxAttempts = 4;
+    const int maxAttempts = 10;
     DioException? lastDioError;
 
     for (int attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -452,7 +452,7 @@ class ApiService {
             e.type == DioExceptionType.receiveTimeout;
 
         if (isColdStart && attempt < maxAttempts) {
-          await Future.delayed(const Duration(milliseconds: 3000));
+          await Future.delayed(const Duration(milliseconds: 4000));
           continue;
         }
         break;
