@@ -928,32 +928,26 @@ async def verify_aadhar(
         scale = 800.0 / max_dim
         raw_img = cv2.resize(raw_img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
 
-    # ── 1. Detect Photo inside the Aadhaar Card ──────────────
+    # ── 1. Detect Photo inside the Aadhaar Card (Ultra-Fast Lightweight Check) ──
     has_photo = False
-    face_in_card_box = None
-    detected_angle = 0
     try:
-        f_detected, f_count, f_box, f_angle, _, _ = detect_faces_smart(raw_img)
-        if f_detected and f_box:
-            has_photo = True
-            face_in_card_box = f_box
-            detected_angle = f_angle
-            logger.info(f"✅ Aadhaar cardholder photo detected successfully: box={f_box}, angle={f_angle}")
+        thumb_h, thumb_w = raw_img.shape[:2]
+        thumb = cv2.resize(raw_img, (320, int(320 * thumb_h / thumb_w)), interpolation=cv2.INTER_AREA) if thumb_w > 320 else raw_img
+        cascades = get_face_cascades()
+        default_cas = cascades.get("alt2") or cascades.get("default")
+        if default_cas is not None:
+            gray_thumb = cv2.cvtColor(thumb, cv2.COLOR_BGR2GRAY)
+            faces = default_cas.detectMultiScale(gray_thumb, scaleFactor=1.2, minNeighbors=3, minSize=(25, 25))
+            if len(faces) > 0:
+                has_photo = True
+                logger.info("✅ Aadhaar cardholder photo detected")
     except Exception as fe:
         logger.warning(f"Aadhaar photo detection notice: {fe}")
 
     # ── 2. Smart Single-Pass Text Extraction with RapidOCR (ONNX) ───
     extracted_texts = []
     rapid = get_rapid_ocr()
-
-    # If face detection already found card rotation, orient upright immediately!
     aligned_img = raw_img
-    if detected_angle == 90:
-        aligned_img = cv2.rotate(raw_img, cv2.ROTATE_90_CLOCKWISE)
-    elif detected_angle == 180:
-        aligned_img = cv2.rotate(raw_img, cv2.ROTATE_180)
-    elif detected_angle == 270:
-        aligned_img = cv2.rotate(raw_img, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
     if rapid is not None:
         try:
