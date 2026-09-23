@@ -75,7 +75,7 @@ class _DocumentCameraScannerDialogState extends State<DocumentCameraScannerDialo
 
       _controller = CameraController(
         selectedCam,
-        ResolutionPreset.high,
+        ResolutionPreset.medium,
         enableAudio: false,
       );
 

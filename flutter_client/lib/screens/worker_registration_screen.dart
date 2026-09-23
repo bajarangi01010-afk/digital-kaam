@@ -972,7 +972,7 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: _openDocumentCameraScanner,
+                        onPressed: _isOcrScanning ? null : _openDocumentCameraScanner,
                         icon: const Icon(Icons.camera_alt_rounded, size: 16, color: Colors.white),
                         label: const Text("कैमरा स्कैनर", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
@@ -986,7 +986,7 @@ class _WorkerRegistrationScreenState extends State<WorkerRegistrationScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: _showAadhaarSourceSheet,
+                        onPressed: _isOcrScanning ? null : _showAadhaarSourceSheet,
                         icon: const Icon(Icons.upload_file_rounded, size: 16, color: Color(0xFF38BDF8)),
                         label: const Text("अपलोड करें", style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
                         style: OutlinedButton.styleFrom(

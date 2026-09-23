@@ -82,6 +82,28 @@ export default {
         modifiedHeaders.set("Cache-Control", "public, max-age=30, s-maxage=60");
       }
 
+      // If Render returns HTML 502/503/504, convert to clean JSON for Flutter client
+      const contentType = response.headers.get("content-type") || "";
+      if ([502, 503, 504].includes(response.status) && !contentType.includes("application/json")) {
+        return new Response(
+          JSON.stringify({
+            status: "warning",
+            code: "BACKEND_WARMING",
+            message: "बैकएंड सर्वर शुरू हो रहा है, कृपया 5-10 सेकंड में पुनः प्रयास करें।",
+            detail: `Render Gateway Status: ${response.status}`,
+            timestamp: new Date().toISOString(),
+          }),
+          {
+            status: 503,
+            headers: {
+              "Content-Type": "application/json",
+              "Retry-After": "5",
+              ...CORS_HEADERS,
+            },
+          }
+        );
+      }
+
       return new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
