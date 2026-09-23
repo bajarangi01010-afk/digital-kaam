@@ -399,7 +399,7 @@ class ApiService {
     required String userName,
     Uint8List? aadharBytes,
   }) async {
-    const int maxAttempts = 3;
+    const int maxAttempts = 4;
     DioException? lastDioError;
 
     for (int attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -452,7 +452,7 @@ class ApiService {
             e.type == DioExceptionType.receiveTimeout;
 
         if (isColdStart && attempt < maxAttempts) {
-          await Future.delayed(const Duration(milliseconds: 2500));
+          await Future.delayed(const Duration(milliseconds: 3000));
           continue;
         }
         break;
@@ -462,33 +462,51 @@ class ApiService {
     }
 
     final statusCode = lastDioError?.response?.statusCode;
-    final bool hasValidDoc = (aadharBytes != null && aadharBytes.length > 1000) ||
-        (!kIsWeb && aadharImage.existsSync() && aadharImage.lengthSync() > 1000);
-
-    if ((statusCode == 502 || statusCode == 503 || statusCode == 504 ||
-         lastDioError?.type == DioExceptionType.connectionTimeout ||
-         lastDioError?.type == DioExceptionType.receiveTimeout) &&
-        hasValidDoc && userName.trim().length >= 2) {
-      return AadhaarOcrResult(
-        isSuccess: true,
-        isApproved: true,
-        score: 100,
-        threshold: 60,
-        userName: userName.trim(),
-        matchedText: userName.trim(),
-        message: '✓ आधार कार्ड 100% सत्यापित! वैध पहचान पत्र व नाम की पुष्टि हुई।',
+    if (statusCode == 502 || statusCode == 503 || statusCode == 504) {
+      return AadhaarOcrResult.error(
+        'सुरक्षित AI सर्वर लोड हो रहा है (कोड: $statusCode)। कृपया 5-10 सेकंड बाद पुनः प्रयास करें।',
       );
     }
 
-    if (statusCode == 502 || statusCode == 503) {
+    if (lastDioError?.type == DioExceptionType.connectionTimeout ||
+        lastDioError?.type == DioExceptionType.receiveTimeout) {
       return AadhaarOcrResult.error(
-        'सर्वर वर्तमान में लोड हो रहा है (कोड: $statusCode)। कृपया 5-10 सेकंड बाद पुनः प्रयास करें।',
+        'आधार सत्यापन सर्वर से संपर्क समय समाप्त (Timeout)। कृपया पुनः प्रयास करें।',
       );
     }
 
     return AadhaarOcrResult.error(
-      'आधार कार्ड सत्यापन सर्वर से संपर्क नहीं हो सका (${lastDioError?.message ?? "नेटवर्क त्रुटि"})। कृपया पुनः प्रयास करें।',
+      'आधार कार्ड सत्यापन सर्वर से संपर्क नहीं हो सका। कृपया इंटरनेट जांचें व पुनः प्रयास करें।',
     );
+  }
+
+  /// Safely converts any DioException into a clear, user-friendly localized message
+  static String cleanDioError(dynamic e) {
+    if (e is DioException) {
+      if (e.response?.data is Map) {
+        final map = e.response!.data as Map;
+        if (map['message'] != null && map['message'].toString().isNotEmpty) {
+          return map['message'].toString();
+        }
+        if (map['detail'] != null && map['detail'].toString().isNotEmpty) {
+          return map['detail'].toString();
+        }
+      }
+      final code = e.response?.statusCode;
+      if (code == 500) {
+        return "सर्वर पर अस्थायी समस्या आई (कोड: 500)। कृपया कुछ सेकंड बाद पुनः प्रयास करें।";
+      }
+      if (code == 502 || code == 503 || code == 504) {
+        return "सर्वर वर्तमान में लोड हो रहा है (कोड: $code)। कृपया 5-10 सेकंड बाद पुनः प्रयास करें।";
+      }
+      if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) {
+        return "सर्वर से संपर्क समय समाप्त (Timeout)। कृपया इंटरनेट कनेक्शन जांचें।";
+      }
+      if (e.type == DioExceptionType.connectionError) {
+        return "सर्वर से कनेक्ट नहीं हो सका। कृपया इंटरनेट कनेक्शन जांचें।";
+      }
+    }
+    return "प्रमाणीकरण त्रुटि: ${e.toString().split('\n').first}";
   }
 
   /// Syncs updated profile to the backend database
@@ -503,7 +521,7 @@ class ApiService {
       }
       return {"status": "success"};
     } catch (e) {
-      return {"status": "error", "message": e.toString()};
+      return {"status": "error", "message": cleanDioError(e)};
     }
   }
 
@@ -531,7 +549,7 @@ class ApiService {
       }
       return {"status": "sent"};
     } catch (e) {
-      return {"status": "error", "message": e.toString()};
+      return {"status": "error", "message": cleanDioError(e)};
     }
   }
 
@@ -547,7 +565,7 @@ class ApiService {
       }
       return {"status": "success"};
     } catch (e) {
-      return {"status": "error", "message": e.toString()};
+      return {"status": "error", "message": cleanDioError(e)};
     }
   }
 
@@ -571,7 +589,7 @@ class ApiService {
       }
       return {"status": "error", "message": "अमान्य सर्वर प्रतिक्रिया"};
     } catch (e) {
-      return {"status": "error", "message": e.toString()};
+      return {"status": "error", "message": cleanDioError(e)};
     }
   }
 
@@ -589,7 +607,7 @@ class ApiService {
       }
       return {"status": "error", "exists": false};
     } catch (e) {
-      return {"status": "error", "exists": false, "message": e.toString()};
+      return {"status": "error", "exists": false, "message": cleanDioError(e)};
     }
   }
 }

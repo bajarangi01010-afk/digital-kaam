@@ -377,7 +377,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       setState(() {
         _isLoggingIn = false;
-        _errorMessage = "लॉगिन में समस्या आई: $e";
+        _errorMessage = ApiService.cleanDioError(e);
       });
     }
   }

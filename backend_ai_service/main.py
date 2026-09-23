@@ -381,18 +381,63 @@ async def verify_aadhar(
 
     logger.info(f"Name match — user: '{normalized_user}', best: '{best_match}', score: {best_score}")
 
-    # Check for genuine Aadhaar card markers
-    aadhaar_keywords = [
-        "government", "india", "aadhaar", "father", "dob", "birth",
-        "male", "female", "uidai", "mera", "पहचान", "आधार", "भारत", "सरकार"
+    # Anti-App/Web Screenshot Guard
+    screenshot_terms = [
+        "dioexception", "bad response", "status code", "developer.mozilla",
+        "requestoptions", "account login", "registered mobile number",
+        "enter your aadhaar", "verified profile recovery", "already registered"
     ]
-    has_aadhaar_markers = any(kw in full_text for kw in aadhaar_keywords)
+    if any(st in full_text for st in screenshot_terms):
+        logger.warning(f"Aadhaar rejection — Detected mobile app/error screenshot! OCR: {full_text[:100]}")
+        return {
+            "status": "error",
+            "is_approved": False,
+            "match": False,
+            "code": "SCREENSHOT_REJECTED",
+            "message": "❌ स्क्रीनशॉट अमान्य है! ऐप का स्क्रीनशॉट आधार कार्ड नहीं हो सकता। कृपया अपने असली आधार कार्ड की सीधी फोटो खींचकर अपलोड करें।",
+            "score": 0,
+            "threshold": 60,
+            "best_ocr_text": "",
+        }
 
-    # Threshold rules adapted for local Indian users:
-    # 1. High match >= 80%
-    # 2. Genuine Aadhaar detected with score >= 60%
-    THRESHOLD = 80
-    is_approved = best_score >= THRESHOLD or (has_aadhaar_markers and best_score >= 60)
+    # Strict Genuine Aadhaar Markers (Categorized)
+    issuer_markers = [
+        "uidai", "unique identification", "government of india", "govt of india",
+        "bharat sarkar", "भारत सरकार", "भारतीय विशिष्ट पहचान", "mera aadhaar",
+        "मेरा आधार", "help@uidai", "uidai.gov.in", "आम आदमी का अधिकार"
+    ]
+    structure_markers = [
+        "dob", "birth", "जन्म तिथि", "जन्म", "year of birth", "yob",
+        "male", "female", "पुरुष", "महिला", "father", "पिता",
+        "address", "पता", "enrolment", "नामांकन", "vid", "resident"
+    ]
+
+    uid_match = re.search(r'\b(?:\d{4}[\s-]?\d{4}[\s-]?\d{4}|[xX]{4}[\s-]?[xX]{4}[\s-]?\d{4}|\d{12})\b', full_text)
+    has_valid_uid = bool(uid_match)
+    has_issuer = any(kw in full_text for kw in issuer_markers)
+    has_structure = any(kw in full_text for kw in structure_markers)
+
+    is_genuine_aadhaar = (
+        (has_valid_uid and (has_issuer or has_structure)) or
+        (has_issuer and (has_structure or "आधार" in full_text or "aadhaar" in full_text))
+    )
+
+    THRESHOLD = 60
+
+    if not is_genuine_aadhaar:
+        logger.warning(f"Aadhaar rejection — Non-Aadhaar document (UID: {has_valid_uid}, Issuer: {has_issuer}, Structure: {has_structure}). OCR text: {full_text[:120]}")
+        return {
+            "status": "error",
+            "is_approved": False,
+            "match": False,
+            "code": "NOT_AADHAAR_CARD",
+            "message": "❌ अपलोड की गई फोटो वैध आधार कार्ड नहीं है! कृपया अपने असली आधार कार्ड की स्पष्ट फोटो अपलोड करें (आधार नंबर व UIDAI विवरण आवश्यक है)।",
+            "score": 0,
+            "threshold": THRESHOLD,
+            "best_ocr_text": "",
+        }
+
+    is_approved = is_genuine_aadhaar and best_score >= THRESHOLD
 
     if is_approved:
         return {
