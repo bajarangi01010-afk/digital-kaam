@@ -1137,7 +1137,7 @@ async def verify_aadhar(
 
     # Token hits on full document
     token_hits = [t for t in user_tokens if t in full_text or transliterate_hindi_to_english(t) in transliterate_hindi_to_english(full_text)]
-    if has_aadhaar_indicator and len(token_hits) > 0:
+    if is_genuine_aadhaar and len(token_hits) > 0:
         token_cov = len(token_hits) / len(user_tokens) if user_tokens else 0
         if token_cov >= 0.5:
             best_score = max(best_score, int(85 + 15 * token_cov))
