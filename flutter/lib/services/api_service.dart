@@ -399,7 +399,7 @@ class ApiService {
     required String userName,
     Uint8List? aadharBytes,
   }) async {
-    const int maxAttempts = 10;
+    const int maxAttempts = 2;
     DioException? lastDioError;
 
     for (int attempt = 1; attempt <= maxAttempts; attempt++) {
