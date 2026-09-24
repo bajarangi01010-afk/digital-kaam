@@ -913,6 +913,11 @@ async def verify_aadhar(
                 status_code=400,
                 detail="आधार कार्ड की फोटो फाइल खाली है। कृपया सही फोटो चुनें।",
             )
+        if len(image_bytes) > 15 * 1024 * 1024:
+            raise HTTPException(
+                status_code=400,
+                detail="फ़ाइल का साइज़ बहुत बड़ा है (अधिकतम 15MB)। कृपया 15MB से कम साइज़ की फोटो चुनें।",
+            )
     except HTTPException:
         raise
     except Exception as e:
