@@ -11,11 +11,11 @@ class DocumentCameraScannerDialog extends StatefulWidget {
   final Function(File capturedFile, Uint8List capturedBytes) onCaptured;
 
   const DocumentCameraScannerDialog({
-    Key? key,
+    super.key,
     this.title = "आधार कार्ड लाइव कैमरा स्कैनर",
     this.subtitle = "आधार कार्ड को आयताकार गाइड के अंदर सीधा रखें और स्पष्ट फोटो खींचें",
     required this.onCaptured,
-  }) : super(key: key);
+  });
 
   @override
   State<DocumentCameraScannerDialog> createState() => _DocumentCameraScannerDialogState();
@@ -175,7 +175,7 @@ class _DocumentCameraScannerDialogState extends State<DocumentCameraScannerDialo
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0284C7).withOpacity(0.2),
+                    color: const Color(0xFF0284C7).withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.document_scanner_rounded, color: Color(0xFF38BDF8), size: 24),
@@ -366,7 +366,7 @@ class _DocumentCameraScannerDialogState extends State<DocumentCameraScannerDialo
                                       color: const Color(0xFF38BDF8),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: const Color(0xFF38BDF8).withOpacity(0.8),
+                                          color: const Color(0xFF38BDF8).withValues(alpha: 0.8),
                                           blurRadius: 10,
                                           spreadRadius: 2,
                                         ),
@@ -386,7 +386,7 @@ class _DocumentCameraScannerDialogState extends State<DocumentCameraScannerDialo
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.7),
+                                    color: Colors.black.withValues(alpha: 0.7),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: const Text(

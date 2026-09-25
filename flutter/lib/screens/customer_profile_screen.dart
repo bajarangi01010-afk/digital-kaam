@@ -155,8 +155,8 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: const [
+                      const Row(
+                        children: [
                           Icon(Icons.edit_note_rounded, color: Color(0xFF34D399), size: 26),
                           SizedBox(width: 8),
                           Text("ग्राहक प्रोफाइल बदलें (Edit Profile)", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
@@ -419,10 +419,10 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                                   fallbackIcon: Icons.person_rounded,
                                 ),
                                 const SizedBox(width: 12),
-                                Expanded(
+                                const Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: const [
+                                    children: [
                                       Text("ग्राहक प्रोफाइल फोटो", style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
                                       SizedBox(height: 2),
                                       Text("सुरक्षा व पहचान के लिए लाइव फोटो", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
@@ -536,8 +536,8 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
         builder: (dialogCtx, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF1E293B),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          title: Row(
-            children: const [
+          title: const Row(
+            children: [
               Icon(Icons.support_agent_rounded, color: Color(0xFF34D399), size: 22),
               SizedBox(width: 8),
               Text("ग्राहक सहायता व रिफंड टिकट", style: TextStyle(color: Colors.white, fontSize: 15)),
@@ -621,8 +621,8 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.logout_rounded, color: Color(0xFFEF4444), size: 24),
             SizedBox(width: 8),
             Text("लॉगआउट की पुष्टि", style: TextStyle(color: Colors.white, fontSize: 16)),
@@ -644,9 +644,9 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: const Color(0xFF334155)),
               ),
-              child: Column(
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text("🛡️ ग्राहक डेटा सुरक्षा गारंटी:", style: TextStyle(color: Color(0xFF34D399), fontSize: 12, fontWeight: FontWeight.bold)),
                   SizedBox(height: 4),
                   Text(

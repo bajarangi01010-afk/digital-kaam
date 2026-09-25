@@ -245,8 +245,8 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: const [
+                    const Row(
+                      children: [
                         Icon(Icons.account_balance_rounded, color: Color(0xFF38BDF8), size: 24),
                         SizedBox(width: 8),
                         Text(
@@ -269,8 +269,8 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: const Color(0xFF0284C7)),
                   ),
-                  child: Row(
-                    children: const [
+                  child: const Row(
+                    children: [
                       Icon(Icons.security_rounded, color: Color(0xFF38BDF8), size: 20),
                       SizedBox(width: 8),
                       Expanded(
@@ -438,8 +438,8 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.badge_rounded, color: Color(0xFF38BDF8), size: 24),
             SizedBox(width: 8),
             Text("डिजिटल काम पहचान पत्र (ID Card)", style: TextStyle(color: Colors.white, fontSize: 15)),

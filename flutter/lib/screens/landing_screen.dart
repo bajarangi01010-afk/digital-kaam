@@ -322,7 +322,7 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    "${WorkerSession.name}",
+                                    WorkerSession.name,
                                     style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                                   ),
                                   const SizedBox(height: 2),
@@ -384,14 +384,14 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
                                           await WorkerSession.clearSession();
                                           setState(() {});
                                         },
-                                        child: Text(
-                                          isHindi ? "खाता बदलें" : "Switch",
-                                          style: const TextStyle(fontSize: 12, color: Color(0xFFF87171)),
-                                        ),
                                         style: OutlinedButton.styleFrom(
                                           side: const BorderSide(color: Color(0xFFEF4444)),
                                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                        child: Text(
+                                          isHindi ? "खाता बदलें" : "Switch",
+                                          style: const TextStyle(fontSize: 12, color: Color(0xFFF87171)),
                                         ),
                                       ),
                                     ],
@@ -785,7 +785,7 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
                           decoration: BoxDecoration(
                             color: const Color(0xFF1E293B),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.3)),
+                            border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.3)),
                           ),
                           child: const Icon(Icons.auto_awesome, color: Color(0xFFFDE047), size: 20),
                         ),
@@ -852,7 +852,7 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
                                 Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: color.withOpacity(0.12),
+                                    color: color.withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Icon(f["icon"] as IconData, color: color, size: 18),

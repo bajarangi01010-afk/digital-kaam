@@ -152,8 +152,8 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: const [
+                      const Row(
+                        children: [
                           Icon(Icons.edit_note_rounded, color: Color(0xFF38BDF8), size: 26),
                           SizedBox(width: 8),
                           Text(
@@ -219,11 +219,11 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                             ),
                           ),
                           if (!isNameAadhaarVerified)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 6),
+                            const Padding(
+                              padding: EdgeInsets.only(top: 6),
                               child: Text(
                                 "⚠️ चेतावनी: नाम बदला गया है! कृपया नीचे आधार कार्ड स्कैन करें।",
-                                style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 11, fontWeight: FontWeight.w600),
+                                style: TextStyle(color: Color(0xFFFBBF24), fontSize: 11, fontWeight: FontWeight.w600),
                               ),
                             ),
                           const SizedBox(height: 16),
@@ -492,10 +492,10 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                                   fallbackIcon: Icons.camera_alt,
                                 ),
                                 const SizedBox(width: 12),
-                                Expanded(
+                                const Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: const [
+                                    children: [
                                       Text("बायोमेट्रिक लाइव फेस फोटो", style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
                                       SizedBox(height: 2),
                                       Text("एंटी-स्पूफिंग व लाइव कैमरा सत्यापन", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
@@ -702,8 +702,8 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
         builder: (dialogCtx, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF1E293B),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          title: Row(
-            children: const [
+          title: const Row(
+            children: [
               Icon(Icons.report_problem_rounded, color: Color(0xFFFBBF24), size: 22),
               SizedBox(width: 8),
               Text("शिकायत या सहायता टिकट", style: TextStyle(color: Colors.white, fontSize: 15)),
@@ -787,8 +787,8 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.logout_rounded, color: Color(0xFFEF4444), size: 24),
             SizedBox(width: 8),
             Text("लॉगआउट की पुष्टि", style: TextStyle(color: Colors.white, fontSize: 16)),
@@ -810,9 +810,9 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: const Color(0xFF334155)),
               ),
-              child: Column(
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text("🛡️ डेटा सुरक्षा गारंटी:", style: TextStyle(color: Color(0xFF34D399), fontSize: 12, fontWeight: FontWeight.bold)),
                   SizedBox(height: 4),
                   Text(

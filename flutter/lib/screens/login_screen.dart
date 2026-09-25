@@ -389,8 +389,8 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.person_off_rounded, color: Color(0xFFF59E0B), size: 26),
             SizedBox(width: 10),
             Text("खाता पंजीकृत नहीं है", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),

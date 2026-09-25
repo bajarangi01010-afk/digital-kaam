@@ -12,9 +12,9 @@ class KycVerificationScreen extends StatefulWidget {
   final UserKycRole role;
 
   const KycVerificationScreen({
-    Key? key,
+    super.key,
     this.role = UserKycRole.worker,
-  }) : super(key: key);
+  });
 
   @override
   State<KycVerificationScreen> createState() => _KycVerificationScreenState();
@@ -156,8 +156,8 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.verified_user_rounded, color: Color(0xFF059669)),
             SizedBox(width: 8),
             Text("KYC सफलतापूर्वक स्वीकृत", style: TextStyle(fontSize: 16)),
@@ -245,10 +245,10 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
                       child: const Icon(Icons.shield_rounded, color: Color(0xFF4F46E5), size: 24),
                     ),
                     const SizedBox(width: 12),
-                    Expanded(
+                    const Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
                           Text(
                             "पहचान व सुरक्षा सत्यापन (MANDATORY)",
                             style: TextStyle(
@@ -313,8 +313,8 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: const [
+                          const Row(
+                            children: [
                               Icon(Icons.badge_outlined, color: Color(0xFF4F46E5), size: 18),
                               SizedBox(width: 6),
                               Text(
@@ -375,8 +375,8 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
                       // OCR Status Message
                       if (_isOcrScanning) ...[
                         const SizedBox(height: 10),
-                        Row(
-                          children: const [
+                        const Row(
+                          children: [
                             SpinKitThreeBounce(color: Color(0xFF4F46E5), size: 18),
                             SizedBox(width: 10),
                             Text(
@@ -431,8 +431,8 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: const [
+                          const Row(
+                            children: [
                               Icon(Icons.camera_enhance_rounded, color: Color(0xFF4F46E5), size: 18),
                               SizedBox(width: 6),
                               Text(

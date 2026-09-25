@@ -19,6 +19,7 @@ import time
 import asyncio
 import base64
 import logging
+from contextlib import asynccontextmanager
 
 import cv2
 import numpy as np
@@ -30,12 +31,28 @@ from fastapi.middleware.cors import CORSMiddleware
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("digital-kaam-api")
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Pre-warm RapidOCR in a background thread so the first OCR request has zero latency."""
+    def _warm():
+        try:
+            rapid = get_rapid_ocr()
+            if rapid is not None:
+                dummy = np.ones((100, 100, 3), dtype=np.uint8) * 255
+                rapid(dummy, use_cls=False)
+                logger.info("✅ RapidOCR warm-up completed on startup")
+        except Exception as e:
+            logger.warning(f"RapidOCR warm-up notice: {e}")
+    asyncio.get_event_loop().run_in_executor(None, _warm)
+    yield
+
 # ── App ──────────────────────────────────────────────────────
 app = FastAPI(
     title="Digital Kaam Verification API",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -90,20 +107,6 @@ def get_rapid_ocr():
 # ══════════════════════════════════════════════════════════════
 #  HEALTH CHECK
 # ══════════════════════════════════════════════════════════════
-
-@app.on_event("startup")
-async def on_startup_prewarm():
-    """Pre-warm RapidOCR in a background thread so the first OCR request has zero latency."""
-    def _warm():
-        try:
-            rapid = get_rapid_ocr()
-            if rapid is not None:
-                dummy = np.ones((100, 100, 3), dtype=np.uint8) * 255
-                rapid(dummy, use_cls=False)
-                logger.info("✅ RapidOCR warm-up completed on startup")
-        except Exception as e:
-            logger.warning(f"RapidOCR warm-up notice: {e}")
-    asyncio.get_event_loop().run_in_executor(None, _warm)
 
 
 @app.get("/")

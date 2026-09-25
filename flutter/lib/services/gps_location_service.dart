@@ -290,6 +290,14 @@ class GpsLocationService {
     String? addressLabel,
   }) async {
     try {
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        final appleMapsUrl = Uri.parse(
+          'https://maps.apple.com/?daddr=$destLat,$destLng&q=${Uri.encodeComponent(addressLabel ?? "ग्राहक का स्थान")}',
+        );
+        if (await canLaunchUrl(appleMapsUrl)) {
+          return await launchUrl(appleMapsUrl, mode: LaunchMode.externalApplication);
+        }
+      }
       final googleMapsUrl = Uri.parse(
         'https://www.google.com/maps/dir/?api=1&destination=$destLat,$destLng&travelmode=driving',
       );

@@ -19,7 +19,7 @@ void main() async {
 
 class DigitalKaamApp extends StatelessWidget {
   final bool hasSession;
-  const DigitalKaamApp({Key? key, this.hasSession = false}) : super(key: key);
+  const DigitalKaamApp({super.key, this.hasSession = false});
 
   @override
   Widget build(BuildContext context) {

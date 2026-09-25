@@ -131,8 +131,8 @@ class _WorkerSkillSetupScreenState extends State<WorkerSkillSetupScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 26),
             SizedBox(width: 10),
             Text("कारीगर खाता तैयार!", style: TextStyle(color: Colors.white, fontSize: 16)),
@@ -396,9 +396,9 @@ class _WorkerSkillSetupScreenState extends State<WorkerSkillSetupScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
+                    children: [
                       Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 20),
                       SizedBox(width: 10),
                       Text(

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../controllers/app_theme_controller.dart';
 
 class AppSettingsDialog extends StatefulWidget {
-  const AppSettingsDialog({Key? key}) : super(key: key);
+  const AppSettingsDialog({super.key});
 
   static void show(BuildContext context) {
     showModalBottomSheet(

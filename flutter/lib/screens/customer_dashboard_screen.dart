@@ -373,8 +373,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
         builder: (ctx) => AlertDialog(
           backgroundColor: const Color(0xFF1E293B),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: const [
+          title: const Row(
+            children: [
               Icon(Icons.lock_rounded, color: Color(0xFFF59E0B)),
               SizedBox(width: 8),
               Expanded(
@@ -435,8 +435,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.phone_in_talk_rounded, color: Color(0xFF10B981)),
             SizedBox(width: 8),
             Text("कारीगर से डायरेक्ट कॉल (सक्रिय)", style: TextStyle(color: Colors.white, fontSize: 16)),
@@ -458,8 +458,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: const Color(0xFF10B981)),
               ),
-              child: Row(
-                children: const [
+              child: const Row(
+                children: [
                   Icon(Icons.lock_open_rounded, color: Color(0xFF34D399), size: 16),
                   SizedBox(width: 8),
                   Expanded(
@@ -502,8 +502,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.shield_rounded, color: Color(0xFF38BDF8)),
             SizedBox(width: 10),
             Text("सुरक्षित बुकिंग व अग्रिम भुगतान", style: TextStyle(color: Colors.white, fontSize: 15)),
@@ -525,8 +525,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: const Color(0xFF059669)),
                 ),
-                child: Row(
-                  children: const [
+                child: const Row(
+                  children: [
                     Icon(Icons.security_update_good_rounded, color: Color(0xFF10B981), size: 20),
                     SizedBox(width: 8),
                     Expanded(
@@ -665,9 +665,9 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(color: const Color(0xFF10B981)),
                           ),
-                          child: Row(
+                          child: const Row(
                             mainAxisSize: MainAxisSize.min,
-                            children: const [
+                            children: [
                               CircleAvatar(radius: 4, backgroundColor: Color(0xFF10B981)),
                               SizedBox(width: 6),
                               Text("S2 Geometry Active", style: TextStyle(color: Color(0xFF34D399), fontSize: 11, fontWeight: FontWeight.bold)),
@@ -812,9 +812,9 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                Row(
+                                const Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: const [
+                                  children: [
                                     Text("बुकिंग कन्फर्म", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10)),
                                     Text("रास्ते में", style: TextStyle(color: Color(0xFF38BDF8), fontSize: 10, fontWeight: FontWeight.bold)),
                                     Text("द्वार पर", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10)),
@@ -836,9 +836,9 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                             ),
                             child: Column(
                               children: [
-                                Row(
+                                const Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
+                                  children: [
                                     Icon(Icons.lock_person_rounded, color: Color(0xFFF59E0B), size: 20),
                                     SizedBox(width: 8),
                                     Text("स्टार्ट सुरक्षा कोड (Start Handshake OTP)", style: TextStyle(color: Color(0xFFFBBF24), fontWeight: FontWeight.bold, fontSize: 13)),
@@ -932,8 +932,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 24),
             SizedBox(width: 8),
             Text("कारीगर नहीं आया? (100% Refund)", style: TextStyle(color: Colors.white, fontSize: 15)),
@@ -976,8 +976,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 24),
             SizedBox(width: 8),
             Text("कार्य संपन्न व संतुष्टि", style: TextStyle(color: Colors.white, fontSize: 16)),
@@ -1020,8 +1020,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF38BDF8)),
             SizedBox(width: 8),
             Text("कारीगर QR स्कैनर (Live Scan)", style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
@@ -1042,9 +1042,9 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    Column(
+                    const Column(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
+                      children: [
                         Icon(Icons.qr_code_2_rounded, size: 90, color: Color(0xFF38BDF8)),
                         SizedBox(height: 6),
                         Text("कारीगर का ID कार्ड QR कोड फ्रेम में लाएं", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
@@ -1129,8 +1129,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: const [
+                  const Row(
+                    children: [
                       Icon(Icons.verified_user_rounded, color: Color(0xFF10B981), size: 24),
                       SizedBox(width: 8),
                       Text("सत्यापित कारीगर विवरण (Verified ID)", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
@@ -1230,8 +1230,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                       ],
                     ),
                     const Divider(color: Color(0xFF334155), height: 18),
-                    Row(
-                      children: const [
+                    const Row(
+                      children: [
                         Icon(Icons.shield_rounded, color: Color(0xFF38BDF8), size: 18),
                         SizedBox(width: 8),
                         Expanded(

@@ -10,9 +10,24 @@
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
 
+    <!-- GPS Location permissions for S2 spatial radar and address auto-detection -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <!-- File and media permissions for Aadhaar & profile photo selection -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
+    <!-- Telephony permission for post-escrow direct customer-to-worker call bridge -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+
+    <!-- Package visibility queries for opening native dialer on Android 11+ (API 30+) -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
+        </intent>
+    </queries>
 
     <!-- Allow cleartext HTTP for local emulator debugging (10.0.2.2:8000) -->
     <application

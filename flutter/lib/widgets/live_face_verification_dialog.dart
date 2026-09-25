@@ -16,13 +16,13 @@ class LiveFaceVerificationDialog extends StatefulWidget {
   final Function(File snapshotFile, Uint8List snapshotBytes)? onFaceVerified;
 
   const LiveFaceVerificationDialog({
-    Key? key,
+    super.key,
     this.title,
     this.uploadedProfilePhoto,
     this.uploadedPhotoBytes,
     this.onVerificationComplete,
     this.onFaceVerified,
-  }) : super(key: key);
+  });
 
   @override
   State<LiveFaceVerificationDialog> createState() => _LiveFaceVerificationDialogState();
@@ -367,7 +367,7 @@ class _LiveFaceVerificationDialogState extends State<LiveFaceVerificationDialog>
                                 color: const Color(0xFF38BDF8),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFF38BDF8).withOpacity(0.8),
+                                    color: const Color(0xFF38BDF8).withValues(alpha: 0.8),
                                     blurRadius: 8,
                                     spreadRadius: 2,
                                   ),
@@ -391,7 +391,7 @@ class _LiveFaceVerificationDialogState extends State<LiveFaceVerificationDialog>
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.75),
+                            color: Colors.black.withValues(alpha: 0.75),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(color: Colors.white24),
                           ),
@@ -409,11 +409,11 @@ class _LiveFaceVerificationDialogState extends State<LiveFaceVerificationDialog>
                       // Processing Overlay
                       if (_isProcessing)
                         Container(
-                          color: Colors.black.withOpacity(0.75),
-                          child: Center(
+                          color: Colors.black.withValues(alpha: 0.75),
+                          child: const Center(
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
-                              children: const [
+                              children: [
                                 SpinKitFadingCube(color: Color(0xFF38BDF8), size: 32),
                                 SizedBox(height: 14),
                                 Text(
@@ -519,7 +519,7 @@ class OvalMaskOverlayPainter extends CustomPainter {
     final Path overlayPath = Path.combine(PathOperation.difference, backgroundPath, ovalPath);
 
     final Paint overlayPaint = Paint()
-      ..color = Colors.black.withOpacity(0.55)
+      ..color = Colors.black.withValues(alpha: 0.55)
       ..style = PaintingStyle.fill;
 
     canvas.drawPath(overlayPath, overlayPaint);
