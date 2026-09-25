@@ -31,6 +31,6 @@ echo Press Ctrl + C to stop the server anytime.
 echo ====================================================================
 echo.
 
-start "" "http://127.0.0.1:8000/docs"
+start "" "http://127.0.0.1:8000/admin"
 .venv\Scripts\python.exe -m uvicorn smart_brain_service:app --app-dir backend --host 0.0.0.0 --port 8000 --reload
 pause
