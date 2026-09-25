@@ -27,8 +27,12 @@ except Exception as _err:
     print(f"⚠️ Notice: Verification routes could not be auto-merged: {_err}")
 
 
-@app.on_event("startup")
-async def on_startup_prewarm():
+from contextlib import asynccontextmanager
+
+_original_lifespan = getattr(app.router, "lifespan_context", None)
+
+@asynccontextmanager
+async def _service_lifespan(application):
     """Pre-warm RapidOCR in a background worker thread so the very first user verification has zero delay."""
     def _warm():
         try:
@@ -42,6 +46,13 @@ async def on_startup_prewarm():
         except Exception as e:
             print(f"⚠️ RapidOCR warm-up notice: {e}")
     asyncio.get_event_loop().run_in_executor(None, _warm)
+    if _original_lifespan:
+        async with _original_lifespan(application):
+            yield
+    else:
+        yield
+
+app.router.lifespan_context = _service_lifespan
 
 
 
