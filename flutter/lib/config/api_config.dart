@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 
 class ApiConfig {
   /// User-configurable Local LAN IP address for debugging on physical Android/iOS devices
@@ -9,25 +8,22 @@ class ApiConfig {
   /// Server Port
   static const int port = 8000;
 
-  /// Production Deployed Cloud Backend
-  static const String cloudBackendUrl = "https://digital-kaam-bakend.onrender.com";
+  /// Configurable server host URL (defaults to local network or loopback)
+  static String? customServerUrl;
 
   /// Smart cross-platform base URL resolver
   static String get baseUrl {
-    if (kIsWeb) {
-      return "https://digital-kaam-bakend.onrender.com";
+    if (customServerUrl != null && customServerUrl!.isNotEmpty) {
+      return customServerUrl!;
     }
 
-    if (Platform.isAndroid || Platform.isIOS) {
-      // Direct live cloud backend access anywhere via 4G/5G/WiFi
-      return cloudBackendUrl;
+    if (Platform.isAndroid) {
+      // Android emulator loopback or local LAN
+      return "http://10.0.2.2:$port";
     }
 
-    if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-      return cloudBackendUrl;
-    }
-
-    return cloudBackendUrl;
+    // iOS and local host
+    return "http://127.0.0.1:$port";
   }
 
   // Endpoints
